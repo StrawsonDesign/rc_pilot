@@ -1,4 +1,3 @@
-# fly
 Multirotor Flight Controller for the Robotics Cape
 
 Please don't use this and expect it to work the way you want it to!!!!!
