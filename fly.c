@@ -34,10 +34,8 @@ int main(int argc, char* argv[]){
 	set_led(GREEN,0);
 	set_state(UNINITIALIZED);
 	
-	// set up button handlers first
-	// so user can exit by holding pause
-	set_pause_pressed_func(&on_pause_press);
-	set_mode_unpressed_func(&on_mode_release);
+	// set up button handler so user can exit by holding pause
+	set_pause_pressed_func(&pause_pressed_func);
 	
 	// start barometer with no oversampling
 	if(initialize_barometer(BMP_OVERSAMPLE_1)){
@@ -96,49 +94,5 @@ int main(int argc, char* argv[]){
 
 
 
-/************************************************************************
-*	on_pause_press
-*	If the user holds the pause button for a second, exit cleanly
-*	disarm on momentary press
-************************************************************************/
-int on_pause_press(){
-	int i=0;
-	const int samples = 100;	// check for release 100 times in this period
-	const int us_wait = 2000000; // 2 seconds
-	
-	switch(get_state()){
-	// pause if running
-	case EXITING:
-		return 0;
-	case RUNNING:
-		set_state(PAUSED);
-		disarm_controller();
-		setRED(HIGH);
-		setGRN(LOW);
-		break;
-	case PAUSED:
-		set_state(RUNNING);
-		disarm_controller();
-		setGRN(HIGH);
-		setRED(LOW);
-		break;
-	default:
-		break;
-	}
-	
-	// now wait to see if the user wants to shut down the program
-	while(i<samples){
-		usleep(us_wait/samples);
-		if(get_pause_button_state() == UNPRESSED){
-			return 0; //user let go before time-out
-		}
-		i++;
-	}
-	printf("long press detected, shutting down\n");     
-	//user held the button down long enough, blink and exit cleanly
-	blink_red();
-	set_state(EXITING);
-	return 0;
-}
 
 

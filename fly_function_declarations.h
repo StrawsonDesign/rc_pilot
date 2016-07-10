@@ -178,4 +178,12 @@ float apply_deadzone(float in, float zone);
 *
 * sends signal 0 to all motor channels
 *******************************************************************************/
-int set_motors_to_zero(){
+int set_motors_to_zero();
+
+/*******************************************************************************
+* int pause_pressed_func()
+*
+* Disarm controller on momentary press.
+* If the user holds the pause button for BUTTON_EXIT_TIME_S, exit cleanly.
+*******************************************************************************/
+int pause_pressed_func();

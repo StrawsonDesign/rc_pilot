@@ -34,3 +34,30 @@ int set_motors_to_zero(){
 	for(i=0;i<ROTORS;i++) send_esc_pulse_normalized(i+1,0);
 	return 0;
 }
+
+/*******************************************************************************
+* int pause_pressed_func()
+*
+* Disarm controller on momentary press.
+* If the user holds the pause button for BUTTON_EXIT_TIME_S, exit cleanly.
+*******************************************************************************/
+int pause_pressed_func(){
+	int i;
+	const int samples = BUTTON_EXIT_CHECK_HZ * BUTTON_EXIT_TIME_S;
+	
+	if(get_state()==EXITING) return 0;
+	
+	// always disarm controller as soon as pause button is pressed
+	disarm_controller();
+	// now wait to see if the user wants to shut down the program
+	i=0;
+	while(i<samples){
+		if(get_pause_button_state() == RELEASED) return 0;
+		i++;
+		usleep(1000000/BUTTON_EXIT_CHECK_HZ);
+	}
+	printf("long press detected, shutting down\n");
+	blink_led(RED, 5,1);
+	set_state(EXITING);
+	return 0;
+}
