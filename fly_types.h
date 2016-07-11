@@ -50,8 +50,6 @@ typedef enum flight_mode_t{
 * and read in by fly_controller.
 *******************************************************************************/
 typedef struct setpoint_t{
-	arm_state_t arm_state;	// see arm_state_t declaration
-
 	int altitude_ctrl_en;	// set to 1 to enable altitude feedback.
 	int 6dof_en;			// enable direct XY control via 6DOF model
 	

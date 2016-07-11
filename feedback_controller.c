@@ -17,6 +17,9 @@
 #include "fly_types.h"
 #include "feedback_coefficients.h"
 
+
+arm_state_t arm_state;
+
 // discrete controllers
 d_filter_t D0, D1, D2, D3;
 // pointers to outside structs
@@ -29,7 +32,7 @@ log_entry_t new_log;
 int initialized;
 int num_yaw_spins;
 int last_yaw;
-float u[ROTORS], mot[ROTORS], last_user_throttle, tmp;
+float u[ROTORS], mot[ROTORS], last_usr_thr, tmp;
 uint64_t loop_index;
 
 // memory of last state to detect first run when one changes
@@ -37,12 +40,43 @@ arm_state_t last_arm_state;
 int last_alt_ctrl_en;
 
 /*******************************************************************************
-* initialize_controllers()
+* int disarm_controller()
+*	
+* This is how outside functions should stop the flight controller.
+*******************************************************************************/
+int disarm_controller(){
+	arm_state = DISARMED;
+	set_led(RED,1);
+	set_led(GREEN,0); 
+	if(ENABLE_LOGGING) stop_log_manager();
+	return 0;
+}
+
+/*******************************************************************************
+* int disarm_controller()
+*	
+* This is how outside functions should stop the flight controller.
+*******************************************************************************/
+int arm_controller(){
+	zero_out_controller();
+	loop_index = 0;
+	set_led(RED,0);
+	set_led(GREEN,1); 
+	zero_out_controller();
+	last_alt_ctrl_en = 0;
+	last_usr_thr = MIN_THRUST_COMPONENT;
+	if(ENABLE_LOGGING) start_log_manager();
+	arm_state = ARMED;
+	return 0;
+}
+
+/*******************************************************************************
+* initialize_controller()
 *
 * initial setup of all feedback controllers. Should only be called once on
 * program start. 
 *******************************************************************************/
-int initialize_controllers(cstate_t* cstate, setpoint_t* setpoint, \
+int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 									imu_data_t* imu_data, user_input_t* ui){
 	float num, den;
 
@@ -80,7 +114,7 @@ int initialize_controllers(cstate_t* cstate, setpoint_t* setpoint, \
 	D3.gain = D3_GAIN;
 	enable_saturation(&D3, MIN_YAW_COMPONENT, MAX_YAW_COMPONENT);
 
-	initialized = 1;
+	arm_state = DISARMED;
 	return 0;
 }
 
@@ -94,37 +128,6 @@ int zero_out_controller(){
 	reset_filter(&D1);
 	reset_filter(&D2);
 	reset_filter(&D3);
-	return 0;
-}
-
-/*******************************************************************************
-* int disarm_controller()
-*	
-* This function is internal to this c file. To disarm the controller from 
-* outside this file, the setpoint manager should set setpoint.arm_mode to
-* DISARMED. feedback_controller() will pick up on this and disarm itself
-* properly.
-*******************************************************************************/
-int disarm_controller(){
-	sp->arm_state = DISARMED;
-	set_led(RED,1);
-	set_led(GREEN,0); 
-	return 0;
-}
-
-/*******************************************************************************
-* int disarm_controller()
-*	
-* This function is internal to this c file. To arm the controller from outside 
-* this file, the setpoint manager should set setpoint.arm_mode to ARMED. 
-* feedback_controller() will pick up on this and arm itself properly.
-*******************************************************************************/
-int arm_controller(){
-	zero_out_controller();
-	sp->arm_state = ARMED;
-	loop_index = 0;
-	set_led(RED,0);
-	set_led(GREEN,1); 
 	return 0;
 }
 
@@ -183,7 +186,7 @@ int fly_controller(){
 	// this also ensures they get woken up properly as we will be in this
 	// disarmed state for a couple seconds at least while the user gets ready
 	// to enter the arming sequence
-	if(sp->arm_state==DISARMED){
+	if(arm_state==DISARMED){
 		set_motors_to_zero();
 		last_arm_state = DISARMED;
 		return 0;
@@ -198,27 +201,17 @@ int fly_controller(){
 		return 0;
 	}
 	
-	/***************************************************************************
-	* Things to do if this is the first run since being ARMED
-	***************************************************************************/
-	if(sp->arm_state==ARMED && last_arm_state==DISARMED){
-		zero_out_controller();
-		last_arm_state = ARMED;
-		// set up the altitude 
-		last_alt_ctrl_en = 0;
-		last_user_throttle = MIN_THRUST_COMPONENT;
-		return 0;
-	}
 
 	/***************************************************************************
 	* If transitioning from direct throttle to altitude control, prefill the 
 	* filter wth current throttle input to make smooth transition. This is also
-	* true if 
+	* true if taking off for the first time in altitude mode as arm_controller 
+	* sets up last_alt_ctrl_en and last_usr_thr every time controller arms
 	***************************************************************************/
 	if(sp->altitude_ctrl_en && !last_alt_ctrl_en){
 		sp->altitude = cs->alt; // set altitude setpoint to current altitude
 		reset_filter(&D0);
-		prefill_filter_outputs(&D0,last_user_throttle);
+		prefill_filter_outputs(&D0,last_usr_thr);
 		last_alt_ctrl_en = 1;
 	}
 		
@@ -235,7 +228,7 @@ int fly_controller(){
 	// if altitude control in not enabled, apply direct throttle
 	if(!sp->altitude_ctrl_en){
 		// save throttle in case of transition to altitude control
-		last_user_throttle = sp->Z_throttle; 
+		last_usr_thr = sp->Z_throttle; 
 		tmp = sp->Z_throttle / (cos(cs->roll)*cos(cs->pitch));
 		saturate_float(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 		u[VEC_THR] = tmp;

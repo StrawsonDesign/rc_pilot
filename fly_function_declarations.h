@@ -9,6 +9,39 @@
 
 
 /*******************************************************************************
+* int disarm_controller()
+*	
+* This is how outside functions should stop the flight controller.
+*******************************************************************************/
+int disarm_controller();
+
+/*******************************************************************************
+* int disarm_controller()
+*	
+* This is how outside functions should stop the flight controller.
+*******************************************************************************/
+int arm_controller();
+
+/*******************************************************************************
+* initialize_controller()
+*
+* initial setup of all feedback controllers. Should only be called once on
+* program start. 
+*******************************************************************************/
+int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
+									imu_data_t* imu_data, user_input_t* ui);
+
+/*******************************************************************************
+* fly_controller()
+*	
+* Should be called by the IMU interrupt at SAMPLE_RATE_HZ
+*******************************************************************************/
+int fly_controller();
+
+
+
+
+/*******************************************************************************
 * int start_setpoint_manager(user_input_t* ui)
 *
 * Starts the setpoint manager thread
@@ -28,7 +61,7 @@ int join_setpoint_manager_thread();
 
 
 /*******************************************************************************
-* int set_mixing_matrix(int rotors, char layout, int dof)
+* int initialize_mixing_matrix()
 *
 * For a given number of rotors, layout character ('X','+') and degrees of
 * freedom in control input (4 or 6), this selects the correct predefined
@@ -36,7 +69,7 @@ int join_setpoint_manager_thread();
 * mixing_matrix.c to prevent accidental misuse or modification. Use the other
 * functions here to interface with it.
 *******************************************************************************/
-int set_mixing_matrix(int rotors, char layout, int dof);
+int initialize_mixing_matrix();
 
 /*******************************************************************************
 * int mix_all_controls(float* u, float* mot)

@@ -197,6 +197,9 @@ int start_log_manager(){
 * return -1 if there was a timeout and the thread had to force close.
 *******************************************************************************/
 int stop_log_manager(){
+	// if not running, just return
+	if(logging_enabled == 0) return 0;
+
 	// disable logging so the thread can stop and start multiple times
 	logging_enabled = 0;
 	// wait for the interrupt thread to exit

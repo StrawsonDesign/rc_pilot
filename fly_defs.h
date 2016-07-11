@@ -4,15 +4,6 @@
 * constants and parameters
 *******************************************************************************/
 
-// Physical Configuration
-#define ROTORS					6	 // 4, 6 or 8
-#define ROTOR_LAYOUT			'X'	 // 'X' or '+'
-#define DOF						4	 // 4 or 6
-#define V_NOMINAL  				14.8 // 4S pack
-
-// feature on/off
-#define ENABLE_LOGGING			1
-
 // Flight Core Constants
 #define SAMPLE_RATE_HZ 			200		// Run the main control loop at this rate
 #define DT 				   		.005	// timestep MUST MATCH 1/SAMPLE_RATE_HZ
@@ -51,9 +42,6 @@
 #define DSM2_YAW_POL		  	1 
 #define DSM2_KILL_POL		   	1	 
 #define DSM2_MODE_POL		   	1	 
-
-#define DSM2_MODE_1		ATTITUDE_DIRECT_THROTTLE
-#define DSM2_MODE_2		ATTITUDE_ALTITUDE_HOLD
 
 // thread speeds, prioritites, and close timeouts
 #define SETPOINT_MANAGER_HZ 		100

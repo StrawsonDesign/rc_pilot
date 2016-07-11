@@ -9,14 +9,16 @@
 #include <robotics_cape.h>
 #include "fly_types.h"
 #include "fly_defs.h"
+#include "basic_settings.h"
 
 
 /*******************************************************************************
 * 	Global Variables				
 *******************************************************************************/
-setpoint_t 				setpoint;
-core_state_t			cstate;
-user_interface_t		user_interface;
+setpoint_t 		setpoint;
+core_state_t	cstate;
+user_input_t	user_input;
+imu_data_t 		imu_data;
 
 /*******************************************************************************
 *	main()
@@ -36,7 +38,24 @@ int main(int argc, char* argv[]){
 	
 	// set up button handler so user can exit by holding pause
 	set_pause_pressed_func(&pause_pressed_func);
-	
+	// set up feedback controller before starting sensors
+	initialize_controller(&cstate, &setpoint, &imu_data, &user_input);
+
+	if(initialize_thrust_interpolation()<0){
+		printf("ERROR: failed to initialize thrust interpolation\n");
+		return -1;
+	}
+	if(start_input_manager(&user_input)<0){
+		printf("ERROR: can't start DSM2 radio service\n");
+		blink_led(RED,5,3);
+		return -1;
+	}
+	if(start_setpoint_manager()<0){
+		printf("ERROR: can't start DSM2 radio service\n");
+		blink_led(RED,5,3);
+		return -1;
+	} 
+
 	// start barometer with no oversampling
 	if(initialize_barometer(BMP_OVERSAMPLE_1)){
 		printf("ERROR: failed to initialize_barometer");
@@ -44,12 +63,11 @@ int main(int argc, char* argv[]){
 		cleanup_cape();
 		return -1;
 	}
-	
-	// Finally start the IMU
+	// start the IMU
 	imu_config_t conf = get_default_imu_config();
 	conf.dmp_sample_rate = SAMPLE_RATE_HZ;
 	conf.enable_mag = 1;
-	conf.orientation = ORIENTATION_Z_UP
+	conf.orientation = BBB_ORIENTATION;
 	
 	// now set up the imu for dmp interrupt operation
 	if(initialize_imu_dmp(&data, conf)){
@@ -80,7 +98,6 @@ int main(int argc, char* argv[]){
 	}
 	
 	// cleanup before closing
-
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
 	join_printf_manager_thread();
