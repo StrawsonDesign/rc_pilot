@@ -89,7 +89,7 @@ void* setpoint_manager(void* ptr){
 		if(get_state()!=RUNNING) continue;
 	
 		// if the core got disarmed, wait for arming sequence 
-		if(sp->arm_state == DISARMED){
+		if(get_controller_arm_state() == DISARMED){
 			wait_for_arming_sequence();
 			// user may have pressed the pause button or shut down while waiting
 			// check before continuing

@@ -23,6 +23,14 @@ int disarm_controller();
 int arm_controller();
 
 /*******************************************************************************
+* arm_state_t get_controller_arm_state()
+*	
+* Returns the arm state of the controller so outside functions, namely the
+* setpoint_manager, can tell if the controller is armed or not.
+*******************************************************************************/
+arm_state_t get_controller_arm_state()
+
+/*******************************************************************************
 * initialize_controller()
 *
 * initial setup of all feedback controllers. Should only be called once on

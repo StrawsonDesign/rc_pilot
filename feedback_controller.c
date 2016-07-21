@@ -29,16 +29,15 @@ imu_data_t* imu;
 user_input_t* ui;
 
 log_entry_t new_log;
-int initialized;
 int num_yaw_spins;
 int last_yaw;
-float u[ROTORS], mot[ROTORS], last_usr_thr, tmp;
+float u[ROTORS], mot[ROTORS], tmp;
 uint64_t loop_index;
 
-// memory of last state to detect first run when one changes
-arm_state_t last_arm_state;
+// altitude controller needs to know if it is transitioning to user-throttle 
+// mode to altitude hold so remember whether or not altitude control was on
 int last_alt_ctrl_en;
-
+float last_usr_thr;
 /*******************************************************************************
 * int disarm_controller()
 *	
@@ -68,6 +67,16 @@ int arm_controller(){
 	if(ENABLE_LOGGING) start_log_manager();
 	arm_state = ARMED;
 	return 0;
+}
+
+/*******************************************************************************
+* arm_state_t get_controller_arm_state()
+*	
+* Returns the arm state of the controller so outside functions, namely the
+* setpoint_manager, can tell if the controller is armed or not.
+*******************************************************************************/
+arm_state_t get_controller_arm_state(){
+	return arm_state;
 }
 
 /*******************************************************************************
