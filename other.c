@@ -4,6 +4,10 @@
 * This is a homeless shelter for poor functions without a place to live.
 *******************************************************************************/
 
+#include <roboticscape.h>
+#include <roboticscape-usefulincludes.h>
+#include "basic_settings.h"
+#include "fly_function_declarations.h"
 
 /*******************************************************************************
 * float apply_deadzone(float in, float zone)
@@ -13,7 +17,6 @@
 * zone extends.
 *******************************************************************************/
 float apply_deadzone(float in, float zone){
-	float tmp;
 	if(zone<0){
 		printf("ERROR: dead zone must be >0\n");
 		return in;
@@ -35,6 +38,18 @@ int set_motors_to_zero(){
 	return 0;
 }
 
+
+/*******************************************************************************
+* int on_pause_released() 
+*	
+* Make the Pause button toggle between paused and running states.
+*******************************************************************************/
+int on_pause_released(){
+	// toggle betewen paused and running modes
+	if(get_state()==PAUSED)	set_state(RUNNING);
+	return 0;
+}
+
 /*******************************************************************************
 * int pause_pressed_func()
 *
@@ -43,21 +58,23 @@ int set_motors_to_zero(){
 *******************************************************************************/
 int pause_pressed_func(){
 	int i;
-	const int samples = BUTTON_EXIT_CHECK_HZ * BUTTON_EXIT_TIME_S;
+	const int samples = 100;	// check for release 100 times in this period
+	const int us_wait = 2000000; // 2 seconds
 	
 	if(get_state()==EXITING) return 0;
 	
 	// always disarm controller as soon as pause button is pressed
 	disarm_controller();
-	// now wait to see if the user wants to shut down the program
-	i=0;
-	while(i<samples){
-		if(get_pause_button_state() == RELEASED) return 0;
-		i++;
-		usleep(1000000/BUTTON_EXIT_CHECK_HZ);
+	if(get_state()==RUNNING)	set_state(PAUSED);
+
+	// now keep checking to see if the button is still held down
+	for(i=0;i<samples;i++){
+		usleep(us_wait/samples);
+		if(get_pause_button() == RELEASED) return 0;
 	}
 	printf("long press detected, shutting down\n");
 	blink_led(RED, 5,1);
 	set_state(EXITING);
 	return 0;
 }
+

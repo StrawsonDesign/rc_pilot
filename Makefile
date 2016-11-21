@@ -1,50 +1,57 @@
-# project name 
-# change to match your main c file
+
 TARGET = fly
 
 
-
-
-TOUCH 	 := $(shell touch *)
+TOUCH 	:= $(shell touch *)
 CC	:= gcc
-LINKER   := gcc -o
+LINKER  := gcc -o
 CFLAGS	:= -c -Wall -g
-LFLAGS	:= -lm -lrt -lpthread -lrobotics_cape
+LFLAGS	:= -lm -lrt -lpthread -lroboticscape
 
 SOURCES  := $(wildcard *.c)
 INCLUDES := $(wildcard *.h)
 OBJECTS  := $(SOURCES:$%.c=$%.o)
-RM := rm -f
 
-INSTALL_DIR = /usr/bin/
+prefix := /usr/local
+RM := rm -f
+INSTALL := install -m 755 
+INSTALLDIR := install -d -m 644 
+
+LINK := ln -s -f
+LINKDIR := /etc/roboticscape
+LINKNAME := link_to_startup_program
+
 
 # linking Objects
 $(TARGET): $(OBJECTS)
 	@$(LINKER) $(@) $(OBJECTS) $(LFLAGS)
-	@echo
-	@echo "Linking Complete"
 
 
 # compiling command
 $(OBJECTS): %.o : %.c
 	@$(TOUCH) $(CC) $(CFLAGS) -c $< -o $(@)
-	@echo "Compiled "$<" successfully!"
 
 
-# install to /usr/bin
-$(phony all) : $(TARGET)
-.PHONY: install
+all:
+	$(TARGET)
 
-install: $(all)
-	@$(MAKE)
-	@install -m 0755 $(TARGET) $(INSTALL_DIR)
-	@echo
-	@echo "Project "$(TARGET)" installed to $(INSTALL_DIR)"
-	@echo
+install: 
+	@$(MAKE) --no-print-directory
+	@$(INSTALLDIR) $(DESTDIR)$(prefix)/bin
+	@$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/bin
+	@echo "$(TARGET) Install Complete"
 	
 clean:
 	@$(RM) $(OBJECTS)
 	@$(RM) $(TARGET)
-	@echo "Cleanup complete!"
+	@echo "$(TARGET) Clean Complete"
 
+uninstall:
+	@$(RM) $(DESTDIR)$(prefix)/bin/$(TARGET)
+	@echo "$(TARGET) Uninstall Complete"
+
+runonboot:
+	@$(MAKE) install --no-print-directory
+	@$(LINK) $(DESTDIR)$(prefix)/bin/$(TARGET) $(LINKDIR)/$(LINKNAME)
+	@echo "$(TARGET) Set to Run on Boot"
 	

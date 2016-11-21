@@ -6,7 +6,7 @@
 *******************************************************************************/
 
 
-
+#include "fly_types.h"
 
 /*******************************************************************************
 * int disarm_controller()
@@ -28,7 +28,7 @@ int arm_controller();
 * Returns the arm state of the controller so outside functions, namely the
 * setpoint_manager, can tell if the controller is armed or not.
 *******************************************************************************/
-arm_state_t get_controller_arm_state()
+arm_state_t get_controller_arm_state();
 
 /*******************************************************************************
 * initialize_controller()
@@ -168,12 +168,12 @@ int stop_log_manager();
 
 
 /*******************************************************************************
-* int start_printf_manager(core_state_t* core_state, setpoint_t* setpoint)
+* int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint)
 *
 * Start the printf_manager which should be the only thing printing to the screen
 * besides error messages from other threads.
 *******************************************************************************/
-int start_printf_manager(core_state_t* core_state, setpoint_t* setpoint);
+int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint);
 
 /*******************************************************************************
 * int join_printf_manager_thread()
@@ -228,3 +228,10 @@ int set_motors_to_zero();
 * If the user holds the pause button for BUTTON_EXIT_TIME_S, exit cleanly.
 *******************************************************************************/
 int pause_pressed_func();
+
+/*******************************************************************************
+* int on_pause_released() 
+*	
+* Make the Pause button toggle between paused and running states.
+*******************************************************************************/
+int on_pause_released();

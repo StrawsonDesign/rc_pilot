@@ -4,8 +4,10 @@
 * James Strawson 2016
 *******************************************************************************/
 
-#include <useful_includes.h>
+#include <roboticscape-usefulincludes.h>
+#include <roboticscape.h>
 #include "fly_types.h"
+#include "fly_defs.h"
 
 #define LOG_DIR 			"/root/fly_logs/"
 #define MAX_LOG_FILES		500

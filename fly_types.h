@@ -38,7 +38,7 @@ typedef enum arm_state_t{
 typedef enum flight_mode_t{
 	ATTITUDE_DIRECT_THROTTLE,
 	ATTITUDE_ALTITUDE_HOLD,
-	6DOF_CONTROL,
+	CONTROL_6DOF,
 	EMERGENCY_LAND
 } flight_mode_t;
 
@@ -51,7 +51,7 @@ typedef enum flight_mode_t{
 *******************************************************************************/
 typedef struct setpoint_t{
 	int altitude_ctrl_en;	// set to 1 to enable altitude feedback.
-	int 6dof_en;			// enable direct XY control via 6DOF model
+	int en_6dof;			// enable direct XY control via 6DOF model
 	
 	// direct user inputs
 	float Z_throttle;		// only used with direct_throttle user mode
@@ -69,12 +69,12 @@ typedef struct setpoint_t{
 } setpoint_t;
 
 /*******************************************************************************
-* core_state_t
+* cstate_t
 *
 * contains most recent values reported by the fly_controller. Should only be 
 * written to by the flight controller after initialization.
 *******************************************************************************/
-typedef struct core_state_t{
+typedef struct cstate_t{
 	uint64_t start_time_us;	// time when IMU interrupt routine started
 	uint64_t time_us; 		// last time controller has finished a step
 	uint64_t step;			// num steps since controller was armed
@@ -93,7 +93,7 @@ typedef struct core_state_t{
 
 	// misc
 	float vbatt;			// main battery pack voltage (v)
-} core_state_t;
+} cstate_t;
 
 
 /*******************************************************************************

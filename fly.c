@@ -5,8 +5,9 @@
 * see README.txt for description and use				
 *******************************************************************************/
 
-#include <useful_includes.h>
-#include <robotics_cape.h>
+#include <roboticscape-usefulincludes.h>
+#include <roboticscape.h>
+#include "fly_function_declarations.h"
 #include "fly_types.h"
 #include "fly_defs.h"
 #include "basic_settings.h"
@@ -15,10 +16,10 @@
 /*******************************************************************************
 * 	Global Variables				
 *******************************************************************************/
-setpoint_t 		setpoint;
-core_state_t	cstate;
+setpoint_t		setpoint;
+cstate_t		cstate;
 user_input_t	user_input;
-imu_data_t 		imu_data;
+imu_data_t		imu_data;
 
 /*******************************************************************************
 *	main()
@@ -50,14 +51,14 @@ int main(int argc, char* argv[]){
 		blink_led(RED,5,3);
 		return -1;
 	}
-	if(start_setpoint_manager()<0){
+	if(start_setpoint_manager(&setpoint, &user_input)<0){
 		printf("ERROR: can't start DSM2 radio service\n");
 		blink_led(RED,5,3);
 		return -1;
 	} 
 
 	// start barometer with no oversampling
-	if(initialize_barometer(BMP_OVERSAMPLE_1)){
+	if(initialize_barometer(BMP_OVERSAMPLE_16,BMP_FILTER_OFF)){
 		printf("ERROR: failed to initialize_barometer");
 		blink_led(RED,5,3);
 		cleanup_cape();
@@ -66,11 +67,11 @@ int main(int argc, char* argv[]){
 	// start the IMU
 	imu_config_t conf = get_default_imu_config();
 	conf.dmp_sample_rate = SAMPLE_RATE_HZ;
-	conf.enable_mag = 1;
+	conf.enable_magnetometer = 1;
 	conf.orientation = BBB_ORIENTATION;
 	
 	// now set up the imu for dmp interrupt operation
-	if(initialize_imu_dmp(&data, conf)){
+	if(initialize_imu_dmp(&imu_data, conf)){
 		printf("initialize_imu_failed\n");
 		blink_led(RED,5,3);
 		cleanup_cape();
@@ -85,12 +86,10 @@ int main(int argc, char* argv[]){
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
 	if(isatty(fileno(stdout))){
-		start_printf_manager();
+		start_printf_manager(&cstate, &setpoint);
 	}
 
 	set_state(RUNNING);
-
-	start_feedback_controller();
 
 	//chill until something exits the program
 	while(get_state()!=EXITING){
@@ -102,7 +101,7 @@ int main(int argc, char* argv[]){
 	join_input_manager_thread();
 	join_printf_manager_thread();
 	power_off_imu();
-	power_down_barometer();
+	power_off_barometer();
 	cleanup_cape();	// de-initialize cape hardware
 	return 0;
 }

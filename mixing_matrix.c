@@ -122,7 +122,7 @@ int check_channel_saturation(int ch, float* mot, float* min, float* max){
 	if(initialized!=1){
 		printf("ERROR: in check_channel_saturation, mix matrix not set yet\n");
 		return -1;
-	}r
+	}
 	if(ch<0 || ch>=DOF){
 		printf("ERROR: in check_channel_saturation, ch out of bounds\n");
 		return -1;
