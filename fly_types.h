@@ -8,9 +8,9 @@
 #define FLY_TYPES 
 
 /************************************************************************
-* 	arm_state_t
+* arm_state_t
 *
-*	ARMED or DISARMED to indicate if the controller is running
+* ARMED or DISARMED to indicate if the controller is running
 ************************************************************************/
 typedef enum arm_state_t{
 	DISARMED,
@@ -22,25 +22,36 @@ typedef enum arm_state_t{
 *	
 * flight_mode determines how the setpoint manager behaves
 *
-* ATTITUDE_DIRECT_THROTTLE: user inputs translate directly to the throttle, 
+* DIRECT_THROTTLE: user inputs translate directly to the throttle, 
 * roll, pitch, & yaw setpoints. No altitude feedback control.
 *	
-* ATTITUDE_ALTITUDE_HOLD: user input translates directly to roll, pitch, & yaw
+* ALTITUDE_HOLD: user input translates directly to roll, pitch, & yaw
 * rate setpoints. Throttle translates to altitude-rate setpoint and altitude
 * is maintained with feedback.
-*
-* 6DOF_CONTROL: Roll an pitch setpoints are left at 0. User instead controls 
-* position with direct inputs to X and Y thrust.
 *
 * EMERGENCY_LAND: Roll and pitch setpoints are left at 0. Altitude setpoint is
 * slowly lowered until land detected.
 *******************************************************************************/
 typedef enum flight_mode_t{
-	ATTITUDE_DIRECT_THROTTLE,
-	ATTITUDE_ALTITUDE_HOLD,
-	CONTROL_6DOF,
-	EMERGENCY_LAND
+	DIRECT_THROTTLE,
+	TESTING
 } flight_mode_t;
+
+
+/************************************************************************
+* layout_t
+*
+* possible rotor configurations, see mixing_matrix_defs.h
+************************************************************************/
+typedef enum layout_t{
+	LAYOUT_4X,
+	LAYOUT_4PLUS,
+	LAYOUT_6X,
+	LAYOUT_6PLUS,
+	LAYOUT_8X,
+	LAYOUT_8PLUS,
+	LAYOUT_6DOF
+} layout_t;
 
 
 /*******************************************************************************
@@ -65,8 +76,8 @@ typedef struct setpoint_t{
 	float pitch;			// pitch angle (positive tip back) (rad)
 	float yaw;				// yaw angle to magnetive field (postiive CCW)(rad)
 	float yaw_rate;			// yaw_rate in rad/s
-	
 } setpoint_t;
+
 
 /*******************************************************************************
 * cstate_t
@@ -103,7 +114,6 @@ typedef struct cstate_t{
 * thread
 *******************************************************************************/
 typedef struct user_input_t{
-
 	int user_input_active;		// set to 1 if continuous user input is working
 	flight_mode_t flight_mode;  // this is the user commanded flight_mode. 
 	arm_state_t kill_switch; 	// kill motors if set to DISARMED
@@ -113,42 +123,61 @@ typedef struct user_input_t{
 	float yaw_stick;		// positive to the right, CW yaw
 	float roll_stick;		// positive to the right
 	float pitch_stick;		// positive up
-	
 } user_input_t;
 
 
 /*******************************************************************************
-* log_entry_t
+* fly_settings_t
 *
-* Struct definition to contain a single line of the log. For each log entry
-* you wish to create. Fill in an instance of this and pass to add_log_entry()
+* basic settings read from the json settings file
 *******************************************************************************/
-#define CORE_LOG_TABLE \
-	X(uint64_t,	"%ld", 	loop_index	) \
-								  	  \
-	X(float,  	"%f",	alt			) \
-    X(float, 	"%f",	roll		) \
-    X(float,  	"%f",	pitch		) \
-    X(float,  	"%f",	yaw			) \
-    							 	  \
-    X(float,  	"%f",	u_thr		) \
-	X(float,  	"%f",	u_roll		) \
-    X(float,  	"%f",	u_pitch		) \
-    X(float,  	"%f",	u_yaw		) \
-	X(float,  	"%f",	u_X			) \
-	X(float,  	"%f",	u_Y			) \
-								 	  \
-    X(float,  	"%f",	mot_1		) \
-    X(float,  	"%f",	mot_2		) \
-	X(float,  	"%f",	mot_3		) \
-    X(float,  	"%f",	mot_4		) \
-    X(float,  	"%f",	mot_5		) \
-    X(float,  	"%f",	mot_6		) \
-    X(float,  	"%f",	vbatt		)
+typedef struct fly_settings_t{
+	// physical parameters
+	int num_rotors;
+	layout_t layout;
+	imu_orientation_t bbb_orientation;
+	float v_nominal;
 
-#define X(type, fmt, name) type name ;
-typedef struct log_entry_t { CORE_LOG_TABLE } log_entry_t;
-#undef X
+	// features
+	int enable_freefall_detect;
+	int enable_logging;
 
+	// flight modes
+	flight_mode_t flight_mode_1;
+	flight_mode_t flight_mode_2;
+	flight_mode_t flight_mode_3;
+
+	// dsm radio config
+	int dsm_throttle_ch;
+	int dsm_roll_ch;
+	int dsm_pitch_ch;
+	int dsm_yaw_ch;
+	int dsm_mode_ch;
+	int dsm_kill_ch;
+	int dsm_throttle_pol;
+	int dsm_roll_pol;
+	int dsm_pitch_pol;
+	int dsm_yaw_pol;
+	int dsm_mode_pol;
+	int dsm_kill_pol;
+	int dsm_num_modes;
+
+	// feedback loop speed
+	int feedback_loop_hz
+} fly_settings_t;
+
+
+/*******************************************************************************
+* fly_controllers_t
+*
+* collection of all feedback controllers, used by json_settings.c to pass
+* controllers to feedback_controller.c neatly
+*******************************************************************************/
+typedef struct fly_controllers_t{
+	d_filter_t altitude_controller;
+	d_filter_t roll_controller;
+	d_filter_t pitch_controller;
+	d_filter_t yaw_controller;
+}fly_controllers_t;
 
 #endif // FLY_TYPES

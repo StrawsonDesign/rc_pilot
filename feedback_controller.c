@@ -21,7 +21,9 @@
 arm_state_t arm_state;
 
 // discrete controllers
+// altitude, roll, pitch, yaw
 d_filter_t D0, D1, D2, D3;
+
 // pointers to outside structs
 setpoint_t sp;
 cstate_t cs;
@@ -38,6 +40,7 @@ uint64_t loop_index;
 // mode to altitude hold so remember whether or not altitude control was on
 int last_alt_ctrl_en;
 float last_usr_thr;
+
 /*******************************************************************************
 * int disarm_controller()
 *	

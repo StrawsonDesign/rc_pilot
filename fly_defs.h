@@ -65,6 +65,9 @@
  
 #define	EMERGENCY_DESCENT_RATE		0.5 // m/s
 
+// Save File
+#define FLY_SETTINGS_FILE "/root/fly_settings.json"
+
 // for future modes, not used yet
 #define  LAND_TIMEOUT			0.3
 #define  DISARM_TIMEOUT			4.0
