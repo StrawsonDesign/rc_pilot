@@ -14,7 +14,7 @@ json_object* get_default_settings();
 int print_settings(json_object* jobj);
 int write_settings_to_file(json_object* jobj);
 int parse_flight_mode(json_object* jobj, flight_mode_t* mode);
-int parse_controller(json_object* jobj, d_filter_t* fitler);
+int parse_controller(json_object* jobj, d_filter_t* filter, int sample_rate_hz);
 
 /*******************************************************************************
 * int load_all_settings_from_file(	fly_settings_t* settings, 
@@ -432,7 +432,7 @@ int load_all_settings_from_file(fly_settings_t* settings, \
 		printf("ERROR: can't find altitude_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.altitude_controller)){
+	if(parse_controller(tmp, &controllers.altitude_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse altitude_controller\n");
 		return -1;
 	}
@@ -442,7 +442,7 @@ int load_all_settings_from_file(fly_settings_t* settings, \
 		printf("ERROR: can't find roll_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.roll_controller)){
+	if(parse_controller(tmp, &controllers.roll_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse roll_controller\n");
 		return -1;
 	}
@@ -452,7 +452,7 @@ int load_all_settings_from_file(fly_settings_t* settings, \
 		printf("ERROR: can't find pitch_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.pitch_controller)){
+	if(parse_controller(tmp, &controllers.pitch_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse pitch_controller\n");
 		return -1;
 	}
@@ -462,7 +462,7 @@ int load_all_settings_from_file(fly_settings_t* settings, \
 		printf("ERROR: can't find yaw_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.yaw_controller)){
+	if(parse_controller(tmp, &controllers.yaw_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse yaw_controller\n");
 		return -1;
 	}
@@ -542,7 +542,7 @@ json_object* get_default_settings(){
 
 	// feedback loop frequency
 	tmp = json_object_new_int(100);
-	json_object_object_add(out, "feedback_loop_hz", tmp);
+	json_object_object_add(out, "feedback_hz", tmp);
 
 
 	// altitude controller
@@ -551,6 +551,8 @@ json_object* get_default_settings(){
 	json_object_object_add(tmp2, "gain", tmp);
 	tmp = json_object_new_string("CT");
 	json_object_object_add(tmp2, "CT_or_DT", tmp);
+	tmp = json_object_new_double(0.6283);
+	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
 
 	array = json_object_new_array();
 	tmp = json_object_new_double(0.1);
@@ -579,6 +581,8 @@ json_object* get_default_settings(){
 	json_object_object_add(tmp2, "gain", tmp);
 	tmp = json_object_new_string("CT");
 	json_object_object_add(tmp2, "CT_or_DT", tmp);
+	tmp = json_object_new_double(6.283);
+	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
 
 	array = json_object_new_array();
 	tmp = json_object_new_double(0.1);
@@ -606,6 +610,8 @@ json_object* get_default_settings(){
 	json_object_object_add(tmp2, "gain", tmp);
 	tmp = json_object_new_string("CT");
 	json_object_object_add(tmp2, "CT_or_DT", tmp);
+	tmp = json_object_new_double(6.283);
+	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
 
 	array = json_object_new_array();
 	tmp = json_object_new_double(0.1);
@@ -633,6 +639,8 @@ json_object* get_default_settings(){
 	json_object_object_add(tmp2, "gain", tmp);
 	tmp = json_object_new_string("CT");
 	json_object_object_add(tmp2, "CT_or_DT", tmp);
+	tmp = json_object_new_double(3.141);
+	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
 
 	array = json_object_new_array();
 	tmp = json_object_new_double(0.1);
@@ -718,16 +726,132 @@ int parse_flight_mode(json_object* jobj, flight_mode_t* mode){
 
 
 /*******************************************************************************
-* int parse_controller(json_object* jobj, d_filter_t* fitler)
+* int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz)
 *
 * parses a json_object and sets up a new controller
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int parse_controller(json_object* jobj, d_filter_t* fitler){
+int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 	struct json_object *array = NULL;	// to hold num & den arrays
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL;
 	float tmp_flt;
+	int i, num_len, den_len;
+	vector_t num_vec, den_vec;
+
+	// destroy old memory in case the order changes
+	destroy_filter(filter);
+
+	// pull out gain
+	if(json_object_object_get_ex(jobj, "gain", &tmp)==0){
+		printf("ERROR: can't find controller gain in settings file\n");
+		return -1;
+	}
+	if(json_object_is_type(tmp, json_type_double)==0){
+		printf("ERROR: controller gain should be a double\n")
+		return -1;
+	}
+	tmp_flt = json_object_get_double(tmp);
+
+
+	// pull out numerator
+	if(json_object_object_get_ex(jobj, "numerator", &array)==0){
+		printf("ERROR: can't find controller numerator in settings file\n");
+		return -1;
+	}
+	if(json_object_is_type(array, json_type_array)==0){
+		printf("ERROR: controller numerator should be an array\n")
+		return -1;
+	}
+	num_len = json_object_array_length(array);
+	if(num_len<1){
+		printf("ERROR, numerator must have at least 1 entry\n")
+		return -1;
+	}
+	num_vec = create_vector(num_len);
+	for(i=0;i<num_len;i++){
+		tmp = json_object_array_get_idx(array,i);
+		if(json_object_is_type(tmp, json_type_double)==0){
+			printf("ERROR: numerator array entries should be a doubles\n")
+			return -1;
+		}
+		tmp_flt = json_object_get_double(tmp);
+		num_vec.data[i]=tmp_flt;
+	}
+
+
+	// pull out denominator
+	if(json_object_object_get_ex(jobj, "denominator", &array)==0){
+		printf("ERROR: can't find controller denominator in settings file\n");
+		return -1;
+	}
+	if(json_object_is_type(array, json_type_array)==0){
+		printf("ERROR: controller denominator should be an array\n")
+		return -1;
+	}
+	den_len = json_object_array_length(array);
+	if(den_len<1){
+		printf("ERROR, denominator must have at least 1 entry\n")
+		return -1;
+	}
+	den_vec = create_vector(den_len);
+	for(i=0;i<den_len;i++){
+		tmp = json_object_array_get_idx(array,i);
+		if(json_object_is_type(tmp, json_type_double)==0){
+			printf("ERROR: denominator array entries should be a doubles\n")
+			return -1;
+		}
+		tmp_flt = json_object_get_double(tmp);
+		den_vec.data[i]=tmp_flt;
+	}
+
+	// check for improper TF
+	if(num_len>den_len){
+		printf("ERROR: improper transfer function\n");
+		destroy_vector(num_vec);
+		destroy_vector(den_vec);
+		return -1;
+	}
+
+
+	// check CT continuous time or DT discrete time
+	if(json_object_object_get_ex(jobj, "CT_OR_DT", &tmp)==0){
+		printf("ERROR: can't find CT_or_DT in settings file\n");
+		return -1;
+	}
+	if(json_object_is_type(tmp, json_type_string)==0){
+		printf("ERROR: CT_or_DT should be a string\n")
+		return -1;
+	}
+	tmp_str = (char*)json_object_get_string(jobj);
+
+
+	// if CT, use tustin's approx to get to DT
+	if(strcmp(tmp_str, "CT") == 0){
+		// get the crossover frequency
+		if(json_object_object_get_ex(jobj, "crossover_freq_rad_per_sec", &tmp)==0){
+			printf("ERROR: can't find crossover frequency in settings file\n");
+			return -1;
+		}
+		if(json_object_is_type(tmp, json_type_double)==0){
+			printf("ERROR: crossover frequency should be a double\n")
+			return -1;
+		}
+		tmp_flt = json_object_get_double(tmp);
+		float dt = 1.0/feedback_hz;
+		&filter = C2DTustin(num_vec, den_vec, dt, tmp_flt);
+	}
+
+	// if DT, much easier, just construct filter
+	else if(strcmp(tmp_str, "DT") == 0){
+		&filter = create_filter(num_vec, den_vec, dt);
+	}
+
+	// wrong value for CT_or_DT
+	else{
+		printf("ERROR: CT_or_DT must be 'CT' or 'DT'\n");
+		return -1;
+	}
 
 
 	return 0;

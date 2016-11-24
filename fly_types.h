@@ -163,7 +163,7 @@ typedef struct fly_settings_t{
 	int dsm_num_modes;
 
 	// feedback loop speed
-	int feedback_loop_hz
+	int feedback_hz
 } fly_settings_t;
 
 
