@@ -52,10 +52,8 @@ int main(int argc, char* argv[]){
 	// start barometer with no oversampling
 	// do this before imu because IMU will use the bus continuously once started
 	if(initialize_barometer(BMP_OVERSAMPLE_16,BMP_FILTER_OFF)){
-		printf("ERROR: failed to initialize_barometer");
-		blink_led(RED,5,3);
-		cleanup_cape();
-		return -1;
+		ret = -1;
+		goto END;
 	}
 
 	// start the IMU
@@ -66,33 +64,25 @@ int main(int argc, char* argv[]){
 
 	// now set up the imu for dmp interrupt operation
 	if(initialize_imu_dmp(&imu_data, conf)){
-		printf("ERROR: failed to initialize IMU\n");
-		blink_led(RED,5,3);
-		cleanup_cape();
-		return -1;
+		ret = -1;
+		goto END;
 	}
 
-
-	//initialize other things that are not threads
-	if(initialize_thrust_interpolation()<0){
-		printf("ERROR: failed to initialize thrust interpolation\n");
-		return -1;
-	}
-
+	// start threads
 	if(start_battery_manager_thread(&cstate, &settings)<0){
 		printf("ERROR: failed to start battery manager thread\n");
-		return -1;
+		ret = -1;
+		goto END;
 	}
-
 	if(start_input_manager(&user_input, &settings)<0){
-		printf("ERROR: can't start DSM2 radio service\n");
-		
-		return -1;
+		printf("ERROR: can't start DSM input manager\n");
+		ret = -1;
+		goto END;
 	}
 	if(start_setpoint_manager(&setpoint, &user_input)<0){
-		printf("ERROR: can't start DSM2 radio service\n");
-		blink_led(RED,5,3);
-		return -1;
+		printf("ERROR: can't start setpoint_manager\n");
+		ret = -1;
+		goto END;
 	}
 	// start printf_thread only if running from a terminal
 	if(isatty(fileno(stdout))){
@@ -100,12 +90,16 @@ int main(int argc, char* argv[]){
 	}
 
 
-	// set up feedback controller
+	//initialize other things that are not threads
+	if(initialize_thrust_interpolation()<0){
+		printf("ERROR: failed to initialize thrust interpolation\n");
+		ret = -1;
+		goto END;
+	}
 	initialize_controller(&cstate, &setpoint, &imu_data, &user_input);
 
 	printf("\nTurn your transmitter kill switch UP\n");
 	printf("Then move throttle UP then DOWN to arm\n");
-
 
 	set_state(RUNNING);
 
@@ -113,9 +107,8 @@ int main(int argc, char* argv[]){
 	while(get_state()!=EXITING){
 		usleep(100000);
 	}
-	
 
-CLEANUP:
+
 	// cleanup before closing
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
