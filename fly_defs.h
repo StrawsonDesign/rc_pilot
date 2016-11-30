@@ -5,8 +5,6 @@
 *******************************************************************************/
 
 // Flight Core Constants
-#define SAMPLE_RATE_HZ			200		// Run the main control loop at this rate
-#define DT						.005	// timestep MUST MATCH 1/SAMPLE_RATE_HZ
 #define ARM_TIP_THRESHOLD		0.2		// radians from level to allow arming sequence 
 #define TIP_ANGLE				1.5
 
@@ -27,26 +25,13 @@
 #define YAW_DEADZONE			0.03
 #define ALTITUDE_DEADZONE		0.06
 
-// DSM2
-#define DSM2_CHECK_HZ			100
-#define DSM2_THR_CH				1
-#define DSM2_ROLL_CH			2
-#define DSM2_PITCH_CH			3
-#define DSM2_YAW_CH				4
-#define DSM2_KILL_CH			5
-#define DSM2_MODE_CH			6
 
-#define DSM2_THR_POL			1
-#define DSM2_ROLL_POL			1
-#define DSM2_PITCH_POL			1
-#define DSM2_YAW_POL			1
-#define DSM2_KILL_POL			1
-#define DSM2_MODE_POL			1
 
 // thread speeds, prioritites, and close timeouts
 #define SETPOINT_MANAGER_HZ			100
 #define SETPOINT_MANAGER_PRIORITY	18
 #define SETPOINT_MANAGER_TIMEOUT	1.0
+#define DSM2_CHECK_HZ				100
 #define INPUT_MANAGER_HZ			100
 #define INPUT_MANAGER_PRIORITY		17
 #define INPUT_MANAGER_TIMEOUT		0.3

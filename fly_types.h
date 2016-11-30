@@ -23,18 +23,16 @@ typedef enum arm_state_t{
 * flight_mode determines how the setpoint manager behaves
 *
 * DIRECT_THROTTLE: user inputs translate directly to the throttle, 
-* roll, pitch, & yaw setpoints. No altitude feedback control.
+* roll, pitch, & yaw setpoints. No altitude feedback control. On 6DOF
+* platforms roll and pitch are kept level and right joystick inputs
+* are direct to left/right forward/back thrust
 *	
-* ALTITUDE_HOLD: user input translates directly to roll, pitch, & yaw
-* rate setpoints. Throttle translates to altitude-rate setpoint and altitude
-* is maintained with feedback.
-*
-* EMERGENCY_LAND: Roll and pitch setpoints are left at 0. Altitude setpoint is
-* slowly lowered until land detected.
+* FALLBACK_4DOF: only applicable to 6DOF platforms. Ignores left/right
+* and forward/back inputs, user controls pitch and roll instead.
 *******************************************************************************/
 typedef enum flight_mode_t{
 	DIRECT_THROTTLE,
-	TESTING
+	FALLBACK_4DOF
 } flight_mode_t;
 
 
@@ -66,16 +64,16 @@ typedef struct setpoint_t{
 	
 	// direct user inputs
 	float Z_throttle;		// only used with direct_throttle user mode
-	float X_throttle;		// only used with direct_throttle user mode
-	float Y_throttle;		// only used with direct_throttle user mode
+	float X_throttle;		// only used with 6DOF user modes
+	float Y_throttle;		// only used with 6DOF user modes
 	
 	// attitude setpoint
 	float altitude;			// altitude from sea level, positive up (m)
 	float altitude_rate;	// desired rate of change in altitude (m/s)
 	float roll;				// roll angle (positive tip right) (rad)
 	float pitch;			// pitch angle (positive tip back) (rad)
-	float yaw;				// yaw angle to magnetive field (postiive CCW)(rad)
-	float yaw_rate;			// yaw_rate in rad/s
+	float yaw;				// yaw angle to magnetive field (rad)
+	float yaw_rate;			// desired rate of change in yaw rad/s
 } setpoint_t;
 
 
@@ -86,9 +84,8 @@ typedef struct setpoint_t{
 * written to by the flight controller after initialization.
 *******************************************************************************/
 typedef struct cstate_t{
-	uint64_t start_time_us;	// time when IMU interrupt routine started
-	uint64_t time_us; 		// last time controller has finished a step
-	uint64_t step;			// num steps since controller was armed
+	uint64_t arm_time_us;	// us since epoch when controller armed
+	uint64_t time_us;		// last time controller has finished a step
 
 	// current state orientation and position
 	float alt;				// altitude estimate from sea level (m)
@@ -96,14 +93,8 @@ typedef struct cstate_t{
 	float pitch;			// current pitch angle (rad)
 	float yaw;				// current yaw angle (rad)
 
-	// current state velocities
-	float dAlt;				// first derivative of altitude (m/s)
-	float dRoll;			// first derivative of roll (rad/s)
-	float dPitch;			// first derivative of pitch (rad/s)
-	float dYaw;				// first derivative of yaw (rad/s)
-
 	// misc
-	float vbatt;			// main battery pack voltage (v)
+	float v_batt;			// main battery pack voltage (v)
 } cstate_t;
 
 
@@ -135,8 +126,10 @@ typedef struct fly_settings_t{
 	// physical parameters
 	int num_rotors;
 	layout_t layout;
+	int dof;
 	imu_orientation_t bbb_orientation;
 	float v_nominal;
+	battery_connection_t battery_connection;
 
 	// features
 	int enable_freefall_detect;
@@ -171,7 +164,9 @@ typedef struct fly_settings_t{
 * fly_controllers_t
 *
 * collection of all feedback controllers, used by json_settings.c to pass
-* controllers to feedback_controller.c neatly
+* controllers to feedback_controller.c neatly. Actual controllers used
+* exist in feedback_controller.c, this struct is just a transportation
+* method during setup.
 *******************************************************************************/
 typedef struct fly_controllers_t{
 	d_filter_t altitude_controller;
@@ -179,5 +174,17 @@ typedef struct fly_controllers_t{
 	d_filter_t pitch_controller;
 	d_filter_t yaw_controller;
 }fly_controllers_t;
+
+
+/*******************************************************************************
+* enum battery_connection_t
+*
+* the user may elect to power the BBB off the 3-pin JST balance plug or the 
+* DC barrel jack. This mode is set in the json config file.
+*******************************************************************************/
+typedef enum battery_connection_t{
+	BALANCE_PLUG,
+	DC_BARREL_JACK
+}
 
 #endif // FLY_TYPES

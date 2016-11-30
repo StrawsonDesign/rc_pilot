@@ -22,7 +22,7 @@ arm_state_t arm_state;
 
 // discrete controllers
 // altitude, roll, pitch, yaw
-d_filter_t D0, D1, D2, D3;
+d_filter_t D1, D2, D3, D4;
 
 // pointers to outside structs
 setpoint_t sp;
@@ -99,32 +99,32 @@ int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 	ui = user_input_t;
 
 	// set up altitude controller
-	float num = D0_NUM;
-	float den = D0_DEN;
-	D0 = create_filter(D0_ORDER, DT, num, den);
-	D0.gain = D0_GAIN;
-	enable_saturation(&D0, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-
-	// set up roll controller
 	float num = D1_NUM;
 	float den = D1_DEN;
 	D1 = create_filter(D1_ORDER, DT, num, den);
 	D1.gain = D1_GAIN;
-	enable_saturation(&D1, MIN_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
+	enable_saturation(&D1, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 
-	// set up altitude controller
+	// set up roll controller
 	float num = D2_NUM;
 	float den = D2_DEN;
 	D2 = create_filter(D2_ORDER, DT, num, den);
 	D2.gain = D2_GAIN;
-	enable_saturation(&D2, MIN_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
+	enable_saturation(&D2, MIN_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
 
 	// set up altitude controller
 	float num = D3_NUM;
 	float den = D3_DEN;
 	D3 = create_filter(D3_ORDER, DT, num, den);
 	D3.gain = D3_GAIN;
-	enable_saturation(&D3, MIN_YAW_COMPONENT, MAX_YAW_COMPONENT);
+	enable_saturation(&D3, MIN_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
+
+	// set up altitude controller
+	float num = D4_NUM;
+	float den = D4_DEN;
+	D4 = create_filter(D4_ORDER, DT, num, den);
+	D4.gain = D4_GAIN;
+	enable_saturation(&D4, MIN_YAW_COMPONENT, MAX_YAW_COMPONENT);
 
 	arm_state = DISARMED;
 	return 0;
@@ -136,10 +136,10 @@ int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 * clear the controller memory
 *******************************************************************************/
 int zero_out_controller(){
-	reset_filter(&D0);
 	reset_filter(&D1);
 	reset_filter(&D2);
 	reset_filter(&D3);
+	reset_filter(&D4);
 	return 0;
 }
 
@@ -182,8 +182,7 @@ int fly_controller(){
 	last_yaw = cs->yaw;
 
 	// TODO: altitude estimate
-		
-	
+
 	/***************************************************************************
 	* Now check for all conditions that prevent normal running
 	***************************************************************************/
@@ -222,8 +221,8 @@ int fly_controller(){
 	***************************************************************************/
 	if(sp->altitude_ctrl_en && !last_alt_ctrl_en){
 		sp->altitude = cs->alt; // set altitude setpoint to current altitude
-		reset_filter(&D0);
-		prefill_filter_outputs(&D0,last_usr_thr);
+		reset_filter(&D1);
+		prefill_filter_outputs(&D1,last_usr_thr);
 		last_alt_ctrl_en = 1;
 	}
 		
@@ -251,8 +250,8 @@ int fly_controller(){
 	else{
 		sp->altitude += sp->altitude_rate*DT;
 		saturate_float(&sp->altitude, cs->alt-ALT_BOUND_D, cs->alt+ALT_BOUND_U);
-		D0.gain = D0_GAIN * V_NOMINAL/cs->vbatt;
-		tmp = march_filter(&D0, sp->altitude-cs->alt);
+		D1.gain = D1_GAIN * V_NOMINAL/cs->vbatt;
+		tmp = march_filter(&D1, sp->altitude-cs->alt);
 		u[VEC_THR] = tmp / cos(cs->roll)*cos(cs->pitch);
 		saturate_float(&u[VEC_THR], MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 		add_mixed_input(u[VEC_THR], VEC_THR, mot);
@@ -264,9 +263,9 @@ int fly_controller(){
 	check_channel_saturation(VEC_ROLL, mot, &min, &max);
 	if(max>MAX_ROLL_COMPONENT)  max =  MAX_ROLL_COMPONENT;
 	if(min<-MAX_ROLL_COMPONENT) min = -MAX_ROLL_COMPONENT;
-	enable_saturation(&D1, min, max);
-	D1.gain = D1_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_ROLL]=march_filter(&D1, sp->roll - cs->roll);
+	enable_saturation(&D2, min, max);
+	D2.gain = D2_GAIN * V_NOMINAL/cs->vbatt;
+	u[VEC_ROLL]=march_filter(&D2, sp->roll - cs->roll);
 	add_mixed_input(u[VEC_ROLL], VEC_ROLL, mot);
 
 	/***************************************************************************
@@ -275,9 +274,9 @@ int fly_controller(){
 	check_channel_saturation(VEC_PITCH, mot, &min, &max);
 	if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
 	if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
-	enable_saturation(&D2, min, max);
-	D2.gain = D2_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_PITCH] = march_filter(&D2, sp->pitch - cs->pitch);	
+	enable_saturation(&D3, min, max);
+	D3.gain = D3_GAIN * V_NOMINAL/cs->vbatt;
+	u[VEC_PITCH] = march_filter(&D3, sp->pitch - cs->pitch);	
 	add_mixed_input(u[VEC_PITCH], VEC_PITCH, mot);	
 	
 	/***************************************************************************
@@ -291,9 +290,9 @@ int fly_controller(){
 	check_channel_saturation(VEC_YAW, mot, &min, &max);
 	if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
 	if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
-	enable_saturation(&D3, min, max);
-	D3.gain = D3_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_YAW] = march_filter(&D3, sp->yaw - cs->yaw);
+	enable_saturation(&D4, min, max);
+	D4.gain = D4_GAIN * V_NOMINAL/cs->vbatt;
+	u[VEC_YAW] = march_filter(&D4, sp->yaw - cs->yaw);
 	add_mixed_input(u[VEC_YAW], VEC_YAW, mot);
 	
 

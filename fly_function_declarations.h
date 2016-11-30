@@ -8,6 +8,30 @@
 
 #include "fly_types.h"
 
+////////////////////////////////////////////////////////////////////////////////
+// battery_manager.c
+////////////////////////////////////////////////////////////////////////////////
+/*******************************************************************************
+* int start_battery_manager_thread(core_state_t* cs, fly_settings_t set*)
+*
+* 
+*******************************************************************************/
+int start_battery_manager_thread(core_state_t* cs, fly_settings_t set*);
+
+/*******************************************************************************
+* int join_battery_manager_thread()
+*
+* Waits for the battery manager thread to exit. Returns 0 if the thread exited 
+* cleanly. Returns -1 if the exit timed out.
+* This should only be called after the program flow state is set to EXITING as 
+* that's the only thing that will cause the thread to exit on its own safely.
+*******************************************************************************/
+int join_battery_manager_thread();
+
+
+////////////////////////////////////////////////////////////////////////////////
+// feedback_controller.c
+////////////////////////////////////////////////////////////////////////////////
 /*******************************************************************************
 * int disarm_controller()
 *	
@@ -49,6 +73,60 @@ int fly_controller();
 
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// input_manager.c
+////////////////////////////////////////////////////////////////////////////////
+
+/*******************************************************************************
+* int start_input_manager(user_input_t* user_input, fly_settings* settings)
+*
+* Watch for new DSM2 data and translate into local user mode
+*******************************************************************************/
+int start_input_manager(user_input_t* user_input, fly_settings* settings);
+
+/*******************************************************************************
+* int join_input_manager_thread()
+*
+* Waits for the input manager thread to exit. Returns 0 if the input manager
+* thread exited cleanly. Returns -1 if the exit timed out and the thread had
+* to be force closed.
+* This should only be called after the program flow state is set to EXITING as 
+* that's the only thing that will cause the thread to exit on its own safely.
+*******************************************************************************/
+int join_input_manager_thread();
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// json_settings.c
+////////////////////////////////////////////////////////////////////////////////
+
+/*******************************************************************************
+* int load_settings_from_file(fly_settings_t* settings)
+*
+* populates the settings and controller structs with the json file contents
+* if no settings file exists, it makes a new one filled with defaults
+*******************************************************************************/
+int load_settings_from_file(fly_settings_t* settings);
+
+/*******************************************************************************
+* int print_settings(json_object* jobj)
+*
+* only used in debug mode
+*******************************************************************************/
+int print_settings();
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// setpoint_manager.c
+////////////////////////////////////////////////////////////////////////////////
+
 /*******************************************************************************
 * int start_setpoint_manager(user_input_t* ui)
 *
@@ -66,7 +144,45 @@ int join_setpoint_manager_thread();
 
 
 
+////////////////////////////////////////////////////////////////////////////////
+// log_manager.c
+////////////////////////////////////////////////////////////////////////////////
 
+/*******************************************************************************
+* int start_log_manager()
+*
+* Create a new csv log file and start the background thread
+*******************************************************************************/
+int start_log_manager();
+
+/*******************************************************************************
+* int print_entry(log_entry_t entry)
+*
+* write the contents of one entry to the console
+*******************************************************************************/
+int print_entry(log_entry_t entry);
+
+/*******************************************************************************
+* int add_log_entry(log_entry_t new_entry)
+*
+* quickly add new data to local buffer
+*******************************************************************************/
+int add_log_entry(log_entry_t new_entry);
+
+/*******************************************************************************
+* stop_log_manager()
+*
+* finish writing remaining data to log and close it.
+* return -1 if there was a timeout and the thread had to force close.
+*******************************************************************************/
+int stop_log_manager();
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// mixing_matrix.c
+////////////////////////////////////////////////////////////////////////////////
 
 /*******************************************************************************
 * int initialize_mixing_matrix()
@@ -111,99 +227,9 @@ int add_mixed_input(float u, int ch, float* mot);
 
 
 
-
-/*******************************************************************************
-* int start_input_manager(user_input_t* ui)
-*
-* Watch for new DSM2 data and translate into local user mode
-*******************************************************************************/
-int start_input_manager(user_input_t* ui);
-
-/*******************************************************************************
-* int join_input_manager_thread()
-*
-* Waits for the input manager thread to exit. Returns 0 if the input manager
-* thread exited cleanly. Returns -1 if the exit timed out and the thread had
-* to be force closed.
-* This should only be called after the program flow state is set to EXITING as 
-* that's the only thing that will cause the thread to exit on its own safely.
-*******************************************************************************/
-int join_input_manager_thread();
-
-
-
-
-
-/*******************************************************************************
-* int start_log_manager()
-*
-* Create a new csv log file and start the background thread
-*******************************************************************************/
-int start_log_manager();
-
-/*******************************************************************************
-* int print_entry(log_entry_t entry)
-*
-* write the contents of one entry to the console
-*******************************************************************************/
-int print_entry(log_entry_t entry);
-
-/*******************************************************************************
-* int add_log_entry(log_entry_t new_entry)
-*
-* quickly add new data to local buffer
-*******************************************************************************/
-int add_log_entry(log_entry_t new_entry);
-
-/*******************************************************************************
-* stop_log_manager()
-*
-* finish writing remaining data to log and close it.
-* return -1 if there was a timeout and the thread had to force close.
-*******************************************************************************/
-int stop_log_manager();
-
-
-
-
-
-/*******************************************************************************
-* int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint)
-*
-* Start the printf_manager which should be the only thing printing to the screen
-* besides error messages from other threads.
-*******************************************************************************/
-int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint);
-
-/*******************************************************************************
-* int join_printf_manager_thread()
-*
-* Waits for the printf_manager thread to exit. Returns 0 if the thread exited 
-* cleanly. Returns -1 if the exit timed out.
-*******************************************************************************/
-int join_printf_manager_thread();
-
-
-
-
-
-/*******************************************************************************
-* int initialize_thrust_interpolation()
-*
-* check the thrust map for validity and populate data arrays
-*******************************************************************************/
-int initialize_thrust_interpolation();
-
-/*******************************************************************************
-* float interpolate_motor_signal(float t)
-*
-* return the required normalized esc signal for desired normalized thrust t
-*******************************************************************************/
-float interpolate_motor_signal(float t);
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+// other.c
+////////////////////////////////////////////////////////////////////////////////
 
 /*******************************************************************************
 * float apply_dead_zone(float in, float zone)
@@ -235,3 +261,59 @@ int pause_pressed_func();
 * Make the Pause button toggle between paused and running states.
 *******************************************************************************/
 int on_pause_released();
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// printf_manager.c
+////////////////////////////////////////////////////////////////////////////////
+
+/*******************************************************************************
+* int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint)
+*
+* Start the printf_manager which should be the only thing printing to the screen
+* besides error messages from other threads.
+*******************************************************************************/
+int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint);
+
+/*******************************************************************************
+* int join_printf_manager_thread()
+*
+* Waits for the printf_manager thread to exit. Returns 0 if the thread exited 
+* cleanly. Returns -1 if the exit timed out.
+*******************************************************************************/
+int join_printf_manager_thread();
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// thrust_map.c
+////////////////////////////////////////////////////////////////////////////////
+
+/*******************************************************************************
+* int initialize_thrust_interpolation()
+*
+* check the thrust map for validity and populate data arrays
+*******************************************************************************/
+int initialize_thrust_interpolation();
+
+/*******************************************************************************
+* float interpolate_motor_signal(float t)
+*
+* return the required normalized esc signal for desired normalized thrust t
+*******************************************************************************/
+float interpolate_motor_signal(float t);
+
+
+
+
+
+
+
+
+
+

@@ -2,7 +2,7 @@
 * input_manager.c
 *
 * functions to start and stop the input manager thread which watches for new 
-* DSM2 data and translate into local user mode
+* dsm data and translate into local user mode
 *******************************************************************************/
 
 #include <useful_inlcudes.h>
@@ -11,12 +11,13 @@
 #include "fly_types.h"
 
 user_input_t* ui; // pointer to external user_input_t struct 
+fly_settings_t* set;
 pthread_t input_manager_thread;
 
 /*******************************************************************************
 * void* input_manager(void* ptr)
 *
-* Watch for new DSM2 data and translate into local user mode
+* Watch for new DSM data and translate into local user mode
 *******************************************************************************/
 void* input_manager(void* ptr){
 	
@@ -31,29 +32,29 @@ void* input_manager(void* ptr){
 		
 		usleep(1000000/INPUT_MANAGER_HZ);
 
-		// if dsm2 is not active, keep the ui zero'd out
-		if(!is_dsm2_active()){
-			ui->user_input_active = 0;
-			ui->throttle_stick = 0;
-			ui->roll_stick = 0;
-			ui->pitch_stick = 0;
-			ui->yaw_stick = 0;
+		// if dsm is not active, keep the ui zero'd out
+		if(!is_dsm_active()){
+			ui->user_input_active = 0.0;
+			ui->throttle_stick = 0.0;
+			ui->roll_stick = 0.0;
+			ui->pitch_stick = 0.0;
+			ui->yaw_stick = 0.0;
 			ui->kill_switch = DISARMED;
 			continue;
 		}
 
-		// if dsm2 is connected but no new data is available, just wait and
+		// if dsm is connected but no new data is available, just wait and
 		// check next round
-		if(!is_new_dsm2_data()) continue;
+		if(!is_new_dsm_data()) continue;
 
 		// Read normalized (+-1) inputs from RC radio stick and multiply by 
 		// polarity setting so positive stick means positive setpoint
-		new_thr   = get_dsm2_ch_normalized(DSM2_THR_CH)   * DSM2_THR_POL;
-		new_roll  = get_dsm2_ch_normalized(DSM2_ROLL_CH)  * DSM2_ROLL_POL;
-		new_pitch = get_dsm2_ch_normalized(DSM2_PITCH_CH) * DSM2_PITCH_POL;
-		new_yaw   = get_dsm2_ch_normalized(DSM2_YAW_CH)   * DSM2_YAW_POL;
-		new_kill  = get_dsm2_ch_normalized(DSM2_KILL_CH)  * DSM2_KILL_POL;
-		new_mode  = get_dsm2_ch_normalized(DSM2_MODE_CH)  * DSM2_MODE_POL;
+		new_thr   = get_dsm_ch_normalized(set->dsm_throttle_ch)*set->dsm_throttle_pol;
+		new_roll  = get_dsm_ch_normalized(set->dsm_roll_ch)*set->dsm_roll_pol;
+		new_pitch = get_dsm_ch_normalized(set->dsm_pitch_ch)*set->dsm_pitch_pol;
+		new_yaw   = get_dsm_ch_normalized(set->dsm_yaw_ch)*set->dsm_yaw_pol;
+		new_mode  = get_dsm_ch_normalized(set->dsm_mode_ch)*set->mode_pol;
+		new_kill  = get_dsm_ch_normalized(set->dsm_kill_ch)*set->dsm_kill_pol;
 		
 		// saturate the sticks to avoid possible erratic behavior
 		saturate_float(&new_thr,   -1.0, 1.0);
@@ -70,26 +71,40 @@ void* input_manager(void* ptr){
 		// determine the kill state
 		if(new_kill<=0) ui->kill_switch = DISARMED;
 		else 			ui->kill_switch = ARMED;
-			
-		// pick flight mode
-		if(new_mode<=0) ui->flight_mode = DSM2_MODE_1;
-		else 			ui->flight_mode = DSM2_MODE_2;
 		
-		ui->user_input_active = 1;
+		// pick flight mode
+		if(set->dsm_num_modes == 3){
+			if		(new_mode<-0.5)	ui->flight_mode = set->flight_mode_1;
+			else if	(new_mode> 0.5)	ui->flight_mode = set->flight_mode_2;
+			else					ui->flight_mode = set->flight_mode_3;
+		}
+		else if (set->dsm_num_modes == 2){
+			if	(new_mode > 0.0)	ui->flight_mode = set->flight_mode_2;
+			else					ui->flight_mode = set->flight_mode_1;
+		}
+		else if (set->dsm_num_modes == 1){
+									ui->flight_mode = set->flight_mode_1;
+		}
+		else{
+			printf("ERROR: set->dsm_num_modes can only be 1,2 or 3");
+			ui->kill_switch = DISARMED;
+		}
 	}
 }
 
 
 /*******************************************************************************
-* int start_input_manager(user_input_t* user_input)
+* int start_input_manager(user_input_t* user_input, fly_settings* settings)
 *
-* Watch for new DSM2 data and translate into local user mode
+* Watch for new dsm data and translate into local user mode
 *******************************************************************************/
-int start_input_manager(user_input_t* user_input){
+int start_input_manager(user_input_t* user_input, fly_settings* settings){
 	ui = user_input;
+	set = settings;
 	struct sched_param params = {INPUT_MANAGER_PRIORITY};
 	pthread_setschedparam(input_manager_thread, SCHED_FIFO, &params);
 	pthread_create(&input_manager_thread, NULL, &input_manager, NULL);
+	usleep(1000);
 	return 0;
 }
 

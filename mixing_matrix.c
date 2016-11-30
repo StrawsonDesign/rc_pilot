@@ -16,7 +16,7 @@ float mix_matrix[MAX_INPUTS][MAX_ROTORS];
 int initialized;
 
 /*******************************************************************************
-* int initialize_mixing_matrix()
+* int initialize_mixing_matrix(fly_settings_t* set)
 * 
 * For a given number of rotors, layout character ('X','+') and degrees of
 * freedom in control input (4 or 6), this selects the correct predefined
@@ -24,54 +24,39 @@ int initialized;
 * mixing_matrix.c to prevent accidental misuse or modification. Use the other
 * functions here to interface with it.
 *******************************************************************************/
-int initialize_mixing_matrix(){
+int initialize_mixing_matrix(fly_settings_t* set){
 	int i,j;
 
-	// start with sanity checks
-	// current 4, 6, 8 rotors supported with + and X layouts
-	switch(ROTORS){
-		case 4: break;
-		case 6: break;
-		case 8: break;
-		default:
-			printf("ERROR, ROTORS must be 4, 6, or 8\n");
-			return -1;
-	}
-	switch(ROTOR_LAYOUT){
-		case 'x': layout='X';
-		case 'X': break;
-		case '+': break;
-		default:
-			printf("ERROR, layout must be X or +\n");
-			return -1;
+	switch(set->layout){
+	case LAYOUT_4X:
+		float new[][] = MIX_4X;
+		break;
+	case LAYOUT_4PLUS:
+		float new[][] = MIX_4PLUS;
+		break;
+	case LAYOUT_6X:
+		float new[][] = MIX_6X;
+		break;
+	case LAYOUT_6PLUS:
+		float new[][] = MIX_6PLUS;
+		break;
+	case LAYOUT_8X:
+		float new[][] = MIX_8X;
+		break;
+	case LAYOUT_8PLUS:
+		float new[][] = MIX_8PLUS;
+		break;
+	case LAYOUT_6DOF:
+		float new[][] = MIX_6DOF;
+		break;
+	default:
+		printf("ERROR: unknown rotor layout\n");
+		return -1;
 	}
 
-	if(DOF==6){
-		if(ROTORS!=6 || ROTOR_LAYOUT!='X'){
-			printf("ERROR: 6dof control only works with 6X layout\n");
-			return -1;
-		}
-	}
-	else if(DOF!=4){
-		printf("ERROR: dof must be 4 or 6\n")
-		return -1;
-	}
-	
-	// select the right mix values
-	if(DOF==6) float new[][] = MIX_6DOF_HEX;
-	else if(ROTORS==4 && ROTOR_LAYOUT=='X') float new[][] = MIX_4X;
-	else if(ROTORS==4 && ROTOR_LAYOUT=='+') float new[][] = MIX_4PLUS;
-	else if(ROTORS==6 && ROTOR_LAYOUT=='X') float new[][] = MIX_6X;
-	else if(ROTORS==6 && ROTOR_LAYOUT=='+') float new[][] = MIX_6PLUS;
-	else if(ROTORS==8 && ROTOR_LAYOUT=='X') float new[][] = MIX_8X;
-	else if(ROTORS==8 && ROTOR_LAYOUT=='+') float new[][] = MIX_8PLUS;
-	else{
-		printf("ERROR:invalid rotor/layout combination\n");
-		return -1;
-	}
 	// now fill the the mix matrix appropriately
 	for(i=0;i<DOF;i++){
-		for(j=0;j<ROTORS;j++){
+		for(j=0;j<set->num_rotors;j++){
 			mix_matrix[i][j] = new[i][j];
 		}
 	}
@@ -96,9 +81,9 @@ int mix_all_controls(float* u, float* mot){
 		return -1;
 	}
 	// sum control inputs
-	for(i=0;i<ROTORS;i++){
+	for(i=0;i<set->num_rotors;i++){
 		mot[i]=0;
-		for(j=0;j<DOF;j++){
+		for(j=0;j<set->dof;j++){
 			mot[i]+=mix_matrix[j][i]*u[j]
 		}
 	}
@@ -123,18 +108,18 @@ int check_channel_saturation(int ch, float* mot, float* min, float* max){
 		printf("ERROR: in check_channel_saturation, mix matrix not set yet\n");
 		return -1;
 	}
-	if(ch<0 || ch>=DOF){
+	if(ch<0 || ch>=set->dof){
 		printf("ERROR: in check_channel_saturation, ch out of bounds\n");
 		return -1;
 	}
 	// check for upper saturation
-	for(i=0;i<ROTORS;i++){
+	for(i=0;i<set->num_rotors;i++){
 		if(mix_matrix[ch][i]==0.0) continue;
 		else tmp = (1-mot[i])/mix_matrix[ch][i];
 		if(tmp<new_max) new_max = tmp;
 	}
 	// check for lower saturation
-	for(i=0;i<ROTORS;i++){
+	for(i=0;i<set->num_rotors;i++){
 		if(mix_matrix[ch][i]==0.0) continue;
 		else tmp = mot[i]/mix_matrix[ch][i];
 		if(tmp>new_min) new_min = tmp;
@@ -147,7 +132,7 @@ int check_channel_saturation(int ch, float* mot, float* min, float* max){
 
 /*******************************************************************************
 * int add_mixed_input(float u, int ch, float* mot)
-*	
+*
 * Mixes the control input u for a single channel ch corresponding to throttle, 
 * roll pitch etc to the existing motor array mot. No saturation is done, the
 * input u should be checked for saturation validity with 
@@ -164,7 +149,7 @@ int add_mixed_input(float u, int ch, float* mot){
 		return -1;
 	}
 	// add inputs
-	for(i=0;i<ROTORS;i++) mot[i] += u*mix_matrix[ch][i];
+	for(i=0;i<set->num_rotors;i++) mot[i] += u*mix_matrix[ch][i];
 	return 0;
 }
 
