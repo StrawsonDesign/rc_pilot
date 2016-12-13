@@ -10,20 +10,23 @@
 
 // order of control inputs
 // throttle(Z), roll, pitch, YAW, sideways (X),forward(Y)
-#define VEC_THR					0
-#define VEC_ROLL				1
-#define VEC_PITCH				2
-#define VEC_YAW					3
-#define VEC_SIDE				4
-#define VEC_FWD					5
+#define VEC_X			0
+#define VEC_Y			1
+#define VEC_Z			2
+#define VEC_ROLL		3
+#define VEC_PITCH		4
+#define VEC_YAW			5
 
 // user control parameters
-#define MAX_YAW_RATE			2.5		// rad/s
-#define MAX_ROLL_SETPOINT		0.4		// rad
-#define MAX_PITCH_SETPOINT		0.4		// rad
-#define MAX_CLIMB_RATE			1.0		// m/s
-#define YAW_DEADZONE			0.03
-#define ALTITUDE_DEADZONE		0.06
+#define MAX_YAW_RATE				2.5		// rad/s
+#define MAX_ROLL_SETPOINT			0.4		// rad
+#define MAX_PITCH_SETPOINT			0.4		// rad
+#define MAX_CLIMB_RATE				1.0		// m/s
+#define YAW_DEADZONE				0.03
+#define ALTITUDE_STICK_DEADZONE		0.06
+#define MAX_Z_THROTTLE				0.85
+#define MIN_Z_THROTTLE				0.10
+#define TEST_BENCH_HOVER_THR		0.372
 
 
 

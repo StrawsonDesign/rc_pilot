@@ -37,6 +37,6 @@
 * you wish to create. Fill in an instance of this and pass to add_log_entry()
 *******************************************************************************/
 #define X(type, fmt, name) type name ;
-typedef struct log_entry_t { CORE_LOG_TABLE } log_entry_t;
+typedef struct log_entry_t { LOG_TABLE } log_entry_t;
 #undef X
 

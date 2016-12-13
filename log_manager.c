@@ -4,14 +4,23 @@
 * James Strawson 2016
 *******************************************************************************/
 
-#include <roboticscape-usefulincludes.h>
+#define _GNU_SOURCE
+#include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
 #include <roboticscape.h>
+#include <dirent.h>
+#include <time.h>
+#include <string.h>
 #include "fly_types.h"
 #include "fly_defs.h"
+#include "fly_function_declarations.h"
+
 
 #define LOG_DIR 			"/root/fly_logs/"
 #define MAX_LOG_FILES		500
-#define BUF_LEN 			(SAMPLE_RATE_HZ/2)
+#define BUF_LEN 			50
 
 /*******************************************************************************
 * 	Global Variables
@@ -26,7 +35,7 @@ FILE* fd;				// file descriptor for the log file
 log_entry_t buffer[2][BUF_LEN];
 
 // background thread and running flag
-pthread_t write_thread;
+pthread_t log_thread;
 int logging_enabled; // set to 0 to exit the write_thread
 
 
@@ -37,7 +46,7 @@ int logging_enabled; // set to 0 to exit the write_thread
 *******************************************************************************/
 int print_entry(log_entry_t entry){	
 	#define X(type, fmt, name) printf("%s " fmt "\n", #name, entry.name);
-	CORE_LOG_TABLE
+	LOG_TABLE
 	#undef X
 	printf("\n");
 	return 0;
@@ -45,13 +54,13 @@ int print_entry(log_entry_t entry){
 
 
 /*******************************************************************************
-* int add_log_entry(log_entry_t new_entry)
+* int add_log_entry(log_entry_t new)
 *
 * quickly add new data to local buffer
 *******************************************************************************/
-int add_log_entry(log_entry_t new_entry){
+int add_log_entry(log_entry_t new){
 	if(needs_writing && buffer_pos >= BUF_LEN){
-		printf("WARNING: logging buffer full, skipping log entry\n")
+		printf("WARNING: logging buffer full, skipping log entry\n");
 		return -1;
 	}
 	if(!logging_enabled){
@@ -59,7 +68,7 @@ int add_log_entry(log_entry_t new_entry){
 		return -1;
 	}
 	// add to buffer and increment counters
-	buffer[current_buf][buffer_pos] = new_entry;
+	buffer[current_buf][buffer_pos] = new;
 	buffer_pos++;
 	num_entries++;
 
@@ -81,9 +90,9 @@ int add_log_entry(log_entry_t new_entry){
 *******************************************************************************/
 int write_log_entry(log_entry_t entry){
 	#define X(type, fmt, name) fprintf(fd, fmt "," , entry.name);
-    CORE_LOG_TABLE
+    LOG_TABLE
 	#undef X	
-	fprintf(f, "\n");
+	fprintf(fd, "\n");
 	return 0;
 }
 
@@ -98,27 +107,27 @@ void* log_manager(){
 
 	while(1){
 		int i,j;
-		if(log->needs_writing){
+		if(needs_writing){
 			// buffer to be written is opposite of one currently being filled
 			if(current_buf == 0) buf=1;
 			else buf=0;
 			// dump the buffer to disk;
 			for(i=0;i<BUF_LEN;i++){
-				write_log_entry(log_buffer[buf][i]);
+				write_log_entry(buffer[buf][i]);
 			}
 			fflush(fd);
 			needs_writing = 0;
 		}
 
 		// if program is exiting or logging got disabled, write out the rest
-		if(get_state()==EXITING || logging_enabled==0){
+		if(rc_get_state()==EXITING || logging_enabled==0){
 			for(i=0;i<num_entries;i++){
-				write_log_entry(log_buffer[current_buf][i]);
+				write_log_entry(buffer[current_buf][i]);
 			}
 			fflush(fd);
 			goto END;
 		}
-		usleep(1000000/LOGGER_HZ);
+		usleep(1000000/LOG_MANAGER_HZ);
 	}
 END:
 	fclose(fd);
@@ -140,24 +149,23 @@ int start_log_manager(){
 	int i;
 	char path[100];
 	DIR* dir;
-	FILE *cal;
 	struct stat st;
 
 	// if the thread if running, stop before starting a new log file
 	if(logging_enabled){
 		printf("WARNING: log already running, starting a new one anyway.");
-		stop_logger();
+		stop_log_manager();
 	}
 
 	// first make sure the directory exists, make it if not
 	dir = opendir(LOG_DIR);
-	if(errno == ENOENT) mkdir(log_dir, 0777);
+	if(errno == ENOENT) mkdir(LOG_DIR, 0777);
 	else closedir(dir);
 
 	// search for existing log files to determine the next number in the series
 	for(i=1;i<=MAX_LOG_FILES+1;i++){
-		memset(&dir, 0, sizeof(dir));
-		sprintf(dir, LOG_DIR "%d.csv", i);
+		memset(&path, 0, sizeof(path));
+		sprintf(path, LOG_DIR "%d.csv", i);
 		// if file exists, move onto the next index
     	if(stat(path, &st)==0) continue;
     	else break;
@@ -169,23 +177,23 @@ int start_log_manager(){
 	}
 	
 	// open for writing
-	cal = fopen(file_path, "w");
-	if (cal == 0) {
+	fd = fopen(path, "w");
+	if (fd == 0) {
 		printf("ERROR: can't open log file for writing\n");
 		return -1;
 	}
 	
 	// write header
-	#define X(type, fmt, name) fprintf(log->fd, "%s," , #name);
-    CORE_LOG_TABLE
+	#define X(type, fmt, name) fprintf(fd, "%s," , #name);
+    LOG_TABLE
 	#undef X	
-	fprintf(log->fd, "\n");
-	fflush(log->fd);
+	fprintf(fd, "\n");
+	fflush(fd);
 	
 	// start thread
 	logging_enabled = 1;
 	struct sched_param params;
-	params.sched_priority = LOG_THREAD_PRIORITY;
+	params.sched_priority = LOG_MANAGER_PRIORITY;
 	pthread_setschedparam(log_thread, SCHED_FIFO, &params);
 	pthread_create(&log_thread, NULL, &log_manager, NULL);
 
@@ -210,7 +218,7 @@ int stop_log_manager(){
 	clock_gettime(CLOCK_REALTIME, &timeout);
 	timespec_add(&timeout, LOG_MANAGER_TIMEOUT);
 	int thread_err = 0;
-	thread_err = pthread_timedjoin_np(log_thread, NULL, &thread_timeout);
+	thread_err = pthread_timedjoin_np(log_thread, NULL, &timeout);
 	if(thread_err == ETIMEDOUT){
 		printf("WARNING: log_manager exit timeout\n");
 		return -1;

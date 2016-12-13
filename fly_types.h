@@ -7,6 +7,10 @@
 #ifndef FLY_TYPES
 #define FLY_TYPES 
 
+#include <stdint.h>
+#include <roboticscape.h>
+#include "log_table.h"
+
 /************************************************************************
 * arm_state_t
 *
@@ -32,7 +36,8 @@ typedef enum arm_state_t{
 *******************************************************************************/
 typedef enum flight_mode_t{
 	DIRECT_THROTTLE,
-	FALLBACK_4DOF
+	FALLBACK_4DOF,
+	TEST_BENCH
 } flight_mode_t;
 
 
@@ -42,14 +47,33 @@ typedef enum flight_mode_t{
 * possible rotor configurations, see mixing_matrix_defs.h
 ************************************************************************/
 typedef enum layout_t{
+	LAYOUT_6DOF_ROTORBITS,
 	LAYOUT_4X,
 	LAYOUT_4PLUS,
 	LAYOUT_6X,
-	LAYOUT_6PLUS,
-	LAYOUT_8X,
-	LAYOUT_8PLUS,
-	LAYOUT_6DOF
+	LAYOUT_8X
 } layout_t;
+
+/*******************************************************************************
+* enum battery_connection_t
+*
+* the user may elect to power the BBB off the 3-pin JST balance plug or the 
+* DC barrel jack. This mode is set in the json config file.
+*******************************************************************************/
+typedef enum battery_connection_t{
+	BALANCE_PLUG,
+	DC_BARREL_JACK
+} battery_connection_t;
+
+/*******************************************************************************
+* enum thrust_map_t
+*
+* the user may select from the following preconfigured thrust maps
+*******************************************************************************/
+typedef enum thrust_map_t{
+	MN1806_1400KV_4S,
+	F20_2300KV_2S
+} thrust_map_t;
 
 
 /*******************************************************************************
@@ -59,21 +83,23 @@ typedef enum layout_t{
 * and read in by fly_controller.
 *******************************************************************************/
 typedef struct setpoint_t{
-	int altitude_ctrl_en;	// set to 1 to enable altitude feedback.
-	int en_6dof;			// enable direct XY control via 6DOF model
+	arm_state_t arm_state;
+	int en_alt_ctrl;	// set to 1 to enable altitude feedback.
+	int en_6dof;		// enable direct XY control via 6DOF model
+	int en_rpy_ctrl;	// enable the roll pitch yaw controllers
 	
 	// direct user inputs
-	float Z_throttle;		// only used with direct_throttle user mode
-	float X_throttle;		// only used with 6DOF user modes
-	float Y_throttle;		// only used with 6DOF user modes
+	float Z_throttle;	// only used with direct_throttle user mode
+	float X_throttle;	// only used with 6DOF user modes
+	float Y_throttle;	// only used with 6DOF user modes
 	
 	// attitude setpoint
-	float altitude;			// altitude from sea level, positive up (m)
-	float altitude_rate;	// desired rate of change in altitude (m/s)
-	float roll;				// roll angle (positive tip right) (rad)
-	float pitch;			// pitch angle (positive tip back) (rad)
-	float yaw;				// yaw angle to magnetive field (rad)
-	float yaw_rate;			// desired rate of change in yaw rad/s
+	float altitude;		// altitude from sea level, positive up (m)
+	float altitude_rate;// desired rate of change in altitude (m/s)
+	float roll;			// roll angle (positive tip right) (rad)
+	float pitch;		// pitch angle (positive tip back) (rad)
+	float yaw;			// yaw angle to magnetive field (rad)
+	float yaw_rate;		// desired rate of change in yaw rad/s
 } setpoint_t;
 
 
@@ -88,11 +114,13 @@ typedef struct cstate_t{
 	uint64_t time_us;		// last time controller has finished a step
 
 	// current state orientation and position
-	float alt;				// altitude estimate from sea level (m)
+	float altitude;			// altitude estimate from sea level (m)
 	float roll;				// current roll angle (rad)
 	float pitch;			// current pitch angle (rad)
 	float yaw;				// current yaw angle (rad)
 
+	float u[6];				// u control output from controllers
+	float m[8];				// signals sent to motors after mapping
 	// misc
 	float v_batt;			// main battery pack voltage (v)
 } cstate_t;
@@ -110,10 +138,10 @@ typedef struct user_input_t{
 	arm_state_t kill_switch; 	// kill motors if set to DISARMED
 	
 	// All sticks scaled from -1 to 1
-	float throttle_stick; 	// positive up
+	float thr_stick;		// positive forward
 	float yaw_stick;		// positive to the right, CW yaw
 	float roll_stick;		// positive to the right
-	float pitch_stick;		// positive up
+	float pitch_stick;		// positive forward
 } user_input_t;
 
 
@@ -127,9 +155,11 @@ typedef struct fly_settings_t{
 	int num_rotors;
 	layout_t layout;
 	int dof;
+	thrust_map_t thrust_map;
 	imu_orientation_t bbb_orientation;
 	float v_nominal;
 	battery_connection_t battery_connection;
+	int feedback_hz;
 
 	// features
 	int enable_freefall_detect;
@@ -139,24 +169,33 @@ typedef struct fly_settings_t{
 	flight_mode_t flight_mode_1;
 	flight_mode_t flight_mode_2;
 	flight_mode_t flight_mode_3;
+	int num_dsm_modes;
 
 	// dsm radio config
-	int dsm_throttle_ch;
+	int dsm_thr_ch;
 	int dsm_roll_ch;
 	int dsm_pitch_ch;
 	int dsm_yaw_ch;
 	int dsm_mode_ch;
 	int dsm_kill_ch;
-	int dsm_throttle_pol;
+	int dsm_thr_pol;
 	int dsm_roll_pol;
 	int dsm_pitch_pol;
 	int dsm_yaw_pol;
 	int dsm_mode_pol;
 	int dsm_kill_pol;
-	int dsm_num_modes;
 
-	// feedback loop speed
-	int feedback_hz
+	// printf settings
+	int printf_arm;
+	int printf_altitude;
+	int printf_rpy;
+	int printf_sticks;
+	int printf_setpoint;
+	int printf_u;
+	int printf_motors;
+	int printf_mode;
+
+	
 } fly_settings_t;
 
 
@@ -176,15 +215,7 @@ typedef struct fly_controllers_t{
 }fly_controllers_t;
 
 
-/*******************************************************************************
-* enum battery_connection_t
-*
-* the user may elect to power the BBB off the 3-pin JST balance plug or the 
-* DC barrel jack. This mode is set in the json config file.
-*******************************************************************************/
-typedef enum battery_connection_t{
-	BALANCE_PLUG,
-	DC_BARREL_JACK
-}
+
+
 
 #endif // FLY_TYPES

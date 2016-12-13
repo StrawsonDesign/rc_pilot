@@ -5,7 +5,8 @@
 * see README.txt for description and use				
 *******************************************************************************/
 
-#include <roboticscape-usefulincludes.h>
+#include <stdio.h>
+#include <unistd.h>
 #include <roboticscape.h>
 #include "fly_function_declarations.h"
 #include "fly_types.h"
@@ -23,37 +24,54 @@ imu_data_t		imu_data;
 fly_settings_t	settings;
 
 /*******************************************************************************
-*	main()
+* main()
 *
-*	Initialize the IMU, start all the threads, and wait still something 
-*	triggers a shut down.
+* Initialize the IMU, start all the threads, and wait still something 
+* triggers a shut down.
 *******************************************************************************/
-int main(int argc, char* argv[]){
-	int ret=0; // value to be returned when main() exits
+int main(){
 
-	// load settings first, will be re-read later every re-arm
-	if(load_settings_from_file(fly_settings_t* settings)){
-		ret = -1;
-		goto END;
+	if(load_settings_from_file(&settings)){
+		printf("ERROR: invalid settings file, quitting fly\n");
+		return -1;
 	}
 
 	// initialize cape hardware
 	if(initialize_roboticscape()<0){
-		ret = -1;
-		goto END;
+		rc_blink_led(RED,5,3);
+		return -1;
 	}
 	rc_set_led(RED,1);
 	rc_set_led(GREEN,0);
 	rc_set_state(UNINITIALIZED);
-
+	
 	// set up button handler so user can exit by holding pause
 	set_pause_pressed_func(&pause_pressed_func);
 
-	// start barometer with no oversampling
-	// do this before imu because IMU will use the bus continuously once started
+
+	if(initialize_thrust_map(settings.thrust_map)<0){
+		printf("ERROR: failed to initialize thrust map\n");
+		rc_blink_led(RED,5,3);
+		return -1;
+	}
+	if(start_input_manager(&user_input, &settings)<0){
+		printf("ERROR: can't start input_manager\n");
+		rc_blink_led(RED,5,3);
+		return -1;
+	}
+	if(start_setpoint_manager(&setpoint, &user_input, &cstate, &settings)<0){
+		printf("ERROR: can't start setpoint_manager\n");
+		rc_blink_led(RED,5,3);
+		return -1;
+	} 
+
+	// start barometer with max oversampling before IMU since imu will hog
+	// i2c bus once setup, barometer will be left alone till we call it.
 	if(initialize_barometer(BMP_OVERSAMPLE_16,BMP_FILTER_OFF)){
-		ret = -1;
-		goto END;
+		printf("ERROR: failed to initialize_barometer");
+		rc_blink_led(RED,5,3);
+		cleanup_roboticscape();
+		return -1;
 	}
 
 	// start the IMU
@@ -61,68 +79,43 @@ int main(int argc, char* argv[]){
 	conf.dmp_sample_rate = settings.feedback_hz;
 	conf.enable_magnetometer = 1;
 	conf.orientation = settings.bbb_orientation;
-
+	
 	// now set up the imu for dmp interrupt operation
 	if(initialize_imu_dmp(&imu_data, conf)){
-		ret = -1;
-		goto END;
+		printf("initialize_imu_failed\n");
+		rc_blink_led(RED,5,3);
+		cleanup_roboticscape();
+		return -1;
 	}
-
-	// start threads
-	if(start_battery_manager_thread(&cstate, &settings)<0){
-		printf("ERROR: failed to start battery manager thread\n");
-		ret = -1;
-		goto END;
-	}
-	if(start_input_manager(&user_input, &settings)<0){
-		printf("ERROR: can't start DSM input manager\n");
-		ret = -1;
-		goto END;
-	}
-	if(start_setpoint_manager(&setpoint, &user_input)<0){
-		printf("ERROR: can't start setpoint_manager\n");
-		ret = -1;
-		goto END;
-	}
-	// start printf_thread only if running from a terminal
-	if(isatty(fileno(stdout))){
-		start_printf_manager(&cstate, &setpoint);
-	}
-
-
-	//initialize other things that are not threads
-	if(initialize_thrust_interpolation()<0){
-		printf("ERROR: failed to initialize thrust interpolation\n");
-		ret = -1;
-		goto END;
-	}
+	
+	// set up feedback controller before starting sensors
 	initialize_controller(&cstate, &setpoint, &imu_data, &user_input);
-
+	
 	printf("\nTurn your transmitter kill switch UP\n");
 	printf("Then move throttle UP then DOWN to arm\n");
 
-	set_state(RUNNING);
-
-	//chill until something exits the program
-	while(get_state()!=EXITING){
-		usleep(100000);
+	
+	// start printf_thread if running from a terminal
+	// if it was started as a background process then don't bother
+	if(isatty(fileno(stdout))){
+		start_printf_manager(&cstate, &setpoint, &user_input, &settings);
 	}
 
+	rc_set_state(RUNNING);
 
+	//chill until something exits the program
+	while(rc_get_state()!=EXITING){
+		usleep(100000);
+	}
+	
 	// cleanup before closing
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
 	join_printf_manager_thread();
-	join_battery_manager_thread();
 	power_off_imu();
 	power_off_barometer();
-
-END:
-	if(ret!=0){
-		blink_led(RED,5,3);
-	}
-	cleanup_cape();
-	return ret;
+	cleanup_roboticscape();
+	return 0;
 }
 
 

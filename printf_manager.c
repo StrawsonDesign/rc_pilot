@@ -2,14 +2,19 @@
 * printf_manager.c
 *
 *******************************************************************************/
-
-#include <useful_inlcudes.h>
-#include <robotics_cape.h>
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <errno.h>
+#include <roboticscape.h>
 #include "fly_defs.h"
 #include "fly_types.h"
 
-core_state_t* cs; // pointer to external core_state_t struct 
-setpoint_t* sp;
+cstate_t*		cs;		// pointer to external core_state_t struct 
+setpoint_t*		sp;		// pointer to external setpoint struct
+user_input_t*	ui;
+fly_settings_t*	set;
 
 pthread_t printf_manager_thread;
 
@@ -20,19 +25,15 @@ pthread_t printf_manager_thread;
 ************************************************************************/
 int print_flight_mode(flight_mode_t mode){
 	switch(mode){
-	case ATTITUDE_DIRECT_THROTTLE:
-		printf("ATTITUDE_DIRECT_THROTTLE");
+	case DIRECT_THROTTLE:
+		printf("DIRECT_THROTTLE ");
 		break;
-	case ATTITUDE_ALTITUDE_HOLD:
-		printf("ATTITUDE_ALTITUDE_HOLD  ");
+	case FALLBACK_4DOF:
+		printf("FALLBACK_4DOF  ");
 		break;
-	case 6DOF_CONTROL:
-		printf("   6DOF_CONTROL         ");
+	case TEST_BENCH:
+		printf("TEST_BENCH     ");
 		break;
-	case EMERGENCY_LAND:
-		printf("  EMERGENCY_LAND        ");
-		break;
-	
 	default:
 		printf("ERROR: unknown flight mode\n"); 
 		break;
@@ -47,16 +48,31 @@ int print_flight_mode(flight_mode_t mode){
 ************************************************************************/
 int print_header(){
 	printf("\n");
-	printf(" alt |");
-	printf(" thr |");
-	printf("roll |");
-	printf(" u_r |");
-	printf("pitch|");
-	printf(" u_p |");
-	printf(" yaw |");
-	printf(" u_y |");
-	printf("  armed |");
-	printf("    mode    ");
+	if(set->printf_arm){
+		printf("  arm   |");
+	}
+	if(set->printf_altitude){
+		printf(" alt(m) |");
+	}
+	if(set->printf_rpy){
+		printf("roll |pitch| yaw |");
+	}
+	if(set->printf_sticks){
+		printf(" thr |roll |pitch| yaw |");
+	}
+	if(set->printf_setpoint){
+		printf("sp_alt |sp_roll|sp_ptch|sp_yaw |");
+	}
+	if(set->printf_u){
+		printf(" U0X | U1Y | U2Z | U3r | U4p | U5y |");
+	}
+	if(set->printf_motors){
+		printf(" M1 | M2 | M3 | M4 | M5 | M6 |");
+	}
+	if(set->printf_mode){
+		printf("   MODE ");
+	}
+
 	printf("\n");
 	fflush(stdout);
 	return 0;
@@ -68,26 +84,65 @@ int print_header(){
 *
 *******************************************************************************/
 void* printf_manager(void* ptr){
-	
+	arm_state_t prev_arm_state;
+
 	print_header();
+	prev_arm_state = sp->arm_state;
 
-	while(get_state()==EXITING){
+	while(rc_get_state()==EXITING){
+
+		// re-print header on disarming
+		if(sp->arm_state==DISARMED && prev_arm_state==ARMED){
+			print_header();
+		}
+
 		printf("\r"); 
-		printf("%6.2f ", cs->alt);
-		printf("%6.2f ", cs->u[VEC_THR]);
-		printf("%6.2f ", cs->roll);
-		printf("%6.2f ", cs->u[VEC_ROLL]);
-		printf("%6.2f ", cs->pitch);
-		printf("%6.2f ", cs->u[VEC_PITCH]);
-		printf("%6.2f ", cs->yaw);
-		printf("%6.2f ", cs->u[VEC_YAW]);
-		
-		if(sp->arm_state == ARMED) printf(" ARMED  |");
-		else                       printf("DISARMED|");
-		
-		print_flight_mode();
-		fflush(stdout);
+		if(set->printf_arm){
+			if(sp->arm_state == ARMED) printf(" ARMED  |");
+			else                       printf("DISARMED|");
+		}
+		if(set->printf_altitude){
+			printf("%7.2f |", cs->altitude);
+		}
+		if(set->printf_rpy){
+			printf("%6.2f |", cs->roll);
+			printf("%6.2f |", cs->roll);
+			printf("%6.2f |", cs->roll);
+		}
+		if(set->printf_sticks){
+			printf("%6.2f |", ui->thr_stick);
+			printf("%6.2f |", ui->roll_stick);
+			printf("%6.2f |", ui->pitch_stick);
+			printf("%6.2f |", ui->yaw_stick);
+		}
+		if(set->printf_setpoint){
+			printf("%6.2f |", sp->altitude);
+			printf("%6.2f |", sp->roll);
+			printf("%6.2f |", sp->pitch);
+			printf("%6.2f |", sp->yaw);
+		}
+		if(set->printf_u){
+			printf("%6.2f |", cs->u[0]);
+			printf("%6.2f |", cs->u[1]);
+			printf("%6.2f |", cs->u[2]);
+			printf("%6.2f |", cs->u[3]);
+			printf("%6.2f |", cs->u[4]);
+			printf("%6.2f |", cs->u[5]);
+		}
+		if(set->printf_motors){
+			printf("%5.2f |", cs->m[0]);
+			printf("%5.2f |", cs->m[1]);
+			printf("%5.2f |", cs->m[2]);
+			printf("%5.2f |", cs->m[3]);
+			printf("%5.2f |", cs->m[4]);
+			printf("%5.2f |", cs->m[5]);
+		}
+		if(set->printf_mode){
+			print_flight_mode(ui->flight_mode);
+		}
 
+		fflush(stdout);
+		prev_arm_state = sp->arm_state;
 		usleep(1000000/PRINTF_MANAGER_HZ);
 	}
 	return NULL;
@@ -95,14 +150,18 @@ void* printf_manager(void* ptr){
 
 
 /*******************************************************************************
-* int start_printf_manager(core_state_t* core_state, setpoint_t* setpoint)
+* int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
+					user_input_t* user_input, fly_settings_t* settings)
 *
 * Start the printf_manager which should be the only thing printing to the screen
 * besides error messages from other threads.
 *******************************************************************************/
-int start_printf_manager(core_state_t* core_state, setpoint_t* setpoint){
-	cs = core_state;
+int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
+					user_input_t* user_input, fly_settings_t* settings){
+	cs = cstate;
 	sp = setpoint;
+	ui = user_input;
+	set = settings;
 	struct sched_param params = {PRINTF_MANAGER_PRIORITY};
 	pthread_setschedparam(printf_manager_thread, SCHED_FIFO, &params);
 	pthread_create(&printf_manager_thread, NULL, &printf_manager, NULL);

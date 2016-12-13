@@ -3,26 +3,28 @@
 *
 * Here lies the heart and soul of the operation. I wish the whole flight
 * controller could be just this file, woe is me. initialize_controllers()
-* pulls in the control constants from feedback_coefficients.h and sets up the 
-* discretes controllers. From then on out, fly_controller() should be called
-* by the IMU interrupt at SAMPLE_RATE_HZ untill the program is shut down. 
-* fly_controller() will monitor the setpoint which is constantly being changed
-* by setpoint_manager(). It also does state estimation to update core_state()
-* even when the controller is disarmed. 
+* pulls in the control constants from json_settings and sets up the 
+* discrete controllers. From then on out, feedback_controller() should be called
+* by the IMU interrupt at feedbacl_hz until the program is shut down. 
+* feedback_controller() will monitor the setpoint which is constantly being 
+* changed by setpoint_manager(). It also does state estimation to update 
+* core_state() even when the controller is disarmed. When controllers are
+* enabled or disabled mid-flight by mode switches then the controllers are
+* started smoothly.
 *******************************************************************************/
 
-#include <useful_inlcudes.h>
-#include <robotics_cape.h>
+#include <stdio.h>
+#include <roboticscape.h>
 #include "fly_defs.h"
 #include "fly_types.h"
-#include "feedback_coefficients.h"
+#include "fly_function_declarations.h"
 
 
 arm_state_t arm_state;
 
 // discrete controllers
 // altitude, roll, pitch, yaw
-d_filter_t D1, D2, D3, D4;
+d_filter_t D0, D1, D2, D3;
 
 // pointers to outside structs
 setpoint_t sp;
@@ -30,15 +32,18 @@ cstate_t cs;
 imu_data_t* imu;
 user_input_t* ui;
 
+// one log entry, passed to log manager if logging enabled
 log_entry_t new_log;
+
 int num_yaw_spins;
 int last_yaw;
-float u[ROTORS], mot[ROTORS], tmp;
+float u[6], mot[8], tmp;
 uint64_t loop_index;
 
-// altitude controller needs to know if it is transitioning to user-throttle 
-// mode to altitude hold so remember whether or not altitude control was on
-int last_alt_ctrl_en;
+// rpy and altitude controllers need setup if being turned on mid flight
+// so keep track of last state to detect changes.
+int last_en_alt_ctrl;
+int last_en_rpy_ctrl;
 float last_usr_thr;
 
 /*******************************************************************************
@@ -64,8 +69,8 @@ int arm_controller(){
 	loop_index = 0;
 	set_led(RED,0);
 	set_led(GREEN,1); 
-	zero_out_controller();
-	last_alt_ctrl_en = 0;
+	zero_out_controllers();
+	last_alt_ctrl_en = sp;
 	last_usr_thr = MIN_THRUST_COMPONENT;
 	if(ENABLE_LOGGING) start_log_manager();
 	arm_state = ARMED;
@@ -99,32 +104,32 @@ int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 	ui = user_input_t;
 
 	// set up altitude controller
+	float num = D0_NUM;
+	float den = D0_DEN;
+	D0 = create_filter(D0_ORDER, DT, num, den);
+	D0.gain = D0_GAIN;
+	enable_saturation(&D0, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
+
+	// set up roll controller
 	float num = D1_NUM;
 	float den = D1_DEN;
 	D1 = create_filter(D1_ORDER, DT, num, den);
 	D1.gain = D1_GAIN;
-	enable_saturation(&D1, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
+	enable_saturation(&D1, MIN_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
 
-	// set up roll controller
+	// set up altitude controller
 	float num = D2_NUM;
 	float den = D2_DEN;
 	D2 = create_filter(D2_ORDER, DT, num, den);
 	D2.gain = D2_GAIN;
-	enable_saturation(&D2, MIN_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
+	enable_saturation(&D2, MIN_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
 
 	// set up altitude controller
 	float num = D3_NUM;
 	float den = D3_DEN;
 	D3 = create_filter(D3_ORDER, DT, num, den);
 	D3.gain = D3_GAIN;
-	enable_saturation(&D3, MIN_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
-
-	// set up altitude controller
-	float num = D4_NUM;
-	float den = D4_DEN;
-	D4 = create_filter(D4_ORDER, DT, num, den);
-	D4.gain = D4_GAIN;
-	enable_saturation(&D4, MIN_YAW_COMPONENT, MAX_YAW_COMPONENT);
+	enable_saturation(&D3, MIN_YAW_COMPONENT, MAX_YAW_COMPONENT);
 
 	arm_state = DISARMED;
 	return 0;
@@ -136,19 +141,19 @@ int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 * clear the controller memory
 *******************************************************************************/
 int zero_out_controller(){
+	reset_filter(&D0);
 	reset_filter(&D1);
 	reset_filter(&D2);
 	reset_filter(&D3);
-	reset_filter(&D4);
 	return 0;
 }
 
 /*******************************************************************************
-* fly_controller()
+* feedback_controller()
 *	
 * Should be called by the IMU interrupt at SAMPLE_RATE_HZ
 *******************************************************************************/
-int fly_controller(){
+int feedback_controller(){
 	int i;
 	float tmp, min, max;
 	float mot[ROTORS];
@@ -182,7 +187,8 @@ int fly_controller(){
 	last_yaw = cs->yaw;
 
 	// TODO: altitude estimate
-
+		
+	
 	/***************************************************************************
 	* Now check for all conditions that prevent normal running
 	***************************************************************************/
@@ -221,8 +227,8 @@ int fly_controller(){
 	***************************************************************************/
 	if(sp->altitude_ctrl_en && !last_alt_ctrl_en){
 		sp->altitude = cs->alt; // set altitude setpoint to current altitude
-		reset_filter(&D1);
-		prefill_filter_outputs(&D1,last_usr_thr);
+		reset_filter(&D0);
+		prefill_filter_outputs(&D0,last_usr_thr);
 		last_alt_ctrl_en = 1;
 	}
 		
@@ -250,8 +256,8 @@ int fly_controller(){
 	else{
 		sp->altitude += sp->altitude_rate*DT;
 		saturate_float(&sp->altitude, cs->alt-ALT_BOUND_D, cs->alt+ALT_BOUND_U);
-		D1.gain = D1_GAIN * V_NOMINAL/cs->vbatt;
-		tmp = march_filter(&D1, sp->altitude-cs->alt);
+		D0.gain = D0_GAIN * V_NOMINAL/cs->vbatt;
+		tmp = march_filter(&D0, sp->altitude-cs->alt);
 		u[VEC_THR] = tmp / cos(cs->roll)*cos(cs->pitch);
 		saturate_float(&u[VEC_THR], MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 		add_mixed_input(u[VEC_THR], VEC_THR, mot);
@@ -263,9 +269,9 @@ int fly_controller(){
 	check_channel_saturation(VEC_ROLL, mot, &min, &max);
 	if(max>MAX_ROLL_COMPONENT)  max =  MAX_ROLL_COMPONENT;
 	if(min<-MAX_ROLL_COMPONENT) min = -MAX_ROLL_COMPONENT;
-	enable_saturation(&D2, min, max);
-	D2.gain = D2_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_ROLL]=march_filter(&D2, sp->roll - cs->roll);
+	enable_saturation(&D1, min, max);
+	D1.gain = D1_GAIN * V_NOMINAL/cs->vbatt;
+	u[VEC_ROLL]=march_filter(&D1, sp->roll - cs->roll);
 	add_mixed_input(u[VEC_ROLL], VEC_ROLL, mot);
 
 	/***************************************************************************
@@ -274,9 +280,9 @@ int fly_controller(){
 	check_channel_saturation(VEC_PITCH, mot, &min, &max);
 	if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
 	if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
-	enable_saturation(&D3, min, max);
-	D3.gain = D3_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_PITCH] = march_filter(&D3, sp->pitch - cs->pitch);	
+	enable_saturation(&D2, min, max);
+	D2.gain = D2_GAIN * V_NOMINAL/cs->vbatt;
+	u[VEC_PITCH] = march_filter(&D2, sp->pitch - cs->pitch);	
 	add_mixed_input(u[VEC_PITCH], VEC_PITCH, mot);	
 	
 	/***************************************************************************
@@ -290,9 +296,9 @@ int fly_controller(){
 	check_channel_saturation(VEC_YAW, mot, &min, &max);
 	if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
 	if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
-	enable_saturation(&D4, min, max);
-	D4.gain = D4_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_YAW] = march_filter(&D4, sp->yaw - cs->yaw);
+	enable_saturation(&D3, min, max);
+	D3.gain = D3_GAIN * V_NOMINAL/cs->vbatt;
+	u[VEC_YAW] = march_filter(&D3, sp->yaw - cs->yaw);
 	add_mixed_input(u[VEC_YAW], VEC_YAW, mot);
 	
 
