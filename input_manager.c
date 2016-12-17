@@ -107,9 +107,10 @@ void* input_manager(void* ptr){
 int start_input_manager(user_input_t* user_input, fly_settings_t* settings){
 	ui = user_input;
 	set = settings;
+	pthread_create(&input_manager_thread, NULL, &input_manager, NULL);
 	struct sched_param params = {INPUT_MANAGER_PRIORITY};
 	pthread_setschedparam(input_manager_thread, SCHED_FIFO, &params);
-	pthread_create(&input_manager_thread, NULL, &input_manager, NULL);
+	usleep(1000);
 	return 0;
 }
 

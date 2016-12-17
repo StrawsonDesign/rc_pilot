@@ -216,10 +216,10 @@ int start_setpoint_manager(setpoint_t* setpoint, user_input_t* user_input, \
 	ui = user_input;
 	cs = cstate;
 	set = settings;
-
+	pthread_create(&setpoint_manager_thread, NULL, &setpoint_manager, NULL);
 	struct sched_param params = {SETPOINT_MANAGER_PRIORITY};
 	pthread_setschedparam(setpoint_manager_thread, SCHED_FIFO, &params);
-	pthread_create(&setpoint_manager_thread, NULL, &setpoint_manager, NULL);
+	usleep(1000);
 	return 0;
 }
 

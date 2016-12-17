@@ -162,9 +162,10 @@ int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
 	sp = setpoint;
 	ui = user_input;
 	set = settings;
+	pthread_create(&printf_manager_thread, NULL, &printf_manager, NULL);
 	struct sched_param params = {PRINTF_MANAGER_PRIORITY};
 	pthread_setschedparam(printf_manager_thread, SCHED_FIFO, &params);
-	pthread_create(&printf_manager_thread, NULL, &printf_manager, NULL);
+	usleep(1000);
 	return 0;
 }
 

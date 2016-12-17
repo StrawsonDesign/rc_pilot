@@ -8,7 +8,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
-#include "basic_settings.h"
+#include <unistd.h>
 #include "fly_function_declarations.h"
 
 /*******************************************************************************

@@ -17,7 +17,7 @@
 
 // local copy of controllers to store before feedback_controller.c requests it
 fly_controllers_t controllers;
-int was_load_successful;
+int was_load_successful = 0;
 
 // local functions
 json_object* get_default_settings();
@@ -38,12 +38,11 @@ int load_all_settings_from_file(fly_settings_t* settings){
 
 	struct json_object *jobj = NULL;	// holds the top level obj from file
 	struct json_object *tmp = NULL;		// temp object
-	struct json_object *tmp2 = NULL;	// temp object
 	char* tmp_str = NULL; // temp string poitner
 	float tmp_flt;
 	int tmp_int;
 
-	was_load_successful = 0;
+	was_last_read_successful = 0;
 
 	if(access(FLY_SETTINGS_FILE, F_OK)!=0){
 		printf("Fly settings file missing, making default\n");
@@ -591,7 +590,7 @@ int load_all_settings_from_file(fly_settings_t* settings){
 
 
 	json_object_put(jobj);	// free memory
-	was_load_successful = 1;
+	was_last_read_successful = 1;
 	return 0;
 }
 

@@ -4,19 +4,17 @@
 * Declarations for high level functions intended to be called across C files.
 * This does not include functions who's use remains contained in one C file.
 *******************************************************************************/
-
-
 #include "fly_types.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // battery_manager.c
 ////////////////////////////////////////////////////////////////////////////////
 /*******************************************************************************
-* int start_battery_manager_thread(cstate_t* cs, fly_settings_t* set)
+* int start_battery_manager(cstate_t* core_state, fly_settings_t* fly_settings)
 *
 * 
 *******************************************************************************/
-int start_battery_manager_thread(cstate_t* cs, fly_settings_t* set);
+int start_battery_manager(cstate_t* core_state, fly_settings_t* fly_settings);
 
 /*******************************************************************************
 * int join_battery_manager_thread()

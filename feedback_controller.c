@@ -31,6 +31,7 @@ setpoint_t sp;
 cstate_t cs;
 imu_data_t* imu;
 user_input_t* ui;
+fly_settings_t set;
 
 // one log entry, passed to log manager if logging enabled
 log_entry_t new_log;

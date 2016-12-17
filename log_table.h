@@ -7,7 +7,7 @@
 
 
 #define LOG_TABLE \
-	X(uint64_t,	"%ld", 	loop_index	) \
+	X(uint64_t,	"%lld",	loop_index	) \
 									  \
 	X(float,	"%f",	alt			) \
 	X(float,	"%f",	roll		) \

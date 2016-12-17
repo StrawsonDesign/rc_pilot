@@ -3,12 +3,13 @@
 *
 *******************************************************************************/
 
-#include <useful_inlcudes.h>
-#include <robotics_cape.h>
+#include <roboticscape-usefulincludes.h>
+#include <roboticscape.h>
 #include "fly_defs.h"
 #include "fly_types.h"
 
-core_state_t* cs; // pointer to external core_state_t struct 
+fly_settings_t* set;	// pointer to external settings struct
+cstate_t* cs;		// pointer to external core_state_t struct 
 pthread_t battery_manager_thread;
 
 /*******************************************************************************
@@ -17,12 +18,19 @@ pthread_t battery_manager_thread;
 * 
 *******************************************************************************/
 void* battery_manager(void* ptr){
-	float new_v;
-	while(get_state()!=EXITING){
-		new_v = get_jack_voltage();
-		// if battery is below a threshold consider disconnected
-		if(new_v<4) new_v = 0.0;
-		cs->vBatt = new_v;
+	double new_v;
+	while(rc_get_state()!=EXITING){
+		if(set->battery_connection==DC_BARREL_JACK){
+			new_v = get_dc_jack_voltage();
+		}
+		else if(set->battery_connection==BALANCE_PLUG){
+			new_v = get_battery_voltage();
+		}
+		else{
+			printf("ERROR: invalid battery_connection_t\n");
+			new_v = set->v_nominal;
+		}
+		cs->v_batt = new_v;
 		usleep(1000000 / BATTERY_MANAGER_HZ);
 	}
 	return NULL;
@@ -30,14 +38,16 @@ void* battery_manager(void* ptr){
 
 
 /*******************************************************************************
-* int start_battery_manager(user_input_t* ui)
+* int start_battery_manager(cstate_t* core_state, fly_settings_t* fly_settings)
 *
 * 
 *******************************************************************************/
-int start_battery_manager(user_input_t* ui){
+int start_battery_manager(cstate_t* core_state, fly_settings_t* fly_settings){
+	cs = core_state;
+	set = fly_settings;
+	pthread_create(&battery_manager_thread, NULL, &battery_manager, NULL);
 	struct sched_param params = {BATTERY_MANAGER_PRIORITY};
 	pthread_setschedparam(battery_manager_thread, SCHED_FIFO, &params);
-	pthread_create(&battery_manager_thread, NULL, &battery_manager, NULL);
 	return 0;
 }
 
