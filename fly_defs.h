@@ -24,9 +24,10 @@
 #define MAX_CLIMB_RATE				1.0		// m/s
 #define YAW_DEADZONE				0.03
 #define ALTITUDE_STICK_DEADZONE		0.06
-#define MAX_Z_THROTTLE				0.85
-#define MIN_Z_THROTTLE				0.10
-#define TEST_BENCH_HOVER_THR		0.372
+#define MAX_Z_THROTTLE				0.10
+#define MIN_Z_THROTTLE				0.85
+#define SOFT_START_SECONDS			1.0		// controller soft start seconds
+#define TEST_BENCH_HOVER_THR		-0.372 // negative because Z points down
 
 
 // thread speeds, prioritites, and close timeouts

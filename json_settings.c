@@ -16,7 +16,12 @@
 #include "fly_types.h"
 
 // local copy of controllers to store before feedback_controller.c requests it
-fly_controllers_t controllers;
+d_filter_t roll_controller;
+d_filter_t pitch_controller;
+d_filter_t yaw_controller;
+d_filter_t altitude_controller;
+
+// if anything goes wrong set this flag back to 0
 int was_load_successful = 0;
 
 // local functions
@@ -39,7 +44,7 @@ int load_all_settings_from_file(fly_settings_t* settings){
 	struct json_object *jobj = NULL;	// holds the top level obj from file
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL; // temp string poitner
-	float tmp_flt;
+	double tmp_flt;
 	int tmp_int;
 
 	was_last_read_successful = 0;
@@ -562,7 +567,7 @@ int load_all_settings_from_file(fly_settings_t* settings){
 		printf("ERROR: can't find roll_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.roll_controller, settings->feedback_hz)){
+	if(parse_controller(tmp, &roll_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse roll_controller\n");
 		return -1;
 	}
@@ -572,7 +577,7 @@ int load_all_settings_from_file(fly_settings_t* settings){
 		printf("ERROR: can't find pitch_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.pitch_controller, settings->feedback_hz)){
+	if(parse_controller(tmp, &pitch_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse pitch_controller\n");
 		return -1;
 	}
@@ -582,7 +587,7 @@ int load_all_settings_from_file(fly_settings_t* settings){
 		printf("ERROR: can't find yaw_controller in settings file\n");
 		return -1;
 	}
-	if(parse_controller(tmp, &controllers.yaw_controller, settings->feedback_hz)){
+	if(parse_controller(tmp, &yaw_controller, settings->feedback_hz)){
 		printf("ERROR: could not parse yaw_controller\n");
 		return -1;
 	}
@@ -876,10 +881,10 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 	struct json_object *array = NULL;	// to hold num & den arrays
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL;
-	float tmp_flt;
+	double tmp_flt;
 	int i, num_len, den_len;
 	vector_t num_vec, den_vec;
-	float dt = 1.0/feedback_hz;
+	double dt = 1.0/feedback_hz;
 
 	// destroy old memory in case the order changes
 	destroy_filter(filter);
@@ -998,19 +1003,63 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 }
 
 
-
-
 /*******************************************************************************
-* int get_json_controllers(fly_controllers_t* ctrls)
+* int get_json_roll_controller(d_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_controllers(fly_controllers_t* ctrls){
+int get_json_roll_controller(d_filter_t* ctrl){
 	if(was_last_read_successful == 0){
-		printf("ERROR: can't get json controllers, last read failed\n");
+		printf("ERROR: can't get json controller, last read failed\n");
 		return -1;
 	}
-	*ctrls = controllers;
+	*ctrl = roll_controller;
 	return 0;
 }
+
+/*******************************************************************************
+* int get_json_pitch_controller(d_filter_t* ctrl)
+*
+* gets the controllers read from the last json read.
+* returns 0 on success or -1 on failure
+*******************************************************************************/
+int get_json_pitch_controller(d_filter_t* ctrl){
+	if(was_last_read_successful == 0){
+		printf("ERROR: can't get json controller, last read failed\n");
+		return -1;
+	}
+	*ctrl = pitch_controller;
+	return 0;
+}
+
+/*******************************************************************************
+* int get_json_yaw_controller(d_filter_t* ctrl)
+*
+* gets the controllers read from the last json read.
+* returns 0 on success or -1 on failure
+*******************************************************************************/
+int get_json_yaw_controller(d_filter_t* ctrl){
+	if(was_last_read_successful == 0){
+		printf("ERROR: can't get json controller, last read failed\n");
+		return -1;
+	}
+	*ctrl = yaw_controller;
+	return 0;
+}
+
+/*******************************************************************************
+* int get_json_altitude_controller(d_filter_t* ctrl)
+*
+* gets the controllers read from the last json read.
+* returns 0 on success or -1 on failure
+*******************************************************************************/
+int get_json_altitude_controller(d_filter_t* ctrl){
+	if(was_last_read_successful == 0){
+		printf("ERROR: can't get json controller, last read failed\n");
+		return -1;
+	}
+	*ctrl = altitude_controller;
+	return 0;
+}
+

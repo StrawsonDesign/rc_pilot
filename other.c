@@ -12,13 +12,13 @@
 #include "fly_function_declarations.h"
 
 /*******************************************************************************
-* float apply_deadzone(float in, float zone)
+* double apply_deadzone(double in, double zone)
 *
 * Applies a dead zone to an input stick in. in is supposed to range from -1 to 1
 * the dead zone is centered around 0. zone specifies the distance from 0 the
 * zone extends.
 *******************************************************************************/
-float apply_deadzone(float in, float zone){
+double apply_deadzone(double in, double zone){
 	if(zone<=0.0){
 		printf("ERROR: dead zone must be > 0.0\n");
 		return in;
@@ -28,22 +28,6 @@ float apply_deadzone(float in, float zone){
 	if(in>0.0)	return ((in-zone)/(1.0-zone)) + zone;
 	else		return ((in+zone)/(1.0-zone)) - zone;
 }
-
-/*******************************************************************************
-* int send_pulse_to_rotors(int rotors, float val)
-*
-* sends signal val to just the channels used for rotors
-*******************************************************************************/
-int send_pulse_to_rotors(int rotors, float val){
-	int i;
-	if(rotors>8){
-		printf("ERROR: send_pulse_to_rotors: too many rotors\n");
-		return -1;
-	}
-	for(i=1;i<=rotors;i++) send_esc_pulse_normalized(i,val);
-	return 0;
-}
-
 
 /*******************************************************************************
 * int on_pause_released() 

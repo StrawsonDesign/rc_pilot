@@ -14,8 +14,8 @@
 
 
 
-float* signal;
-float* thrust;
+double* signal;
+double* thrust;
 int points;
 
 /*******************************************************************************
@@ -25,8 +25,8 @@ int points;
 *******************************************************************************/
 int initialize_thrust_map(thrust_map_t map){
 	int i;
-	float max;
-	float (*data)[2]; // pointer to constant data
+	double max;
+	double (*data)[2]; // pointer to constant data
 
 	switch(map){
 	case MN1806_1400KV_4S:
@@ -72,8 +72,8 @@ int initialize_thrust_map(thrust_map_t map){
 	// create new global array of normalized thrust and inputs
 	free(signal);
 	free(thrust);
-	signal = (float*) malloc(points * sizeof(float));
-	thrust = (float*) malloc(points * sizeof(float));
+	signal = (double*) malloc(points * sizeof(double));
+	thrust = (double*) malloc(points * sizeof(double));
 	max = data[points-1][1];
 	for(i=0; i<points; i++){
 		signal[i] = data[i][0];
@@ -83,13 +83,13 @@ int initialize_thrust_map(thrust_map_t map){
 }
 
 /*******************************************************************************
-* float map_motor_signal(float* m)
+* double map_motor_signal(double* m)
 *
 * return the required normalized esc signal for desired normalized thrust t
 *******************************************************************************/
-float map_motor_signal(float m){
+double map_motor_signal(double m){
 	int i;
-	float pos;
+	double pos;
 
 	// sanity check
 	if(m>1.0 || m<0.0){

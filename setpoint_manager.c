@@ -80,7 +80,7 @@ START:
 *******************************************************************************/
 void* setpoint_manager(void* ptr){
 	int i;
-	float tmp;
+	double tmp;
 
 	// wait for IMU to settle
 	disarm_controller();
@@ -144,14 +144,24 @@ void* setpoint_manager(void* ptr){
 
 			// translate throttle stick (-1,1) to throttle (0,1)
 			// then scale and shift to be between thrust min/max
+			// Z-throttle should be negative since Z points down
 			tmp = (ui->thr_stick + 1.0)/2.0;
 			tmp = tmp * (MAX_Z_THROTTLE - MIN_Z_THROTTLE);
-			sp->Z_throttle = tmp + MIN_Z_THROTTLE;
+			sp->Z_throttle = -(tmp + MIN_Z_THROTTLE);
 			
-			// scale yaw_rate by max yaw rate in rad/s
+			// if throttle stick is down all the way, probably landed, so
+			// keep the yaw setpoint at current yaw so it takes off straight
+			if(ui->throttle_stick < -0.95){
+				sp->yaw = cs->yaw;
+				sp->yaw_rate = 0.0;
+			}
+			// otherwise, scale yaw_rate by max yaw rate in rad/s
 			// also apply deadzone to prevent drift
-			tmp = apply_deadzone(ui->yaw_stick, YAW_DEADZONE);
-			sp->yaw_rate = tmp * MAX_YAW_RATE;
+			else{
+				tmp = apply_deadzone(ui->yaw_stick, YAW_DEADZONE);
+				sp->yaw_rate = tmp * MAX_YAW_RATE;
+			}
+
 			// done!
 			break;
 
@@ -168,14 +178,23 @@ void* setpoint_manager(void* ptr){
 
 			// translate throttle stick (-1,1) to throttle (0,1)
 			// then scale and shift to be between thrust min/max
+			// Z-throttle should be negative since Z points down
 			tmp = (ui->thr_stick + 1.0)/2.0;
 			tmp = tmp * (MAX_Z_THROTTLE - MIN_Z_THROTTLE);
-			sp->Z_throttle = tmp + MIN_Z_THROTTLE;
+			sp->Z_throttle = -(tmp + MIN_Z_THROTTLE);
 
-			// scale yaw_rate by max yaw rate in rad/s
+			// if throttle stick is down all the way, probably landed, so
+			// keep the yaw setpoint at current yaw so it takes off straight
+			if(ui->throttle_stick < -0.95){
+				sp->yaw = cs->yaw;
+				sp->yaw_rate = 0.0;
+			}
+			// otherwise, scale yaw_rate by max yaw rate in rad/s
 			// also apply deadzone to prevent drift
-			tmp = apply_deadzone(ui->yaw_stick, YAW_DEADZONE);
-			sp->yaw_rate = tmp * MAX_YAW_RATE;
+			else{
+				tmp = apply_deadzone(ui->yaw_stick, YAW_DEADZONE);
+				sp->yaw_rate = tmp * MAX_YAW_RATE;
+			}
 			// done!
 			break;
 

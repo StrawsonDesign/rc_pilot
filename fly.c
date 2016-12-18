@@ -96,7 +96,7 @@ int main(){
 		return -1;
 	} 
 	// set up feedback controller
-	initialize_controller(&cstate, &setpoint, &imu_data, &user_input);
+	initialize_controller(&cstate, &setpoint, &imu_data, &settings);
 
 	// print header before starting printf thread
 	printf("\nTurn your transmitter kill switch UP\n");

@@ -25,7 +25,7 @@ pthread_t input_manager_thread;
 *******************************************************************************/
 void* input_manager(void* ptr){
 	
-	float new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill;
+	double new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill;
 
 	if(ui==NULL){
 		printf("ERROR: can't start input_manager, ui struct pointer NULL\n");
@@ -61,10 +61,10 @@ void* input_manager(void* ptr){
 		new_mode  = get_dsm_ch_normalized(set->dsm_mode_ch)*set->dsm_mode_pol;
 		
 		// saturate the sticks to avoid possible erratic behavior
-		saturate_float(&new_thr,   -1.0, 1.0);
-		saturate_float(&new_roll,  -1.0, 1.0);
-		saturate_float(&new_pitch, -1.0, 1.0);
-		saturate_float(&new_yaw,   -1.0, 1.0);
+		saturate_double(&new_thr,   -1.0, 1.0);
+		saturate_double(&new_roll,  -1.0, 1.0);
+		saturate_double(&new_pitch, -1.0, 1.0);
+		saturate_double(&new_yaw,   -1.0, 1.0);
 		
 		// fill in sticks
 		ui->thr_stick   = new_thr;

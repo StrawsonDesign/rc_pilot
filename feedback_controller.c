@@ -19,44 +19,55 @@
 #include "fly_types.h"
 #include "fly_function_declarations.h"
 
-
+// local arm state, set this from outside with arm/disarm_controller
 arm_state_t arm_state;
 
 // discrete controllers
-// altitude, roll, pitch, yaw
-d_filter_t D0, D1, D2, D3;
+fly_controllers_t controllers;
+d_filter_t D_roll, D_pitch, D_yaw;
+
+// keep original controller gains for scaling later
+double D_roll_gain_orig, D_pitch_gain_orig, D_yaw_gain_orig;
 
 // pointers to outside structs
-setpoint_t sp;
-cstate_t cs;
+setpoint_t* sp;
+cstate_t* cs;
 imu_data_t* imu;
-user_input_t* ui;
-fly_settings_t set;
+fly_settings_t* set;
 
 // one log entry, passed to log manager if logging enabled
 log_entry_t new_log;
 
 int num_yaw_spins;
 int last_yaw;
-float u[6], mot[8], tmp;
+double u[6], mot[8], tmp;
 uint64_t loop_index;
 
-// rpy and altitude controllers need setup if being turned on mid flight
+// altitude controller need setup if being turned on mid flight
 // so keep track of last state to detect changes.
 int last_en_alt_ctrl;
-int last_en_rpy_ctrl;
-float last_usr_thr;
+double last_usr_thr;
+
+
+// Local functions only for use in this c file
+int set_motors_to_idle();
+int zero_out_controller();
+int feedback_controller();
 
 /*******************************************************************************
 * int disarm_controller()
 *	
 * This is how outside functions should stop the flight controller.
+* it would be reasonable to set motors to 0 here, but since this function can
+* be called from anywhere that might produce conflicts. Instead the interrupt
+* service routine will do this on the next loop after disarming to maintain
+* timing of pulses to the motors
 *******************************************************************************/
 int disarm_controller(){
 	arm_state = DISARMED;
 	set_led(RED,1);
 	set_led(GREEN,0); 
-	if(ENABLE_LOGGING) stop_log_manager();
+	stop_log_manager();
 	return 0;
 }
 
@@ -66,14 +77,19 @@ int disarm_controller(){
 * This is how outside functions should stop the flight controller.
 *******************************************************************************/
 int arm_controller(){
+	if(arm_state==ARMED){
+		printf("WARNING: trying to arm when controller is already armed\n");
+		return -1;
+	}
+	// start a new log file every time controller is armed, this may take some
+	// time so do it before touching anything else
+	if(set.enable_logging) start_log_manager();
+	// zero the controllers so they start fresh
 	zero_out_controller();
-	loop_index = 0;
 	set_led(RED,0);
 	set_led(GREEN,1); 
-	zero_out_controllers();
-	last_alt_ctrl_en = sp;
-	last_usr_thr = MIN_THRUST_COMPONENT;
-	if(ENABLE_LOGGING) start_log_manager();
+
+	// last thing is to flag as armed 
 	arm_state = ARMED;
 	return 0;
 }
@@ -95,44 +111,32 @@ arm_state_t get_controller_arm_state(){
 * program start. 
 *******************************************************************************/
 int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
-									imu_data_t* imu_data, user_input_t* ui){
-	float num, den;
+									imu_data_t* imu_data, fly_settings_t* settings){
 
 	// make local copies of pointers to global structs
 	cs = cstate;
 	sp = setpoint;
 	imu = imu_data;
-	ui = user_input_t;
+	set = settings;
 
-	// set up altitude controller
-	float num = D0_NUM;
-	float den = D0_DEN;
-	D0 = create_filter(D0_ORDER, DT, num, den);
-	D0.gain = D0_GAIN;
-	enable_saturation(&D0, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
+	// get controllers from settings
+	if(get_json_roll_controller(&D_roll)) return -1;
+	if(get_json_pitch_controller(&D_pitch)) return -1;
+	if(get_json_yaw_controller(&D_yaw)) return -1;
 
-	// set up roll controller
-	float num = D1_NUM;
-	float den = D1_DEN;
-	D1 = create_filter(D1_ORDER, DT, num, den);
-	D1.gain = D1_GAIN;
-	enable_saturation(&D1, MIN_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
+	// save original gains as we will scale these by battery voltage later
+	D_roll_gain_orig = D_roll.gain;
+	D_pitch_gain_orig = D_pitch.gain;
+	D_yaw_gain_orig = d_yaw.gain;
 
-	// set up altitude controller
-	float num = D2_NUM;
-	float den = D2_DEN;
-	D2 = create_filter(D2_ORDER, DT, num, den);
-	D2.gain = D2_GAIN;
-	enable_saturation(&D2, MIN_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
+	// enable soft start
+	enable_soft_start(&D_roll, SOFT_START_SECONDS);
+	enable_soft_start(&D_pitch, SOFT_START_SECONDS);
+	enable_soft_start(&D_yaw, SOFT_START_SECONDS);
 
-	// set up altitude controller
-	float num = D3_NUM;
-	float den = D3_DEN;
-	D3 = create_filter(D3_ORDER, DT, num, den);
-	D3.gain = D3_GAIN;
-	enable_saturation(&D3, MIN_YAW_COMPONENT, MAX_YAW_COMPONENT);
-
-	arm_state = DISARMED;
+	// make sure everything is disarmed them start the ISR
+	disarm_controller();
+	set_imu_interrupt_func(&feedback_controller);
 	return 0;
 }
 
@@ -142,12 +146,37 @@ int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 * clear the controller memory
 *******************************************************************************/
 int zero_out_controller(){
-	reset_filter(&D0);
-	reset_filter(&D1);
-	reset_filter(&D2);
-	reset_filter(&D3);
+	reset_filter(&D_roll);
+	reset_filter(&D_pitch);
+	reset_filter(&D_yaw);
+
+	// when swapping from direct throttle to altitude control, the altitude
+	// controller needs to know the last throttle input for smooth transition
+	last_alt_ctrl_en = 0;
+	last_usr_thr = MIN_THRUST_COMPONENT;
+
+	// yaw estimator can be zero'd too
+	num_yaw_spins = 0;
+	last_yaw = -imu->fusedTaitBryan[VEC3_Z]; // minus because NED coordinates
 	return 0;
 }
+
+/*******************************************************************************
+* int set_motors_to_idle()
+*
+* send slightly negative throttle to ESCs which keeps them awake but doesn't
+* move the motors.
+*******************************************************************************/
+int set_motors_to_idle(){
+	int i;
+	if(set->num_rotors>8){
+		printf("ERROR: set_motors_to_idle: too many rotors\n");
+		return -1;
+	}
+	for(i=1;i<=set->num_rotors;i++) send_esc_pulse_normalized(i,-0.1);
+	return 0;
+}
+
 
 /*******************************************************************************
 * feedback_controller()
@@ -156,8 +185,8 @@ int zero_out_controller(){
 *******************************************************************************/
 int feedback_controller(){
 	int i;
-	float tmp, min, max;
-	float mot[ROTORS];
+	double tmp, min, max;
+	double mot[ROTORS];
 	
 	/***************************************************************************
 	*	STATE_ESTIMATION
@@ -165,21 +194,13 @@ int feedback_controller(){
 	*	is ARMED or DISARMED
 	***************************************************************************/
 	// collect new IMU roll/pitch data
+	// to remain consistent with NED coordinates we flip X&Y
 	cs->roll   = imu->fusedTaitBryan[VEC3_Y];
 	cs->pitch  = imu->fusedTaitBryan[VEC3_X];
-	// current roll/pitch/yaw rates straight from gyro 
-	cs->dRoll  = imu->gyro[VEC3_Y];
-	cs->dPitch = imu->gyro[VEC3_X];
-	cs->dYaw   = imu->gyro[VEC3_Z];
-		
-	// yaw is a bit more complicated as the imu yaw can jump between +-PI
-	// but we need to maintain continuous rotation with num_yaw_spins
-	// if this is the first loop since being armed, reset yaw spins
-	if(last_arm_state==DISARMED && sp->arm_state!=DISARMED){	
-		num_yaw_spins = 0;
-		last_yaw = cs->yaw;
-	}
-	tmp = imu->fusedTaitBryan[VEC3_Z] + (num_yaw_spins * TWO_PI);
+
+	// yaw is more annoying since we have to detect spins
+	// also make sign negative since NED coordinates has Z point down
+	tmp = -imu->fusedTaitBryan[VEC3_Z] + (num_yaw_spins * TWO_PI);
 	// detect the crossover point at +-PI and write new value to core state
 	if(tmp-last_yaw < -PI) num_yaw_spins++;
 	else if (tmp-last_yaw > PI) num_yaw_spins--;
@@ -188,180 +209,179 @@ int feedback_controller(){
 	last_yaw = cs->yaw;
 
 	// TODO: altitude estimate
-		
-	
+
 	/***************************************************************************
 	* Now check for all conditions that prevent normal running
 	***************************************************************************/
-	if(get_state()!=RUNNING){
+	// Disarm if rc_state is somehow paused without disarming the controller.
+	// This shouldn't happen if other threads are working properly.
+	if(get_state()!=RUNNING && arm_state==ARMED){
 		disarm_controller();
-		set_motors_to_zero();
 		last_arm_state = DISARMED;
-		return 0;
-	}
-	
-	// If disarmed, keep sending 0 to the escs to keep them awake and quiet,
-	// this also ensures they get woken up properly as we will be in this
-	// disarmed state for a couple seconds at least while the user gets ready
-	// to enter the arming sequence
-	if(arm_state==DISARMED){
-		set_motors_to_zero();
-		last_arm_state = DISARMED;
-		return 0;
 	}
 
 	// check for a tipover
 	if(fabs(cs->roll)>TIP_ANGLE || fabs(cs->pitch)>TIP_ANGLE){
 		disarm_controller();
 		printf("\n TIPOVER DETECTED \n");
-		set_motors_to_zero();
+		set_motors_to_idle();
 		last_arm_state = DISARMED;
 		return 0;
 	}
-	
 
 	/***************************************************************************
-	* If transitioning from direct throttle to altitude control, prefill the 
-	* filter wth current throttle input to make smooth transition. This is also
-	* true if taking off for the first time in altitude mode as arm_controller 
-	* sets up last_alt_ctrl_en and last_usr_thr every time controller arms
+	* if not running or not armed, keep the motors in an idle state
 	***************************************************************************/
-	if(sp->altitude_ctrl_en && !last_alt_ctrl_en){
-		sp->altitude = cs->alt; // set altitude setpoint to current altitude
-		reset_filter(&D0);
-		prefill_filter_outputs(&D0,last_usr_thr);
-		last_alt_ctrl_en = 1;
+	if(get_state()!=RUNNING || arm_state==DISARMED){
+		set_motors_to_idle();
+		return 0;
 	}
-		
 
 	/***************************************************************************
 	* We are about to start marching the individual SISI controllers forward.
 	* Start by zeroing out the motors signals then add from there.
 	***************************************************************************/
-	for(i=0;i<ROTORS;i++) mot[i] = 0.0;
+	for(i=0;i<set->num_rotors;i++) mot[i] = 0.0;
+
 
 	/***************************************************************************
 	* Throttle/Altitude Controller
+	*
+	* If transitioning from direct throttle to altitude control, prefill the 
+	* filter with current throttle input to make smooth transition. This is also
+	* true if taking off for the first time in altitude mode as arm_controller 
+	* sets up last_alt_ctrl_en and last_usr_thr every time controller arms
 	***************************************************************************/
-	// if altitude control in not enabled, apply direct throttle
-	if(!sp->altitude_ctrl_en){
-		// save throttle in case of transition to altitude control
-		last_usr_thr = sp->Z_throttle; 
-		tmp = sp->Z_throttle / (cos(cs->roll)*cos(cs->pitch));
-		saturate_float(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-		u[VEC_THR] = tmp;
-		add_mixed_input(u[VEC_THR], VEC_THR, mot);
-		last_alt_ctrl_en = 0;
+	// // run altitude controller if enabled
+	// if(sp->en_alt_ctrl){
+	// 	if(last_alt_ctrl_en == 0){
+	// 		sp->altitude = cs->alt; // set altitude setpoint to current altitude
+	// 		reset_filter(&D0);
+	// 		prefill_filter_outputs(&D0,last_usr_thr);
+	// 		last_alt_ctrl_en = 1;
+	// 	}
+	// 	sp->altitude += sp->altitude_rate*DT;
+	// 	saturate_double(&sp->altitude, cs->alt-ALT_BOUND_D, cs->alt+ALT_BOUND_U);
+	// 	D0.gain = D0_GAIN * V_NOMINAL/cs->vbatt;
+	// 	tmp = march_filter(&D0, sp->altitude-cs->alt);
+	// 	u[VEC_THR] = tmp / cos(cs->roll)*cos(cs->pitch);
+	// 	saturate_double(&u[VEC_THR], MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
+	// 	add_mixed_input(u[VEC_THR], VEC_THR, mot);
+	// 	last_alt_ctrl_en = 1;
+	// }
+	// // else use direct throttle
+	// else{
+
+	// compensate for tilt
+	tmp = sp->Z_throttle / (cos(cs->roll)*cos(cs->pitch));
+	saturate_double(&tmp, -MIN_THRUST_COMPONENT, -MAX_THRUST_COMPONENT);
+	u[VEC_THR] = tmp;
+	add_mixed_input(u[VEC_THR], VEC_THR, mot);
+	// save throttle in case of transition to altitude control
+	last_usr_thr = sp->Z_throttle; 
+	last_alt_ctrl_en = 0;
+
+	/***************************************************************************
+	* Roll Pitch Yaw controllers, only run if enabled         
+	***************************************************************************/
+	if(sp->en_rpy_ctrl){
+		// Roll
+		check_channel_saturation(VEC_ROLL, mot, &min, &max);
+		if(max>MAX_ROLL_COMPONENT)  max =  MAX_ROLL_COMPONENT;
+		if(min<-MAX_ROLL_COMPONENT) min = -MAX_ROLL_COMPONENT;
+		enable_saturation(&D_roll, min, max);
+		D_roll.gain = D_roll_gain_orig * set->v_nominal/cs->v_batt;
+		u[VEC_ROLL]=march_filter(&D_roll, sp->roll - cs->roll);
+		add_mixed_input(u[VEC_ROLL], VEC_ROLL, mot);
+
+		// pitch
+		check_channel_saturation(VEC_PITCH, mot, &min, &max);
+		if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
+		if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
+		enable_saturation(&D_pitch, min, max);
+		D_pitch.gain = D_pitch_gain_orig * set->v_nominal/cs->v_batt;
+		u[VEC_PITCH] = march_filter(&D_pitch, sp->pitch - cs->pitch);
+		add_mixed_input(u[VEC_PITCH], VEC_PITCH, mot);
+
+		// Yaw
+		// if throttle stick is down (waiting to take off) keep yaw setpoint at
+		// current heading, otherwide update by yaw rate
+		sp->yaw += DT*sp->yaw_rate;
+		check_channel_saturation(VEC_YAW, mot, &min, &max);
+		if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
+		if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
+		enable_saturation(&D_yaw, min, max);
+		D_yaw.gain = D_yaw_gain_orig * set->v_nominal/cs->v_batt;
+		u[VEC_YAW] = march_filter(&D_yaw, sp->yaw - cs->yaw);
+		add_mixed_input(u[VEC_YAW], VEC_YAW, mot);
 	}
-	// altitude controller
 	else{
-		sp->altitude += sp->altitude_rate*DT;
-		saturate_float(&sp->altitude, cs->alt-ALT_BOUND_D, cs->alt+ALT_BOUND_U);
-		D0.gain = D0_GAIN * V_NOMINAL/cs->vbatt;
-		tmp = march_filter(&D0, sp->altitude-cs->alt);
-		u[VEC_THR] = tmp / cos(cs->roll)*cos(cs->pitch);
-		saturate_float(&u[VEC_THR], MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-		add_mixed_input(u[VEC_THR], VEC_THR, mot);
+		u[VEC_ROLL]		= 0.0;
+		u[VEC_PITCH]	= 0.0;
+		u[VEC_YAW]		= 0.0;
 	}
 
 	/***************************************************************************
-	* Roll Controller          
+	* X (Side) and Y (Forward) inputs, only when 6dof is enabled
 	***************************************************************************/
-	check_channel_saturation(VEC_ROLL, mot, &min, &max);
-	if(max>MAX_ROLL_COMPONENT)  max =  MAX_ROLL_COMPONENT;
-	if(min<-MAX_ROLL_COMPONENT) min = -MAX_ROLL_COMPONENT;
-	enable_saturation(&D1, min, max);
-	D1.gain = D1_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_ROLL]=march_filter(&D1, sp->roll - cs->roll);
-	add_mixed_input(u[VEC_ROLL], VEC_ROLL, mot);
-
-	/***************************************************************************
-	* Pitch Controller           
-	***************************************************************************/
-	check_channel_saturation(VEC_PITCH, mot, &min, &max);
-	if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
-	if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
-	enable_saturation(&D2, min, max);
-	D2.gain = D2_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_PITCH] = march_filter(&D2, sp->pitch - cs->pitch);	
-	add_mixed_input(u[VEC_PITCH], VEC_PITCH, mot);	
-	
-	/***************************************************************************
-	* Yaw Controller
-	***************************************************************************/
-	// if throttle stick is down (waiting to take off) keep yaw setpoint at
-	// current heading, otherwide update by yaw rate
-	if(ui->throttle_stick < -0.95) sp->yaw = cs->yaw;
-	else sp->yaw += DT*sp->yaw_rate;
-	saturate_float(&sp->yaw, cs->yaw-YAW_SP_BOUND, cs->yaw+YAW_SP_BOUND);
-	check_channel_saturation(VEC_YAW, mot, &min, &max);
-	if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
-	if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
-	enable_saturation(&D3, min, max);
-	D3.gain = D3_GAIN * V_NOMINAL/cs->vbatt;
-	u[VEC_YAW] = march_filter(&D3, sp->yaw - cs->yaw);
-	add_mixed_input(u[VEC_YAW], VEC_YAW, mot);
-	
-
-	/***************************************************************************
-	* Side and Forward inputs, only when 6dof is enabled
-	***************************************************************************/
-	if(sp->6dof_en){
-		// check for saturation limits and bound that in the hard limit
-		u[VEC_SIDE] = sp->X_throttle;
-		check_channel_saturation(VEC_SIDE, mot, &min, &max);
+	if(sp->en_6dof){
+		// Y (sideways)
+		u[VEC_Y] = sp->X_throttle;
+		check_channel_saturation(VEC_Y, mot, &min, &max);
 		if(max>MAX_X_COMPONENT)  max =  MAX_X_COMPONENT;
 		if(min<-MAX_X_COMPONENT) min = -MAX_X_COMPONENT;
-		saturate_float(&u[VEC_SIDE], min, max);
+		saturate_double(&u[VEC_Y], min, max);
 		// add mixed components to the motors
-		add_mixed_input(u[VEC_SIDE], VEC_SIDE, mot);
+		add_mixed_input(u[VEC_Y], VEC_Y, mot);
 
-		// check for saturation limits and bound that in the hard limit
-		u[VEC_FWD] = sp->Y_throttle;
-		check_channel_saturation(VEC_FWD, mot, &min, &max);
+		// X (forward)
+		u[VEC_X] = sp->Y_throttle;
+		check_channel_saturation(VEC_X, mot, &min, &max);
 		if(max>MAX_Y_COMPONENT)  max =  MAX_Y_COMPONENT;
 		if(min<-MAX_Y_COMPONENT) min = -MAX_Y_COMPONENT;
-		saturate_float(&u[VEC_FWD], min, max);
+		saturate_double(&u[VEC_X], min, max);
 		// add mixed components to the motors
-		add_mixed_input(u[VEC_FWD], VEC_SIDE, mot);
+		add_mixed_input(u[VEC_X], VEC_Y, mot);
 	}
 	else{
-		u[VEC_SIDE] = 0.0;
-		u[VEC_FWD]  = 0.0;
+		u[VEC_Y] = 0.0;
+		u[VEC_X] = 0.0;
 	}
-
 
 	/***************************************************************************
 	* Send ESC motor signals immediately at the end of the control loop
 	***************************************************************************/
-	for(i=0;i<ROTORS;i++){
-		saturate_float(&new_mot[i], 0.0, 1.0);
+	for(i=0;i<set.num_rotors;i++){
+		// write motor signals to cstate before final saturation so errors
+		// may show up in the logs
+		cs->m[i] = new_mot[i];
+		// Final saturation before sending motor signals to prevent errors
+		saturate_double(&new_mot[i], 0.0, 1.0);
 		send_esc_pulse_normalized(i+1,new_mot[i]);
-		cs->mot[i] = new_mot[i];	
 	}
-	
+
 	/***************************************************************************
 	* Add new log entry
 	***************************************************************************/
-	if(ENABLE_LOGGING){
-		new_log.loop_index 	= loop_index;
-		new_log.alt 	 	= cs->alt;
-		new_log.roll 	 	= cs->roll;
-		new_log.pitch 	 	= cs->pitch;
-		new_log.yaw 	 	= cs->yaw;
+	if(set.enable_logging){
+		new_log.loop_index	= loop_index;
+		new_log.alt			= cs->alt;
+		new_log.roll		= cs->roll;
+		new_log.pitch		= cs->pitch;
+		new_log.yaw			= cs->yaw;
+		new_log.vbatt		= cs->vbatt;
 		new_log.u_thr		= u[VEC_THR];
 		new_log.u_roll		= u[VEC_ROLL];
 		new_log.u_pitch		= u[VEC_PITCH];
 		new_log.u_yaw		= u[VEC_YAW];
-		new_log.u_X			= u[VEC_SIDE];
-		new_log.u_Y			= u[VEC_FWD];
-		new_log.mot_1		= mot[0];
-		new_log.mot_2		= mot[1];
-		new_log.mot_3		= mot[2];
-		new_log.mot_4		= mot[3];
-		new_log.mot_5		= mot[4];
-		new_log.mot_6		= mot[5];
-		new_log.vbatt		= cs->vbatt;
+		new_log.u_X			= u[VEC_Y];
+		new_log.u_Y			= u[VEC_X];
+		new_log.mot_1		= cs->m[0];
+		new_log.mot_2		= cs->m[1];
+		new_log.mot_3		= cs->m[2];
+		new_log.mot_4		= cs->m[3];
+		new_log.mot_5		= cs->m[4];
+		new_log.mot_6		= cs->m[5];
 		add_log_entry(new_log);
 	}
 

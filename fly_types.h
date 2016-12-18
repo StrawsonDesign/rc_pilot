@@ -195,25 +195,7 @@ typedef struct fly_settings_t{
 	int printf_motors;
 	int printf_mode;
 
-	
 } fly_settings_t;
-
-
-/*******************************************************************************
-* fly_controllers_t
-*
-* collection of all feedback controllers, used by json_settings.c to pass
-* controllers to feedback_controller.c neatly. Actual controllers used
-* exist in feedback_controller.c, this struct is just a transportation
-* method during setup.
-*******************************************************************************/
-typedef struct fly_controllers_t{
-	d_filter_t altitude_controller;
-	d_filter_t roll_controller;
-	d_filter_t pitch_controller;
-	d_filter_t yaw_controller;
-}fly_controllers_t;
-
 
 
 
