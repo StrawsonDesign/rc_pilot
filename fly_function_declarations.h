@@ -59,7 +59,7 @@ arm_state_t get_controller_arm_state();
 * program start. 
 *******************************************************************************/
 int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
-									imu_data_t* imu_data, user_input_t* ui);
+							imu_data_t* imu_data, fly_settings_t* settings);
 
 /*******************************************************************************
 * fly_controller()

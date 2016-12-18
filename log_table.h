@@ -8,18 +8,19 @@
 
 #define LOG_TABLE \
 	X(uint64_t,	"%lld",	loop_index	) \
+	X(uint64_t,	"%lld",	last_step_us) \
 									  \
-	X(double,	"%f",	alt			) \
+	X(double,	"%f",	altitude	) \
 	X(double,	"%f",	roll		) \
 	X(double,	"%f",	pitch		) \
 	X(double,	"%f",	yaw			) \
 									  \
-	X(double,	"%f",	u_thr		) \
+	X(double,	"%f",	u_X			) \
+	X(double,	"%f",	u_Y			) \
+	X(double,	"%f",	u_Z			) \
 	X(double,	"%f",	u_roll		) \
 	X(double,	"%f",	u_pitch		) \
 	X(double,	"%f",	u_yaw		) \
-	X(double,	"%f",	u_X			) \
-	X(double,	"%f",	u_Y			) \
 									  \
 	X(double,	"%f",	mot_1		) \
 	X(double,	"%f",	mot_2		) \
@@ -27,7 +28,7 @@
 	X(double,	"%f",	mot_4		) \
 	X(double,	"%f",	mot_5		) \
 	X(double,	"%f",	mot_6		) \
-	X(double,	"%f",	vbatt		)
+	X(double,	"%f",	v_batt		)
 
 
 /*******************************************************************************

@@ -6,7 +6,7 @@ TOUCH 	:= $(shell touch *)
 CC	:= gcc
 LINKER  := gcc -o
 CFLAGS	:= -c -Wall -g
-LFLAGS	:= -lm -lrt -lpthread -lroboticscape
+LFLAGS	:= -lm -lrt -lpthread -lroboticscape -ljson-c
 
 SOURCES  := $(wildcard *.c)
 INCLUDES := $(wildcard *.h)
@@ -30,6 +30,7 @@ $(TARGET): $(OBJECTS)
 # compiling command
 $(OBJECTS): %.o : %.c
 	@$(TOUCH) $(CC) $(CFLAGS) -c $< -o $(@)
+	@echo "Compiled: "$<
 
 
 all:

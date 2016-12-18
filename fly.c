@@ -56,7 +56,7 @@ int main(){
 		rc_blink_led(RED,5,3);
 		return -1;
 	}
-	if(initialize_mix_matrix(settings.layout)<0){
+	if(initialize_mixing_matrix(settings.layout)<0){
 		printf("ERROR: failed to initialize thrust map\n");
 		rc_blink_led(RED,5,3);
 		return -1;

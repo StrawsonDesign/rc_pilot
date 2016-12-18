@@ -110,8 +110,9 @@ typedef struct setpoint_t{
 * written to by the flight controller after initialization.
 *******************************************************************************/
 typedef struct cstate_t{
-	uint64_t arm_time_us;	// us since epoch when controller armed
-	uint64_t time_us;		// last time controller has finished a step
+	uint64_t loop_index;
+	uint64_t last_step_us;	// last time controller has finished a step
+
 
 	double altitude;		// altitude estimate from sea level (m)
 	double roll;			// current roll angle (rad)
@@ -119,6 +120,7 @@ typedef struct cstate_t{
 	double yaw;				// current yaw angle (rad)
 	double v_batt;			// main battery pack voltage (v)
 
+	double u[6];			// siso controller outputs
 	double m[8];			// signals sent to motors after mapping
 } cstate_t;
 

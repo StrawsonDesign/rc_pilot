@@ -13,7 +13,7 @@
 // BLheli ESC Low Timing
 // this one is in Newtons but it doesn't really matter
 const int mn1806_1400kv_4s_points = 11;
-float mn1806_1400kv_4s_map[][2] =  \
+double mn1806_1400kv_4s_map[][2] =  \
 {{0.0,	0.0000}, \
  {0.1,	0.2982}, \
  {0.2,	0.6310}, \
@@ -32,7 +32,7 @@ float mn1806_1400kv_4s_map[][2] =  \
 // blheli esc med-low timing
 // thrust units in gram-force but doesn't really matter
 const int f20_2300kv_2s_points = 21;
-float f20_2300kv_2s_map[][2] = \
+double f20_2300kv_2s_map[][2] = \
 {{0.00,	0.000000}, \
  {0.05,	6.892067}, \
  {0.10,	12.57954}, \

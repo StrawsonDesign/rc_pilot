@@ -79,7 +79,6 @@ START:
 * 
 *******************************************************************************/
 void* setpoint_manager(void* ptr){
-	int i;
 	double tmp;
 
 	// wait for IMU to settle
@@ -146,12 +145,12 @@ void* setpoint_manager(void* ptr){
 			// then scale and shift to be between thrust min/max
 			// Z-throttle should be negative since Z points down
 			tmp = (ui->thr_stick + 1.0)/2.0;
-			tmp = tmp * (MAX_Z_THROTTLE - MIN_Z_THROTTLE);
-			sp->Z_throttle = -(tmp + MIN_Z_THROTTLE);
+			tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
+			sp->Z_throttle = -(tmp + MIN_Z_COMPONENT);
 			
 			// if throttle stick is down all the way, probably landed, so
 			// keep the yaw setpoint at current yaw so it takes off straight
-			if(ui->throttle_stick < -0.95){
+			if(ui->thr_stick < -0.95){
 				sp->yaw = cs->yaw;
 				sp->yaw_rate = 0.0;
 			}
@@ -180,12 +179,12 @@ void* setpoint_manager(void* ptr){
 			// then scale and shift to be between thrust min/max
 			// Z-throttle should be negative since Z points down
 			tmp = (ui->thr_stick + 1.0)/2.0;
-			tmp = tmp * (MAX_Z_THROTTLE - MIN_Z_THROTTLE);
-			sp->Z_throttle = -(tmp + MIN_Z_THROTTLE);
+			tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
+			sp->Z_throttle = -(tmp + MIN_Z_COMPONENT);
 
 			// if throttle stick is down all the way, probably landed, so
 			// keep the yaw setpoint at current yaw so it takes off straight
-			if(ui->throttle_stick < -0.95){
+			if(ui->thr_stick < -0.95){
 				sp->yaw = cs->yaw;
 				sp->yaw_rate = 0.0;
 			}

@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <double.h>
+#include <float.h>
 #include "fly_types.h"
 #include "mixing_matrix_defs.h"
 
