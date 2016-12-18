@@ -84,21 +84,21 @@ typedef enum thrust_map_t{
 *******************************************************************************/
 typedef struct setpoint_t{
 	arm_state_t arm_state;
-	int en_alt_ctrl;	// set to 1 to enable altitude feedback.
-	int en_6dof;		// enable direct XY control via 6DOF model
-	int en_rpy_ctrl;	// enable the roll pitch yaw controllers
-	
+	int en_alt_ctrl;		// set to 1 to enable altitude feedback.
+	int en_6dof;			// enable direct XY control via 6DOF model
+	int en_rpy_ctrl;		// enable the roll pitch yaw controllers
+
 	// direct user inputs
-	double Z_throttle;	// only used with direct_throttle user mode
-	double X_throttle;	// only used with 6DOF user modes
-	double Y_throttle;	// only used with 6DOF user modes
-	
+	double Z_throttle;		// only used with direct_throttle user mode
+	double X_throttle;		// only used with 6DOF user modes
+	double Y_throttle;		// only used with 6DOF user modes
+
 	// attitude setpoint
 	double altitude;		// altitude from sea level, positive up (m)
-	double altitude_rate;// desired rate of change in altitude (m/s)
+	double altitude_rate;	// desired rate of change in altitude (m/s)
 	double roll;			// roll angle (positive tip right) (rad)
-	double pitch;		// pitch angle (positive tip back) (rad)
-	double yaw;			// yaw angle to magnetive field (rad)
+	double pitch;			// pitch angle (positive tip back) (rad)
+	double yaw;				// yaw angle to magnetive field (rad)
 	double yaw_rate;		// desired rate of change in yaw rad/s
 } setpoint_t;
 
@@ -113,16 +113,13 @@ typedef struct cstate_t{
 	uint64_t arm_time_us;	// us since epoch when controller armed
 	uint64_t time_us;		// last time controller has finished a step
 
-	// current state orientation and position
-	double altitude;			// altitude estimate from sea level (m)
-	double roll;				// current roll angle (rad)
+	double altitude;		// altitude estimate from sea level (m)
+	double roll;			// current roll angle (rad)
 	double pitch;			// current pitch angle (rad)
 	double yaw;				// current yaw angle (rad)
-
-	double u[6];				// u control output from controllers
-	double m[8];				// signals sent to motors after mapping
-	// misc
 	double v_batt;			// main battery pack voltage (v)
+
+	double m[8];			// signals sent to motors after mapping
 } cstate_t;
 
 
@@ -134,14 +131,14 @@ typedef struct cstate_t{
 *******************************************************************************/
 typedef struct user_input_t{
 	int user_input_active;		// set to 1 if continuous user input is working
-	flight_mode_t flight_mode;  // this is the user commanded flight_mode. 
-	arm_state_t kill_switch; 	// kill motors if set to DISARMED
+	flight_mode_t flight_mode;	// this is the user commanded flight_mode. 
+	arm_state_t kill_switch;	// kill motors if set to DISARMED
 	
 	// All sticks scaled from -1 to 1
-	double thr_stick;		// positive forward
-	double yaw_stick;		// positive to the right, CW yaw
-	double roll_stick;		// positive to the right
-	double pitch_stick;		// positive forward
+	double thr_stick;			// positive forward
+	double yaw_stick;			// positive to the right, CW yaw
+	double roll_stick;			// positive to the right
+	double pitch_stick;			// positive forward
 } user_input_t;
 
 

@@ -9,25 +9,25 @@
 #define LOG_TABLE \
 	X(uint64_t,	"%lld",	loop_index	) \
 									  \
-	X(float,	"%f",	alt			) \
-	X(float,	"%f",	roll		) \
-	X(float,	"%f",	pitch		) \
-	X(float,	"%f",	yaw			) \
+	X(double,	"%f",	alt			) \
+	X(double,	"%f",	roll		) \
+	X(double,	"%f",	pitch		) \
+	X(double,	"%f",	yaw			) \
 									  \
-	X(float,	"%f",	u_thr		) \
-	X(float,	"%f",	u_roll		) \
-	X(float,	"%f",	u_pitch		) \
-	X(float,	"%f",	u_yaw		) \
-	X(float,	"%f",	u_X			) \
-	X(float,	"%f",	u_Y			) \
+	X(double,	"%f",	u_thr		) \
+	X(double,	"%f",	u_roll		) \
+	X(double,	"%f",	u_pitch		) \
+	X(double,	"%f",	u_yaw		) \
+	X(double,	"%f",	u_X			) \
+	X(double,	"%f",	u_Y			) \
 									  \
-	X(float,	"%f",	mot_1		) \
-	X(float,	"%f",	mot_2		) \
-	X(float,	"%f",	mot_3		) \
-	X(float,	"%f",	mot_4		) \
-	X(float,	"%f",	mot_5		) \
-	X(float,	"%f",	mot_6		) \
-	X(float,	"%f",	vbatt		)
+	X(double,	"%f",	mot_1		) \
+	X(double,	"%f",	mot_2		) \
+	X(double,	"%f",	mot_3		) \
+	X(double,	"%f",	mot_4		) \
+	X(double,	"%f",	mot_5		) \
+	X(double,	"%f",	mot_6		) \
+	X(double,	"%f",	vbatt		)
 
 
 /*******************************************************************************
