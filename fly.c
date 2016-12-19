@@ -5,9 +5,9 @@
 * see README.txt for description and use				
 *******************************************************************************/
 
+#include <roboticscape.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <roboticscape.h>
 #include "fly_function_declarations.h"
 #include "fly_types.h"
 #include "fly_defs.h"
@@ -39,11 +39,11 @@ int main(){
 
 	// initialize cape hardware, this prints an error itself if unsuccessful
 	if(initialize_roboticscape()<0){
-		printf("failed to initialize_roboticscape\n");
 		rc_blink_led(RED,5,3);
 		return -1;
 	}
 	printf("cape initialized\n");
+
 
 	// set red led to indicate initialization has started
 	rc_set_led(RED,1);
@@ -52,9 +52,11 @@ int main(){
 	rc_set_state(UNINITIALIZED); 
 	
 	// set up button handler so user can exit by holding pause
+	printf("setting pause pressed in fly\n");
 	set_pause_pressed_func(&pause_pressed_func);
 
 	// do initialization not involving threads
+	printf("initializing thrust map\n");
 	if(initialize_thrust_map(settings.thrust_map)<0){
 		printf("ERROR: failed to initialize thrust map\n");
 		rc_blink_led(RED,5,3);

@@ -2,24 +2,24 @@
 TARGET = fly
 
 
-TOUCH 	:= $(shell touch *)
-CC	:= gcc
-LINKER  := gcc -o
-CFLAGS	:= -c -Wall -g
-LFLAGS	:= -lm -lrt -lpthread -lroboticscape -ljson-c
+TOUCH		:= $(shell touch *)
+CC			:= gcc
+LINKER		:= gcc -o
+CFLAGS		:= -c -Wall -g -O0
+LFLAGS		:= -ljson-c -lm -lrt -lpthread -lroboticscape
 
-SOURCES  := $(wildcard *.c)
-INCLUDES := $(wildcard *.h)
-OBJECTS  := $(SOURCES:$%.c=$%.o)
+SOURCES		:= $(wildcard *.c)
+INCLUDES	:= $(wildcard *.h)
+OBJECTS		:= $(SOURCES:$%.c=$%.o)
 
-prefix := /usr/local
-RM := rm -f
-INSTALL := install -m 755 
-INSTALLDIR := install -d -m 644 
+prefix		:= /usr/local
+RM			:= rm -f
+INSTALL		:= install -m 755 
+INSTALLDIR	:= install -d -m 644 
 
-LINK := ln -s -f
-LINKDIR := /etc/roboticscape
-LINKNAME := link_to_startup_program
+LINK		:= ln -s -f
+LINKDIR		:= /etc/roboticscape
+LINKNAME	:= link_to_startup_program
 
 
 # linking Objects
@@ -35,6 +35,12 @@ $(OBJECTS): %.o : %.c
 
 all:
 	$(TARGET)
+
+debug:
+	$(MAKE) $(MAKEFILE) DEBUGFLAG="-g -D DEBUG"
+	@echo " "
+	@echo "$(TARGET) Make Debug Complete"
+	@echo " "
 
 install: 
 	@$(MAKE) --no-print-directory

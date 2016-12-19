@@ -55,7 +55,7 @@ uint64_t start_time_us;
 
 // Local functions only for use in this c file
 int set_motors_to_idle();
-int feedback_controller(); // ISR
+void feedback_controller(); // ISR
 
 /*******************************************************************************
 * int disarm_controller()
@@ -179,11 +179,11 @@ int set_motors_to_idle(){
 
 
 /*******************************************************************************
-* feedback_controller()
+* void feedback_controller()
 *	
 * Should be called by the IMU interrupt at SAMPLE_RATE_HZ
 *******************************************************************************/
-int feedback_controller(){
+void feedback_controller(){
 	int i;
 	double tmp, min, max;
 	double new_mot[8];
@@ -229,7 +229,7 @@ int feedback_controller(){
 	***************************************************************************/
 	if(rc_get_state()!=RUNNING || arm_state==DISARMED){
 		set_motors_to_idle();
-		return 0;
+		return;
 	}
 
 	/***************************************************************************
@@ -391,5 +391,5 @@ int feedback_controller(){
 		add_log_entry(new_log);
 	}
 
-	return 0;
+	return;
 }

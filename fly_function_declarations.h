@@ -281,19 +281,19 @@ double apply_deadzone(double in, double zone);
 int send_pulse_to_rotors(int rotors, double val);
 
 /*******************************************************************************
-* int pause_pressed_func()
+* void pause_pressed_func()
 *
 * Disarm controller on momentary press.
 * If the user holds the pause button for BUTTON_EXIT_TIME_S, exit cleanly.
 *******************************************************************************/
-int pause_pressed_func();
+void pause_pressed_func();
 
 /*******************************************************************************
 * int on_pause_released() 
 *	
 * Make the Pause button toggle between paused and running states.
 *******************************************************************************/
-int on_pause_released();
+void on_pause_released();
 
 
 

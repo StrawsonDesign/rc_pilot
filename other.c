@@ -30,23 +30,23 @@ double apply_deadzone(double in, double zone){
 }
 
 /*******************************************************************************
-* int on_pause_released() 
+* void on_pause_released() 
 *	
 * Make the Pause button toggle between paused and running states.
 *******************************************************************************/
-int on_pause_released(){
+void on_pause_released(){
 	// toggle betewen paused and running modes
 	if(rc_get_state()==PAUSED)	rc_set_state(RUNNING);
-	return 0;
+	return;
 }
 
 /*******************************************************************************
-* int pause_pressed_func()
+* void pause_pressed_func()
 *
 * Disarm controller on momentary press.
 * If the user holds the pause button for BUTTON_EXIT_TIME_S, exit cleanly.
 *******************************************************************************/
-int pause_pressed_func(){
+void pause_pressed_func(){
 	int i;
 	const int samples = 100;	// check for release 100 times in this period
 	const int us_wait = 2000000; // 2 seconds
@@ -55,7 +55,7 @@ int pause_pressed_func(){
 	disarm_controller();
 
 	if(rc_get_state()==EXITING){
-		return 0;
+		return;
 	}
 	if(rc_get_state()==RUNNING){
 		rc_set_state(PAUSED);
@@ -64,11 +64,11 @@ int pause_pressed_func(){
 	// now keep checking to see if the button is still held down
 	for(i=0;i<samples;i++){
 		usleep(us_wait/samples);
-		if(get_pause_button() == RELEASED) return 0;
+		if(get_pause_button() == RELEASED) return;
 	}
 	printf("long press detected, shutting down\n");
 	rc_blink_led(RED, 5,1);
 	rc_set_state(EXITING);
-	return 0;
+	return;
 }
 
