@@ -35,12 +35,16 @@ int main(){
 		printf("ERROR: invalid settings file, quitting fly\n");
 		return -1;
 	}
+	printf("Loaded settings\n");
 
 	// initialize cape hardware, this prints an error itself if unsuccessful
 	if(initialize_roboticscape()<0){
+		printf("failed to initialize_roboticscape\n");
 		rc_blink_led(RED,5,3);
 		return -1;
 	}
+	printf("cape initialized\n");
+
 	// set red led to indicate initialization has started
 	rc_set_led(RED,1);
 	rc_set_led(GREEN,0);

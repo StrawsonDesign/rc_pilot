@@ -52,13 +52,10 @@ int load_settings_from_file(fly_settings_t* settings){
 	if(access(FLY_SETTINGS_FILE, F_OK)!=0){
 		printf("Fly settings file missing, making default\n");
 		jobj = get_default_settings();
+		printf("Writing default settings to file\n");
 		write_settings_to_file(jobj);
 	}
 	else{
-		if(write_settings_to_file(jobj)<0){
-			printf("ERROR, failed to write settings to disk\n");
-			return -1;
-		}
 		jobj = json_object_from_file(FLY_SETTINGS_FILE);
 		if(jobj==NULL){
 			printf("ERROR, failed to read settings from disk\n");
@@ -282,7 +279,7 @@ int load_settings_from_file(fly_settings_t* settings){
 
 
 	// parse dsm_yaw_ch
-	if(json_object_object_get_ex(jobj, "parse dsm_yaw_ch", &tmp)==0){
+	if(json_object_object_get_ex(jobj, "dsm_yaw_ch", &tmp)==0){
 		printf("ERROR: can't find parse dsm_yaw_ch in settings file\n");
 		return -1;
 	}
@@ -387,7 +384,7 @@ int load_settings_from_file(fly_settings_t* settings){
 
 
 	// parse dsm_yaw_pol
-	if(json_object_object_get_ex(jobj, "parse dsm_yaw_pol", &tmp)==0){
+	if(json_object_object_get_ex(jobj, "dsm_yaw_pol", &tmp)==0){
 		printf("ERROR: can't find parse dsm_yaw_pol in settings file\n");
 		return -1;
 	}
@@ -614,7 +611,7 @@ json_object* get_default_settings(){
 	out = json_object_new_object();
 
 	// Physical Parameters
-	tmp = json_object_new_string("LLAYOUT_6DOF_ROTORBITS");
+	tmp = json_object_new_string("LAYOUT_6DOF_ROTORBITS");
 	json_object_object_add(out, "layout", tmp);
 	tmp = json_object_new_string("MN1806_1400KV_4S");
 	json_object_object_add(out, "thrust_map", tmp);
@@ -633,11 +630,11 @@ json_object* get_default_settings(){
 	json_object_object_add(out, "enable_logging", tmp);
 
 	// flight modes
-	tmp = json_object_new_string("attitude");
+	tmp = json_object_new_string("DIRECT_THROTTLE");
 	json_object_object_add(out, "flight_mode_1", tmp);
-	tmp = json_object_new_string("6dof");
+	tmp = json_object_new_string("DIRECT_THROTTLE");
 	json_object_object_add(out, "flight_mode_2", tmp);
-	tmp = json_object_new_string("6dof");
+	tmp = json_object_new_string("DIRECT_THROTTLE");
 	json_object_object_add(out, "flight_mode_3", tmp);
 
 	// DSM radio config
@@ -666,7 +663,7 @@ json_object* get_default_settings(){
 	tmp = json_object_new_int(1);
 	json_object_object_add(out, "dsm_kill_pol", tmp);
 	tmp = json_object_new_int(3);
-	json_object_object_add(out, "dsm_num_modes", tmp);
+	json_object_object_add(out, "num_dsm_modes", tmp);
 
 	// features
 	tmp = json_object_new_boolean(TRUE);
@@ -957,7 +954,7 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 	}
 
 	// check CT continuous time or DT discrete time
-	if(json_object_object_get_ex(jobj, "CT_OR_DT", &tmp)==0){
+	if(json_object_object_get_ex(jobj, "CT_or_DT", &tmp)==0){
 		printf("ERROR: can't find CT_or_DT in settings file\n");
 		return -1;
 	}
@@ -965,7 +962,7 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 		printf("ERROR: CT_or_DT should be a string\n");
 		return -1;
 	}
-	tmp_str = (char*)json_object_get_string(jobj);
+	tmp_str = (char*)json_object_get_string(tmp);
 
 
 	// if CT, use tustin's approx to get to DT
@@ -991,6 +988,7 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 	// wrong value for CT_or_DT
 	else{
 		printf("ERROR: CT_or_DT must be 'CT' or 'DT'\n");
+		printf("instead got :%s\n", tmp_str);
 		return -1;
 	}
 
