@@ -3,7 +3,7 @@ TARGET = fly
 
 
 TOUCH		:= $(shell touch *)
-CC			:= gcc
+CC		:= gcc
 LINKER		:= gcc -o
 CFLAGS		:= -c -Wall -g -O0
 LFLAGS		:= -ljson-c -lm -lrt -lpthread -lroboticscape
@@ -13,9 +13,9 @@ INCLUDES	:= $(wildcard *.h)
 OBJECTS		:= $(SOURCES:$%.c=$%.o)
 
 prefix		:= /usr/local
-RM			:= rm -f
-INSTALL		:= install -m 755 
-INSTALLDIR	:= install -d -m 644 
+RM		:= rm -f
+INSTALL		:= install -o root -g root -m 4755
+INSTALLDIR	:= install -d -m 755 
 
 LINK		:= ln -s -f
 LINKDIR		:= /etc/roboticscape
@@ -44,7 +44,6 @@ debug:
 
 install: 
 	@$(MAKE) --no-print-directory
-	@$(INSTALLDIR) $(DESTDIR)$(prefix)/bin
 	@$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/bin
 	@echo "$(TARGET) Install Complete"
 	

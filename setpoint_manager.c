@@ -225,11 +225,11 @@ void* setpoint_manager(void* ptr){
 
 /*******************************************************************************
 * int start_setpoint_manager(setpoint_t* setpoint, user_input_t* user_input, \
-							cstate_t* cstate, fly_settings_t* settings)
+				cstate_t* cstate, fly_settings_t* settings)
 * Starts the setpoint manager thread
 *******************************************************************************/
 int start_setpoint_manager(setpoint_t* setpoint, user_input_t* user_input, \
-							cstate_t* cstate, fly_settings_t* settings){
+				cstate_t* cstate, fly_settings_t* settings){
 	sp = setpoint;
 	ui = user_input;
 	cs = cstate;
@@ -251,7 +251,7 @@ int join_setpoint_manager_thread(){
 	// wait for the thread to exit
 	struct timespec timeout;
 	clock_gettime(CLOCK_REALTIME, &timeout);
-	timespec_add(&timeout, SETPOINT_MANAGER_TIMEOUT);
+	rc_timespec_add(&timeout, SETPOINT_MANAGER_TIMEOUT);
 	int thread_err = 0;
 	thread_err = pthread_timedjoin_np(setpoint_manager_thread, NULL, &timeout);
 	if(thread_err == ETIMEDOUT){

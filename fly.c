@@ -16,10 +16,10 @@
 /*******************************************************************************
 * 	Global Variables				
 *******************************************************************************/
-setpoint_t		setpoint;
-cstate_t		cstate;
+setpoint_t	setpoint;
+cstate_t	cstate;
 user_input_t	user_input;
-imu_data_t		imu_data;
+rc_imu_data_t	imu_data;
 fly_settings_t	settings;
 
 /*******************************************************************************
@@ -29,21 +29,20 @@ fly_settings_t	settings;
 * triggers a shut down.
 *******************************************************************************/
 int main(){
+	// initialize cape hardware, this prints an error itself if unsuccessful
+	printf("initializing rc lib\n");
+	if(rc_initialize()){
+		printf("ERROR: RC lib failed to initialize\n");
+		return -1;
+	}
+	printf("RC lib initialized\n");
 
 	if(load_settings_from_file(&settings)){
-		rc_blink_led(RED,5,3);
 		printf("ERROR: invalid settings file, quitting fly\n");
+		rc_blink_led(RED,5,3);
 		return -1;
 	}
 	printf("Loaded settings\n");
-
-	// initialize cape hardware, this prints an error itself if unsuccessful
-	if(initialize_roboticscape()<0){
-		rc_blink_led(RED,5,3);
-		return -1;
-	}
-	printf("cape initialized\n");
-
 
 	// set red led to indicate initialization has started
 	rc_set_led(RED,1);
@@ -53,7 +52,7 @@ int main(){
 	
 	// set up button handler so user can exit by holding pause
 	printf("setting pause pressed in fly\n");
-	set_pause_pressed_func(&pause_pressed_func);
+	rc_set_pause_pressed_func(&pause_pressed_func);
 
 	// do initialization not involving threads
 	printf("initializing thrust map\n");
@@ -70,24 +69,24 @@ int main(){
 
 	// start barometer with max oversampling before IMU since imu will hog
 	// i2c bus once setup, barometer will be left alone till we call it.
-	if(initialize_barometer(BMP_OVERSAMPLE_16,BMP_FILTER_OFF)){
+	if(rc_initialize_barometer(BMP_OVERSAMPLE_16,BMP_FILTER_OFF)){
 		printf("ERROR: failed to initialize_barometer");
 		rc_blink_led(RED,5,3);
-		cleanup_roboticscape();
+		rc_cleanup();
 		return -1;
 	}
 
 	// start the IMU
-	imu_config_t conf = get_default_imu_config();
+	rc_imu_config_t conf = rc_default_imu_config();
 	conf.dmp_sample_rate = settings.feedback_hz;
 	conf.enable_magnetometer = 1;
 	conf.orientation = settings.bbb_orientation;
 
 	// now set up the imu for dmp interrupt operation
-	if(initialize_imu_dmp(&imu_data, conf)){
+	if(rc_initialize_imu_dmp(&imu_data, conf)){
 		printf("initialize_imu_failed\n");
 		rc_blink_led(RED,5,3);
-		cleanup_roboticscape();
+		rc_cleanup();
 		return -1;
 	}
 	// start threads
@@ -124,9 +123,9 @@ int main(){
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
 	join_printf_manager_thread();
-	power_off_imu();
-	power_off_barometer();
-	cleanup_roboticscape();
+	rc_power_off_imu();
+	rc_power_off_barometer();
+	rc_cleanup();
 	return 0;
 }
 

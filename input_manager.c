@@ -25,7 +25,7 @@ pthread_t input_manager_thread;
 *******************************************************************************/
 void* input_manager(void* ptr){
 	
-	double new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill;
+	float new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill;
 
 	if(ui==NULL){
 		printf("ERROR: can't start input_manager, ui struct pointer NULL\n");
@@ -33,11 +33,10 @@ void* input_manager(void* ptr){
 	}
 	
 	while(rc_get_state()!=EXITING){
-		
-		usleep(1000000/INPUT_MANAGER_HZ);
+		rc_usleep(1000000/INPUT_MANAGER_HZ);
 
 		// if dsm is not active, keep the ui zero'd out
-		if(!is_dsm_active()){
+		if(!rc_is_dsm_active()){
 			ui->user_input_active = 0;
 			ui->thr_stick = 0;
 			ui->roll_stick = 0;
@@ -49,22 +48,22 @@ void* input_manager(void* ptr){
 
 		// if dsm is connected but no new data is available, just wait and
 		// check next round
-		if(!is_new_dsm_data()) continue;
+		if(!rc_is_new_dsm_data()) continue;
 
 		// Read normalized (+-1) inputs from RC radio stick and multiply by 
 		// polarity setting so positive stick means positive setpoint
-		new_thr   = get_dsm_ch_normalized(set->dsm_thr_ch)*set->dsm_thr_pol;
-		new_roll  = get_dsm_ch_normalized(set->dsm_roll_ch)*set->dsm_roll_pol;
-		new_pitch = get_dsm_ch_normalized(set->dsm_pitch_ch)*set->dsm_pitch_pol;
-		new_yaw   = get_dsm_ch_normalized(set->dsm_yaw_ch)*set->dsm_yaw_pol;
-		new_kill  = get_dsm_ch_normalized(set->dsm_kill_ch)*set->dsm_kill_pol;
-		new_mode  = get_dsm_ch_normalized(set->dsm_mode_ch)*set->dsm_mode_pol;
+		new_thr   = rc_get_dsm_ch_normalized(set->dsm_thr_ch)*set->dsm_thr_pol;
+		new_roll  = rc_get_dsm_ch_normalized(set->dsm_roll_ch)*set->dsm_roll_pol;
+		new_pitch = rc_get_dsm_ch_normalized(set->dsm_pitch_ch)*set->dsm_pitch_pol;
+		new_yaw   = rc_get_dsm_ch_normalized(set->dsm_yaw_ch)*set->dsm_yaw_pol;
+		new_kill  = rc_get_dsm_ch_normalized(set->dsm_kill_ch)*set->dsm_kill_pol;
+		new_mode  = rc_get_dsm_ch_normalized(set->dsm_mode_ch)*set->dsm_mode_pol;
 		
 		// saturate the sticks to avoid possible erratic behavior
-		saturate_double(&new_thr,   -1.0, 1.0);
-		saturate_double(&new_roll,  -1.0, 1.0);
-		saturate_double(&new_pitch, -1.0, 1.0);
-		saturate_double(&new_yaw,   -1.0, 1.0);
+		rc_saturate_float(&new_thr,   -1.0, 1.0);
+		rc_saturate_float(&new_roll,  -1.0, 1.0);
+		rc_saturate_float(&new_pitch, -1.0, 1.0);
+		rc_saturate_float(&new_yaw,   -1.0, 1.0);
 		
 		// fill in sticks
 		ui->thr_stick   = new_thr;
@@ -110,7 +109,7 @@ int start_input_manager(user_input_t* user_input, fly_settings_t* settings){
 	pthread_create(&input_manager_thread, NULL, &input_manager, NULL);
 	struct sched_param params = {INPUT_MANAGER_PRIORITY};
 	pthread_setschedparam(input_manager_thread, SCHED_FIFO, &params);
-	usleep(1000);
+	rc_usleep(1000);
 	return 0;
 }
 
@@ -127,7 +126,7 @@ int join_input_manager_thread(){
 	// wait for the thread to exit
 	struct timespec timeout;
 	clock_gettime(CLOCK_REALTIME, &timeout);
-	timespec_add(&timeout, INPUT_MANAGER_TIMEOUT);
+	rc_timespec_add(&timeout, INPUT_MANAGER_TIMEOUT);
 	int thread_err = 0;
 	thread_err = pthread_timedjoin_np(input_manager_thread, NULL, &timeout);
 	if(thread_err == ETIMEDOUT){

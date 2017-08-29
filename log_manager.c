@@ -157,7 +157,7 @@ int start_log_manager(){
 	// make sure the previous log thread has stopped
 	struct timespec timeout;
 	clock_gettime(CLOCK_REALTIME, &timeout);
-	timespec_add(&timeout, LOG_MANAGER_TIMEOUT);
+	rc_timespec_add(&timeout, LOG_MANAGER_TIMEOUT);
 	int thread_err = 0;
 	thread_err = pthread_timedjoin_np(log_thread, NULL, &timeout);
 	if(thread_err == ETIMEDOUT){

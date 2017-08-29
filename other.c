@@ -12,13 +12,13 @@
 #include "fly_function_declarations.h"
 
 /*******************************************************************************
-* double apply_deadzone(double in, double zone)
+* float apply_deadzone(float in, float zone)
 *
 * Applies a dead zone to an input stick in. in is supposed to range from -1 to 1
 * the dead zone is centered around 0. zone specifies the distance from 0 the
 * zone extends.
 *******************************************************************************/
-double apply_deadzone(double in, double zone){
+float apply_deadzone(float in, float zone){
 	if(zone<=0.0){
 		printf("ERROR: dead zone must be > 0.0\n");
 		return in;
@@ -64,7 +64,7 @@ void pause_pressed_func(){
 	// now keep checking to see if the button is still held down
 	for(i=0;i<samples;i++){
 		usleep(us_wait/samples);
-		if(get_pause_button() == RELEASED) return;
+		if(rc_get_pause_button() == RELEASED) return;
 	}
 	printf("long press detected, shutting down\n");
 	rc_blink_led(RED, 5,1);

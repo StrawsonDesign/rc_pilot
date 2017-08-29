@@ -59,7 +59,7 @@ arm_state_t get_controller_arm_state();
 * program start. 
 *******************************************************************************/
 int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
-							imu_data_t* imu_data, fly_settings_t* settings);
+							rc_imu_data_t* imu_data, fly_settings_t* settings);
 
 /*******************************************************************************
 * fly_controller()
@@ -118,36 +118,36 @@ int load_settings_from_file(fly_settings_t* settings);
 int print_settings();
 
 /*******************************************************************************
-* int get_json_roll_controller(d_filter_t* ctrl)
+* int get_json_roll_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_roll_controller(d_filter_t* ctrl);
+int get_json_roll_controller(rc_filter_t* ctrl);
 
 /*******************************************************************************
-* int get_json_pitch_controller(d_filter_t* ctrl)
+* int get_json_pitch_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_pitch_controller(d_filter_t* ctrl);
+int get_json_pitch_controller(rc_filter_t* ctrl);
 
 /*******************************************************************************
-* int get_json_yaw_controller(d_filter_t* ctrl)
+* int get_json_yaw_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_yaw_controller(d_filter_t* ctrl);
+int get_json_yaw_controller(rc_filter_t* ctrl);
 
 /*******************************************************************************
-* int get_json_altitude_controller(d_filter_t* ctrl)
+* int get_json_altitude_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_altitude_controller(d_filter_t* ctrl);
+int get_json_altitude_controller(rc_filter_t* ctrl);
 
 
 
@@ -228,7 +228,7 @@ int stop_log_manager();
 int initialize_mixing_matrix(layout_t layout);
 
 /************************************************************************
-* int mix_all_controls(double u[6], double* mot)
+* int mix_all_controls(float u[6], float* mot)
 *	
 * fills the vector mot with the linear combination of roll pitch
 * yaw and throttle based on mixing matrix. if dof=6, X and Y are also
@@ -237,26 +237,26 @@ int initialize_mixing_matrix(layout_t layout);
 * input with check_channel_saturation then add inputs sequentially with 
 * add_mixed_input() instead.
 *******************************************************************************/
-int mix_all_controls(double u[6], double* mot);
+int mix_all_controls(float u[6], float* mot);
 
 /*******************************************************************************
-* int check_channel_saturation(int ch, double* mot, double* min, double* max)
+* int check_channel_saturation(int ch, float* mot, float* min, float* max)
 *	
 * checks to see if the desired input u on channel ch corresponding to throttle,
 * roll, pitch, etc would saturate a motor in the given motor array mot. If 
 * saturation would occur, it returns the maximum allowed input u.
 *******************************************************************************/
-int check_channel_saturation(int ch, double* mot, double* min, double* max);
+int check_channel_saturation(int ch, float* mot, float* min, float* max);
 
 /*******************************************************************************
-* int add_mixed_input(double u, int ch, double* mot)
+* int add_mixed_input(float u, int ch, float* mot)
 *	
 * Mixes the control input u for a single channel ch corresponding to throttle, 
 * roll pitch etc to the existing motor array mot. No saturation is done, the
 * input u should be checked for saturation validity with 
 * check_channel_saturation() first.
 *******************************************************************************/
-int add_mixed_input(double u, int ch, double* mot);
+int add_mixed_input(float u, int ch, float* mot);
 
 
 
@@ -265,20 +265,20 @@ int add_mixed_input(double u, int ch, double* mot);
 ////////////////////////////////////////////////////////////////////////////////
 
 /*******************************************************************************
-* double apply_dead_zone(double in, double zone)
+* float apply_dead_zone(float in, float zone)
 *
 * Applies a dead zone to an input stick in. in is supposed to range from -1 to 1
 * the dead zone is centered around 0. zone specifies the distance from 0 the
 * zone extends.
 *******************************************************************************/
-double apply_deadzone(double in, double zone);	
+float apply_deadzone(float in, float zone);	
 
 /*******************************************************************************
-* int send_pulse_to_rotors(int rotors, double val)
+* int send_pulse_to_rotors(int rotors, float val)
 *
 * sends signal 0 to all motor channels
 *******************************************************************************/
-int send_pulse_to_rotors(int rotors, double val);
+int send_pulse_to_rotors(int rotors, float val);
 
 /*******************************************************************************
 * void pause_pressed_func()
@@ -305,14 +305,14 @@ void on_pause_released();
 ////////////////////////////////////////////////////////////////////////////////
 
 /*******************************************************************************
-* int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
-					user_input_t* user_input, fly_settings_t* settings)
+* int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint, \
+			user_input_t* user_input, fly_settings_t* settings)
 *
 * Start the printf_manager which should be the only thing printing to the screen
 * besides error messages from other threads.
 *******************************************************************************/
-int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
-					user_input_t* user_input, fly_settings_t* settings);
+int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint, \
+			user_input_t* user_input, fly_settings_t* settings);
 
 /*******************************************************************************
 * int join_printf_manager_thread()
@@ -337,12 +337,12 @@ int join_printf_manager_thread();
 int initialize_thrust_map(thrust_map_t map);
 
 /*******************************************************************************
-* double map_motor_signal(double m)
+* float map_motor_signal(float m)
 *
 * Corrects the motor signal m for non-linear thrust curve in palce. Returns -1
 * on error, otherwise 0
 *******************************************************************************/
-double map_motor_signal(double m);
+float map_motor_signal(float m);
 
 
 

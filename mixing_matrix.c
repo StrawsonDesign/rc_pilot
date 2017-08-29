@@ -16,7 +16,7 @@
 #include "fly_types.h"
 #include "mixing_matrix_defs.h"
 
-double (*mix_matrix)[6];
+float (*mix_matrix)[6];
 int initialized;
 int rotors;
 int dof;
@@ -68,7 +68,7 @@ int initialize_mixing_matrix(layout_t layout){
 }
 
 /************************************************************************
-* int mix_all_controls(double u[6], double* mot)
+* int mix_all_controls(float u[6], float* mot)
 *	
 * fills the vector mot with the linear combination of roll pitch
 * yaw and throttle based on mixing matrix. if dof=6, X and Y are also
@@ -77,7 +77,7 @@ int initialize_mixing_matrix(layout_t layout){
 * input with check_channel_saturation then add inputs sequentially with 
 * add_mixed_input() instead.
 *******************************************************************************/
-int mix_all_controls(double u[6], double* mot){
+int mix_all_controls(float u[6], float* mot){
 	int i,j;
 	if(initialized!=1){
 		printf("ERROR: mix_all_controls, mixing matrix not set yet\n");
@@ -98,16 +98,16 @@ int mix_all_controls(double u[6], double* mot){
 }
 
 /*******************************************************************************
-* int check_channel_saturation(int ch, double* mot, double* min, double* max)
+* int check_channel_saturation(int ch, float* mot, float* min, float* max)
 *	
 * calculates the maximum (always positive) and minimum (always negative) inputs
 * that could be applied to a single channel given the current state of the
 * motors. Current motor inputs must be in [0,1] inclusive or an error will be
 * thrown. That condition is guaranteed by add_mixed_input(). 
 *******************************************************************************/
-int check_channel_saturation(int ch, double* mot, double* min, double* max){
+int check_channel_saturation(int ch, float* mot, float* min, float* max){
 	int i;
-	double tmp;
+	float tmp;
 
 	if(initialized!=1){
 		printf("ERROR: in check_channel_saturation, mix matrix not set yet\n");
@@ -127,7 +127,7 @@ int check_channel_saturation(int ch, double* mot, double* min, double* max){
 	}
 
 	// find max positive input
-	double new_max = FLT_MAX;
+	float new_max = FLT_MAX;
 	for(i=0;i<rotors;i++){
 		// if mix channel is 0, impossible to saturate
 		if(mix_matrix[i][ch]==0.0) continue;
@@ -140,7 +140,7 @@ int check_channel_saturation(int ch, double* mot, double* min, double* max){
 	}
 
 	// find min (most negative) input
-	double new_min = -FLT_MAX; 
+	float new_min = -FLT_MAX; 
 	for(i=0;i<rotors;i++){
 		// if mix channel is 0, impossible to saturate
 		if(mix_matrix[i][ch]==0.0) continue;
@@ -159,14 +159,14 @@ int check_channel_saturation(int ch, double* mot, double* min, double* max){
 
 
 /*******************************************************************************
-* int add_mixed_input(double u, int ch, double* mot)
+* int add_mixed_input(float u, int ch, float* mot)
 *
 * Mixes the control input u for a single channel ch corresponding to throttle, 
 * roll pitch etc to the existing motor array mot. The motor output is saturated
 * between 0 and 1 for safety only. Input u should be checked for saturation 
 * validity with check_channel_saturation() first to avoid 
 *******************************************************************************/
-int add_mixed_input(double u, int ch, double* mot){
+int add_mixed_input(float u, int ch, float* mot){
 	int i;
 	if(initialized!=1){
 		printf("ERROR: in add_mixed_input, mix matrix not set yet\n");

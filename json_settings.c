@@ -9,17 +9,17 @@
 #include <stdio.h>
 #include <string.h>	// FOR str_cmp()
 #include <fcntl.h>	// for F_OK
-#include <unistd.h> // for access()
+#include <unistd.h> 	// for access()
 
 #include <roboticscape.h>
 #include "fly_defs.h"
 #include "fly_types.h"
 
 // local copy of controllers to store before feedback_controller.c requests it
-d_filter_t roll_controller;
-d_filter_t pitch_controller;
-d_filter_t yaw_controller;
-d_filter_t altitude_controller;
+rc_filter_t roll_controller;
+rc_filter_t pitch_controller;
+rc_filter_t yaw_controller;
+rc_filter_t altitude_controller;
 
 // if anything goes wrong set this flag back to 0
 int was_load_successful = 0;
@@ -29,7 +29,7 @@ json_object* get_default_settings();
 int print_settings(json_object* jobj);
 int write_settings_to_file(json_object* jobj);
 int parse_flight_mode(json_object* jobj, flight_mode_t* mode);
-int parse_controller(json_object* jobj, d_filter_t* filter, int sample_rate_hz);
+int parse_controller(json_object* jobj, rc_filter_t* filter, int sample_rate_hz);
 
 /*******************************************************************************
 * int load_settings_from_file(fly_settings_t* settings)
@@ -62,7 +62,7 @@ int load_settings_from_file(fly_settings_t* settings){
 			return -1;
 		}
 	}
-	
+
 	#ifdef DEBUG
 	print_settings(jobj);
 	#endif
@@ -686,7 +686,7 @@ json_object* get_default_settings(){
 
 	// roll controller
 	tmp2 = json_object_new_object();
-	tmp = json_object_new_double(1.0);
+	tmp = json_object_new_double(1);
 	json_object_object_add(tmp2, "gain", tmp);
 	tmp = json_object_new_string("CT");
 	json_object_object_add(tmp2, "CT_or_DT", tmp);
@@ -827,9 +827,12 @@ int print_settings(json_object* jobj){
 * wrapper to clean up writing to file
 *******************************************************************************/
 int write_settings_to_file(json_object* jobj){
-
-return json_object_to_file_ext(FLY_SETTINGS_FILE, jobj, \
-							JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY);
+	int out;
+	out = json_object_to_file_ext(FLY_SETTINGS_FILE, jobj, \
+		JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY);
+	//out = json_object_to_file(FLY_SETTINGS_FILE, jobj);
+	printf("just wrote settings to file\n");
+	return out;
 }
 
 
@@ -865,32 +868,33 @@ int parse_flight_mode(json_object* jobj, flight_mode_t* mode){
 
 
 /*******************************************************************************
-* int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz)
+* int parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz)
 *
 * parses a json_object and sets up a new controller
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
+int parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 	struct json_object *array = NULL;	// to hold num & den arrays
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL;
 	double tmp_flt;
 	int i, num_len, den_len;
-	vector_t num_vec, den_vec;
+	rc_vector_t num_vec, den_vec;
 	double dt = 1.0/feedback_hz;
 
 	// destroy old memory in case the order changes
-	destroy_filter(filter);
+	rc_free_filter(filter);
 
 	// pull out gain
 	if(json_object_object_get_ex(jobj, "gain", &tmp)==0){
 		printf("ERROR: can't find controller gain in settings file\n");
 		return -1;
 	}
-	if(json_object_is_type(tmp, json_type_double)==0){
-		printf("ERROR: controller gain should be a double\n");
-		return -1;
-	}
+	// skip check here since "1" is not considered a double during check
+	// if(json_object_is_type(tmp, json_type_double)==0){
+	// 	printf("ERROR: controller gain should be a double\n");
+	// 	return -1;
+	// }
 	tmp_flt = json_object_get_double(tmp);
 
 
@@ -908,7 +912,7 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 		printf("ERROR, numerator must have at least 1 entry\n");
 		return -1;
 	}
-	num_vec = create_vector(num_len);
+	rc_alloc_vector(&num_vec,num_len);
 	for(i=0;i<num_len;i++){
 		tmp = json_object_array_get_idx(array,i);
 		if(json_object_is_type(tmp, json_type_double)==0){
@@ -916,7 +920,7 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		num_vec.data[i]=tmp_flt;
+		num_vec.d[i]=tmp_flt;
 	}
 
 
@@ -934,7 +938,7 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 		printf("ERROR, denominator must have at least 1 entry\n");
 		return -1;
 	}
-	den_vec = create_vector(den_len);
+	rc_alloc_vector(&den_vec,den_len);
 	for(i=0;i<den_len;i++){
 		tmp = json_object_array_get_idx(array,i);
 		if(json_object_is_type(tmp, json_type_double)==0){
@@ -942,14 +946,14 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		den_vec.data[i]=tmp_flt;
+		den_vec.d[i]=tmp_flt;
 	}
 
 	// check for improper TF
 	if(num_len>den_len){
 		printf("ERROR: improper transfer function\n");
-		destroy_vector(&num_vec);
-		destroy_vector(&den_vec);
+		rc_free_vector(&num_vec);
+		rc_free_vector(&den_vec);
 		return -1;
 	}
 
@@ -977,12 +981,18 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		*filter = C2DTustin(num_vec, den_vec, dt, tmp_flt);
+		if(rc_c2d_tustin(filter,num_vec, den_vec, dt, tmp_flt)){
+			printf("ERROR: failed to c2dtustin while parsing json\n");
+			return -1;
+		}
 	}
 
 	// if DT, much easier, just construct filter
 	else if(strcmp(tmp_str, "DT") == 0){
-		*filter = create_filter(num_vec, den_vec, dt);
+		if(rc_alloc_filter(filter,num_vec, den_vec, dt)){
+			printf("ERROR: failed to alloc filter in parse_controller()");
+			return -1;
+		}
 	}
 
 	// wrong value for CT_or_DT
@@ -998,12 +1008,12 @@ int parse_controller(json_object* jobj, d_filter_t* filter, int feedback_hz){
 
 
 /*******************************************************************************
-* int get_json_roll_controller(d_filter_t* ctrl)
+* int get_json_roll_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_roll_controller(d_filter_t* ctrl){
+int get_json_roll_controller(rc_filter_t* ctrl){
 	if(was_load_successful == 0){
 		printf("ERROR: can't get json controller, last read failed\n");
 		return -1;
@@ -1013,12 +1023,12 @@ int get_json_roll_controller(d_filter_t* ctrl){
 }
 
 /*******************************************************************************
-* int get_json_pitch_controller(d_filter_t* ctrl)
+* int get_json_pitch_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_pitch_controller(d_filter_t* ctrl){
+int get_json_pitch_controller(rc_filter_t* ctrl){
 	if(was_load_successful == 0){
 		printf("ERROR: can't get json controller, last read failed\n");
 		return -1;
@@ -1028,12 +1038,12 @@ int get_json_pitch_controller(d_filter_t* ctrl){
 }
 
 /*******************************************************************************
-* int get_json_yaw_controller(d_filter_t* ctrl)
+* int get_json_yaw_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_yaw_controller(d_filter_t* ctrl){
+int get_json_yaw_controller(rc_filter_t* ctrl){
 	if(was_load_successful == 0){
 		printf("ERROR: can't get json controller, last read failed\n");
 		return -1;
@@ -1043,12 +1053,12 @@ int get_json_yaw_controller(d_filter_t* ctrl){
 }
 
 /*******************************************************************************
-* int get_json_altitude_controller(d_filter_t* ctrl)
+* int get_json_altitude_controller(rc_filter_t* ctrl)
 *
 * gets the controllers read from the last json read.
 * returns 0 on success or -1 on failure
 *******************************************************************************/
-int get_json_altitude_controller(d_filter_t* ctrl){
+int get_json_altitude_controller(rc_filter_t* ctrl){
 	if(was_load_successful == 0){
 		printf("ERROR: can't get json controller, last read failed\n");
 		return -1;

@@ -3,7 +3,11 @@
 *
 *******************************************************************************/
 
-#include <roboticscape-usefulincludes.h>
+#define  _GNU_SOURCE
+#include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
 #include <roboticscape.h>
 #include "fly_defs.h"
 #include "fly_types.h"
@@ -18,20 +22,20 @@ pthread_t battery_manager_thread;
 * 
 *******************************************************************************/
 void* battery_manager(void* ptr){
-	double new_v;
+	float new_v;
 	while(rc_get_state()!=EXITING){
 		if(set->battery_connection==DC_BARREL_JACK){
-			new_v = get_dc_jack_voltage();
+			new_v = rc_dc_jack_voltage();
 		}
 		else if(set->battery_connection==BALANCE_PLUG){
-			new_v = get_battery_voltage();
+			new_v = rc_battery_voltage();
 		}
 		else{
 			printf("ERROR: invalid battery_connection_t\n");
 			new_v = set->v_nominal;
 		}
 		cs->v_batt = new_v;
-		usleep(1000000 / BATTERY_MANAGER_HZ);
+		rc_usleep(1000000 / BATTERY_MANAGER_HZ);
 	}
 	return NULL;
 }
@@ -63,7 +67,7 @@ int join_battery_manager_thread(){
 	// wait for the thread to exit
 	struct timespec timeout;
 	clock_gettime(CLOCK_REALTIME, &timeout);
-	timespec_add(&timeout, BATTERY_MANAGER_TIMEOUT);
+	rc_timespec_add(&timeout, BATTERY_MANAGER_TIMEOUT);
 	int thread_err = 0;
 	thread_err = pthread_timedjoin_np(battery_manager_thread, NULL, &timeout);
 	if(thread_err == ETIMEDOUT){

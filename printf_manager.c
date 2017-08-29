@@ -150,14 +150,14 @@ void* printf_manager(void* ptr){
 
 
 /*******************************************************************************
-* int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
-					user_input_t* user_input, fly_settings_t* settings)
+* int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint, \
+			user_input_t* user_input, fly_settings_t* settings)
 *
 * Start the printf_manager which should be the only thing printing to the screen
 * besides error messages from other threads.
 *******************************************************************************/
-int start_printf_manager(cstate_t* cstate,	setpoint_t* setpoint, \
-					user_input_t* user_input, fly_settings_t* settings){
+int start_printf_manager(cstate_t* cstate, setpoint_t* setpoint, \
+			user_input_t* user_input, fly_settings_t* settings){
 	cs = cstate;
 	sp = setpoint;
 	ui = user_input;
@@ -179,7 +179,7 @@ int join_printf_manager_thread(){
 	// wait for the thread to exit
 	struct timespec timeout;
 	clock_gettime(CLOCK_REALTIME, &timeout);
-	timespec_add(&timeout, PRINTF_MANAGER_TIMEOUT);
+	rc_timespec_add(&timeout, PRINTF_MANAGER_TIMEOUT);
 	int thread_err = 0;
 	thread_err = pthread_timedjoin_np(printf_manager_thread, NULL, &timeout);
 	if(thread_err == ETIMEDOUT){
