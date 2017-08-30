@@ -5,7 +5,7 @@ TARGET = fly
 TOUCH		:= $(shell touch *)
 CC		:= gcc
 LINKER		:= gcc -o
-CFLAGS		:= -c -Wall -g -O0
+CFLAGS		:= -c -Wall -g
 LFLAGS		:= -ljson-c -lm -lrt -lpthread -lroboticscape
 
 SOURCES		:= $(wildcard *.c)

@@ -35,8 +35,10 @@ int main(){
 		printf("ERROR: RC lib failed to initialize\n");
 		return -1;
 	}
+
 	printf("RC lib initialized\n");
 
+/*
 	if(load_settings_from_file(&settings)){
 		printf("ERROR: invalid settings file, quitting fly\n");
 		rc_blink_led(RED,5,3);
@@ -123,6 +125,7 @@ int main(){
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
 	join_printf_manager_thread();
+*/
 	rc_power_off_imu();
 	rc_power_off_barometer();
 	rc_cleanup();
