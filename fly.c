@@ -5,9 +5,9 @@
 * see README.txt for description and use				
 *******************************************************************************/
 
-#include <roboticscape.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <roboticscape.h>
 #include "fly_function_declarations.h"
 #include "fly_types.h"
 #include "fly_defs.h"
@@ -22,6 +22,12 @@ user_input_t	user_input;
 rc_imu_data_t	imu_data;
 fly_settings_t	settings;
 
+
+int just_testing(fly_settings_t* settings){
+	printf("inside just_testing\n");
+	return 0;
+
+}
 /*******************************************************************************
 * main()
 *
@@ -37,8 +43,8 @@ int main(){
 	}
 
 	printf("RC lib initialized\n");
-
-/*
+	
+	// printf("about to load settings from file\n");
 	if(load_settings_from_file(&settings)){
 		printf("ERROR: invalid settings file, quitting fly\n");
 		rc_blink_led(RED,5,3);
@@ -53,8 +59,7 @@ int main(){
 	rc_set_state(UNINITIALIZED); 
 	
 	// set up button handler so user can exit by holding pause
-	printf("setting pause pressed in fly\n");
-	rc_set_pause_pressed_func(&pause_pressed_func);
+	rc_set_pause_pressed_func(pause_pressed_func);
 
 	// do initialization not involving threads
 	printf("initializing thrust map\n");
@@ -125,7 +130,7 @@ int main(){
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
 	join_printf_manager_thread();
-*/
+
 	rc_power_off_imu();
 	rc_power_off_barometer();
 	rc_cleanup();

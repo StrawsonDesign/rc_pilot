@@ -41,14 +41,29 @@ int parse_controller(json_object* jobj, rc_filter_t* filter, int sample_rate_hz)
 *******************************************************************************/
 int load_settings_from_file(fly_settings_t* settings){
 
+	roll_controller = rc_empty_filter();	
+	#ifdef DEBUG
+	printf("debug\n");
+	#else
+	printf("no debug\n");
+	#endif
+
+	#ifdef DEBUG
+	//rc_usleep(500000);
+	fprintf(stderr,"beginning of load_settings_from_file\n");
+	rc_usleep(500000);
+	#endif
 	struct json_object *jobj = NULL;	// holds the top level obj from file
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL; // temp string poitner
 	double tmp_flt;
 	int tmp_int;
 
-	was_load_successful = 0;
+	was_load_successful = 0; 
 
+	#ifdef DEBUG
+	printf("about to check access of fly settings file\n");
+	#endif
 	if(access(FLY_SETTINGS_FILE, F_OK)!=0){
 		printf("Fly settings file missing, making default\n");
 		jobj = get_default_settings();
@@ -56,6 +71,9 @@ int load_settings_from_file(fly_settings_t* settings){
 		write_settings_to_file(jobj);
 	}
 	else{
+		#ifdef DEBUG
+		printf("about to read json from file\n");
+		#endif
 		jobj = json_object_from_file(FLY_SETTINGS_FILE);
 		if(jobj==NULL){
 			printf("ERROR, failed to read settings from disk\n");
@@ -449,7 +467,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		return -1;
 	}
 	settings->feedback_hz = tmp_int;
-
+	fprintf(stderr, "hz in json_settings: %d\n", tmp_int);
 
 
 
@@ -879,7 +897,8 @@ int parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 	char* tmp_str = NULL;
 	double tmp_flt;
 	int i, num_len, den_len;
-	rc_vector_t num_vec, den_vec;
+	rc_vector_t num_vec = rc_empty_vector();
+	rc_vector_t den_vec = rc_empty_vector();
 	double dt = 1.0/feedback_hz;
 
 	// destroy old memory in case the order changes

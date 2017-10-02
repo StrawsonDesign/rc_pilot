@@ -1,12 +1,11 @@
-
+# This is a general use makefile for robotics cape projects written in C.
+# Just change the target name to match your main source code filename.
 TARGET = fly
 
-
-TOUCH		:= $(shell touch *)
 CC		:= gcc
 LINKER		:= gcc -o
 CFLAGS		:= -c -Wall -g
-LFLAGS		:= -ljson-c -lm -lrt -lpthread -lroboticscape
+LFLAGS		:= -lm -lrt -lpthread -lroboticscape -ljson-c
 
 SOURCES		:= $(wildcard *.c)
 INCLUDES	:= $(wildcard *.h)
@@ -14,7 +13,7 @@ OBJECTS		:= $(SOURCES:$%.c=$%.o)
 
 prefix		:= /usr/local
 RM		:= rm -f
-INSTALL		:= install -o root -g root -m 4755
+INSTALL		:= install -m 4755
 INSTALLDIR	:= install -d -m 755 
 
 LINK		:= ln -s -f
@@ -28,10 +27,9 @@ $(TARGET): $(OBJECTS)
 
 
 # compiling command
-$(OBJECTS): %.o : %.c
-	@$(TOUCH) $(CC) $(CFLAGS) -c $< -o $(@)
+$(OBJECTS): %.o : %.c $(INCLUDES)
+	@$(CC) $(CFLAGS) $(DEBUGFLAG) -c $< -o $(@)
 	@echo "Compiled: "$<
-
 
 all:
 	$(TARGET)
@@ -42,11 +40,12 @@ debug:
 	@echo "$(TARGET) Make Debug Complete"
 	@echo " "
 
-install: 
+install:
 	@$(MAKE) --no-print-directory
+	@$(INSTALLDIR) $(DESTDIR)$(prefix)/bin
 	@$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/bin
 	@echo "$(TARGET) Install Complete"
-	
+
 clean:
 	@$(RM) $(OBJECTS)
 	@$(RM) $(TARGET)
@@ -60,4 +59,4 @@ runonboot:
 	@$(MAKE) install --no-print-directory
 	@$(LINK) $(DESTDIR)$(prefix)/bin/$(TARGET) $(LINKDIR)/$(LINKNAME)
 	@echo "$(TARGET) Set to Run on Boot"
-	
+
