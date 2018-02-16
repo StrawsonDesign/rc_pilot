@@ -1,12 +1,27 @@
-/*******************************************************************************
-* thrust_map_defs.h
-*
-* This are the experimental results that map ESC input to thrust output. 
-* The inputs (left column) must range from 0 to 1. The units of thrust
-* (right column) don't matter as the max thrust is normalized form 0 to 1 too.
-* There may be as many rows as you like, as long as they are monotonically
-* increasing. 
-*******************************************************************************/
+/**
+ * @headerfile thrust_map_defs.h
+ *
+ * This are the experimental results that map ESC input to thrust output. The
+ * inputs (left column) must range from 0 to 1. The units of thrust (right
+ * column) don't matter as the max thrust is normalized form 0 to 1 too. There
+ * may be as many rows as you like, as long as they are monotonically
+ * increasing.
+ **/
+
+
+#ifndef THRUST_MAP_DEFS_H
+#define THRUST_MAP_DEFS_H
+
+/**
+ * enum thrust_map_t
+ *
+ * the user may select from the following preconfigured thrust maps
+ */
+typedef enum thrust_map_t{
+	MN1806_1400KV_4S,
+	F20_2300KV_2S
+} thrust_map_t;
+
 
 
 // Tiger Motor MN1806, 1400KV 6x4.5" 3-blade prop, 14.8V,
@@ -58,4 +73,4 @@ double f20_2300kv_2s_map[][2] = \
 
 
 
-
+#endif // THRUST_MAP_DEFS_H
