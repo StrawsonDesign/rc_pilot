@@ -16,9 +16,9 @@
  *
  *             Used in battery_manager.c
  *
- * @param      core_state    the most recent attitude and controller values
+ * @param      core_state    pointer to the most recent attitude and controller values
  *                           reported by the fly_controller
- * @param      fly_settings  flight config settings from the json file
+ * @param      fly_settings  pointer to flight config settings from the json file
  *
  * @return     0 on success, -1 on failure
  */
