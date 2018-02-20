@@ -18,14 +18,14 @@
  *             contents. If no settings file exits, it makes a new one filled
  *             with defaults. Used in json_settings.c
  *
- * @param      settings  The settings
+ * @param      settings  pointer to flight setings struct
  *
  * @return     0 on success, -1 on failure
  */
 int load_settings_from_file(fly_settings_t* settings);
 
 /**
- * @brief      Only used in debug mode. (prints settings to console?)
+ * @brief      Only used in debug mode. Prints settings to console
  *
  *             Used in json_settings.c
  *
@@ -34,45 +34,44 @@ int load_settings_from_file(fly_settings_t* settings);
 int print_settings();
 
 /**
- * @brief      gets the (roll?) controllers read from the last json read.  !!!
+ * @brief      gets the roll controllers read from the last json read.  
  *
  *             Used in json_settings.c
  *
- * @param      ctrl  The control
+ * @param      ctrl  pointer to the roll controllers to retrieve
  *
  * @return     0 on success, -1 on failure
  */
 int get_json_roll_controller(rc_filter_t* ctrl);
 
 /**
- * @brief      gets the (pitch?) controllers read from the last json read.  !!!
+ * @brief      gets the pitch controllers read from the last json read.  
  *
  *             Used in json_settings.c
  *
- * @param      ctrl  The control
+ * @param      ctrl  pointer to the pitch controllers to retrieve
  *
  * @return     0 on success, -1 on failure
  */
 int get_json_pitch_controller(rc_filter_t* ctrl);
 
 /**
- * @brief      gets the (yaw?) controllers read from the last json read.  !!!
+ * @brief      gets the yaw controllers read from the last json read.  
  *
  *             Used in json_settings.c
  *
- * @param      ctrl  The control
+ * @param      ctrl  pointer to the yaw controllers to retrieve
  *
  * @return     0 on success, -1 on failure
  */
 int get_json_yaw_controller(rc_filter_t* ctrl);
 
 /**
- * @brief      gets the (altitude?) controllers read from the last json read.
- *             !!!
+ * @brief      gets the altitude controllers read from the last json read.
  *
  *             Used in json_settings.c
  *
- * @param      ctrl  The control
+ * @param      ctrl  pointer to the altitude controllers to retrieve
  *
  * @return     0 on success, -1 on failure
  */
