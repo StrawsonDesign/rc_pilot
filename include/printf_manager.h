@@ -16,10 +16,10 @@
  *             printing to the screen besides error messages from other threads.
  *
  *
- * @param      cstate      The cstate
- * @param      setpoint    The setpoint
- * @param      user_input  The user input
- * @param      settings    The settings
+ * @param      cstate      pointer to core state struct
+ * @param      setpoint    pointer to the setpoint struct for the feedback controllers
+ * @param      user_input  pointer to user_input_t struct, current user input command
+ * @param      settings    pointer to fly_settings_t struct, config settings from json file
  *
  * @return     0 on success, -1 on failure
  */
