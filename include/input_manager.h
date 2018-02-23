@@ -17,8 +17,8 @@
  *             Watch for new DSM data and translate into local user mode. Used
  *             in input_manager.c
  *
- * @param      user_input  The user input
- * @param      settings    The settings
+ * @param      user_input  pointer to user_intput_t struct, command input
+ * @param      settings    pointer to fly_settings_t sruct, json file config settings
  *
  * @return     0 on success, -1 on failure
  */
