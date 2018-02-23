@@ -40,7 +40,7 @@ arm_state_t get_controller_arm_state();
  * @brief      Initial setup of all feedback controllers. Should only be called
  *             once on program start.
  *
- * @param      cstate    pointer to clobal system core state
+ * @param      cstate    pointer to global system core state
  * @param      setpoint  pointer to global setpoint struct
  * @param      settings  pointer to global settings struct
  *
