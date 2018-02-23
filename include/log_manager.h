@@ -60,7 +60,7 @@ int start_log_manager();
  *
  *             Used in log_manager.c
  *
- * @param[in]  entry  The entry
+ * @param[in]  entry  The log_entry_t holding the LOG_TABLE to be printed. 
  *
  * @return     0 on success, -1 on failure
  */
@@ -71,7 +71,7 @@ int print_entry(log_entry_t entry);
  *
  *             Used in log_manager.c
  *
- * @param[in]  new_entry  The new entry
+ * @param[in]  new_entry  the log_entry_t to be written to the buffer
  *
  * @return     0 on success, -1 on failure
  */
