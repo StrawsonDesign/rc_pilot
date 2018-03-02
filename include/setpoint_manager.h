@@ -14,10 +14,10 @@
  *
  *             Used in setpoint_manager.c
  *
- * @param      setpoint    The setpoint
- * @param      user_input  The user input
- * @param      cstate      The cstate
- * @param      settings    The settings
+ * @param      setpoint    pointer to the setpoint_t struct
+ * @param      user_input  pointer to the user_input_t struct, user input command
+ * @param      cstate      pointer to the cstate_t struct, feedback controller core struct
+ * @param      settings    pointer to the fly_settings_t struct, setting configs from the json file.
  *
  * @return     0 on success, -1 on failure
  */
