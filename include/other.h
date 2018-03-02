@@ -19,8 +19,8 @@ float apply_deadzone(float in, float zone);
  *
  *             Used in other.c
  *
- * @param[in]  rotors  The rotors
- * @param[in]  val     The value
+ * @param[in]  rotors  The rotor id
+ * @param[in]  val     pulse signal strength, should be 0???
  *
  * @return     0 on success, -1 on failure
  */
