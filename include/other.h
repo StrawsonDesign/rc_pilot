@@ -15,18 +15,6 @@
 float apply_deadzone(float in, float zone);
 
 /**
- * @brief      sends signal 0 to all motor channels
- *
- *             Used in other.c
- *
- * @param[in]  rotors  The rotor id
- * @param[in]  val     pulse signal strength, should be 0???
- *
- * @return     0 on success, -1 on failure
- */
-int send_pulse_to_rotors(int rotors, float val);
-
-/**
  * @brief      Disarm the controller on momentary press. If the user holds the
  *             pause button for BUTTON_EXIT_TIME_S, exit cleanly.
  *
