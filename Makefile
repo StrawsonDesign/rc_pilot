@@ -1,62 +1,68 @@
 # This is a general use makefile for robotics cape projects written in C.
 # Just change the target name to match your main source code filename.
-TARGET = fly
+
+SRCDIR		:= src
+BINDIR		:= bin
+BUILDDIR	:= build
+INCLUDEDIR	:= include
+TARGET		:= $(BINDIR)/fly
+
+# file definitions for rules
+SOURCES		:= $(shell find $(SRCDIR) -type f -name *.c)
+OBJECTS		:= $(SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/%.o)
+INCLUDES	:= $(shell find $(INCLUDEDIR) -name '*.h')
 
 CC		:= gcc
-LINKER		:= gcc -o
-CFLAGS		:= -c -Wall -g
-LFLAGS		:= -lm -lrt -lpthread -lroboticscape -ljson-c
+LINKER		:= gcc
+WFLAGS		:= -Wall -Wextra
+CFLAGS		:= -I $(INCLUDEDIR)
+OPT_FLAGS	:= -O1
+LDFLAGS		:= -lm -lrt -pthread -lroboticscape -ljson-c
 
-SOURCES		:= $(wildcard *.c)
-INCLUDES	:= $(wildcard *.h)
-OBJECTS		:= $(SOURCES:$%.c=$%.o)
-
-prefix		:= /usr/local
-RM		:= rm -f
+RM		:= rm -rf
 INSTALL		:= install -m 4755
-INSTALLDIR	:= install -d -m 755 
+INSTALLDIR	:= install -d -m 755
 
 LINK		:= ln -s -f
 LINKDIR		:= /etc/roboticscape
 LINKNAME	:= link_to_startup_program
 
+prefix		?= /usr
+
 
 # linking Objects
 $(TARGET): $(OBJECTS)
-	@$(LINKER) $(@) $(OBJECTS) $(LFLAGS)
+	@mkdir -p $(BINDIR)
+	@$(LINKER) $(@) $(OBJECTS) $(LDFLAGS)
 
+# rule for all other objects
+$(BUILDDIR)/%.o : $(SRCDIR)/%.c $(INCLUDES)
+	@mkdir -p $(dir $(@))
+	@$(CC) -c $(CFLAGS) $(OPT_FLAGS) $(DEBUGFLAG) $< -o $(@)
+	@echo "made: $(@)"
 
-# compiling command
-$(OBJECTS): %.o : %.c $(INCLUDES)
-	@$(CC) $(CFLAGS) $(DEBUGFLAG) -c $< -o $(@)
-	@echo "Compiled: "$<
-
-all:
-	$(TARGET)
+all: $(TARGET)
 
 debug:
 	$(MAKE) $(MAKEFILE) DEBUGFLAG="-g -D DEBUG"
-	@echo " "
 	@echo "$(TARGET) Make Debug Complete"
-	@echo " "
 
 install:
-	@$(MAKE) --no-print-directory
 	@$(INSTALLDIR) $(DESTDIR)$(prefix)/bin
 	@$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/bin
 	@echo "$(TARGET) Install Complete"
 
 clean:
-	@$(RM) $(OBJECTS)
-	@$(RM) $(TARGET)
-	@echo "$(TARGET) Clean Complete"
+	@$(RM) $(BINDIR)
+	@$(RM) $(BUILDDIR)
+	@echo "Library Clean Complete"
 
 uninstall:
-	@$(RM) $(DESTDIR)$(prefix)/bin/$(TARGET)
+	@$(RM) $(DESTDIR)$(prefix)/$(TARGET)
 	@echo "$(TARGET) Uninstall Complete"
 
 runonboot:
-	@$(MAKE) install --no-print-directory
+	@$(MAKE) install
 	@$(LINK) $(DESTDIR)$(prefix)/bin/$(TARGET) $(LINKDIR)/$(LINKNAME)
 	@echo "$(TARGET) Set to Run on Boot"
 

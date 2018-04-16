@@ -8,7 +8,7 @@
 #define FLY_TYPES_H
 
 #include <stdint.h>
-
+#include <rc/mpu.h>
 #include <mixing_matrix_defs.h>
 #include <thrust_map_defs.h>
 
@@ -125,7 +125,7 @@ typedef struct fly_settings_t{
 	rotor_layout_t layout;
 	int dof;
 	thrust_map_t thrust_map;
-	rc_imu_orientation_t bbb_orientation;
+	rc_mpu_orientation_t orientation;
 	float v_nominal;
 	battery_connection_t battery_connection;
 	int feedback_hz;

@@ -1,21 +1,27 @@
-/*******************************************************************************
-* fly.c
-* 
-* James Strawson 2016
-* see README.txt for description and use				
-*******************************************************************************/
+/**
+* @file fly.c
+*
+* see README.txt for description and use
+**/
 
 #include <stdio.h>
 #include <unistd.h>
-#include <roboticscape.h>
+
+#include <rc/start_stop.h>
+#include <rc/adc.h>
+#include <rc/servo.h>
+#include <rc/mpu.h>
+#include <rc/dsm.h>
+#include <rc/bmp.h>
+
 #include "fly_function_declarations.h"
 #include "fly_types.h"
 #include "fly_defs.h"
 
 
-/*******************************************************************************
-* 	Global Variables				
-*******************************************************************************/
+/**
+ * Global Variables
+ */
 setpoint_t	setpoint;
 cstate_t	cstate;
 user_input_t	user_input;
@@ -23,27 +29,61 @@ rc_imu_data_t	imu_data;
 fly_settings_t	settings;
 
 
-int just_testing(fly_settings_t* settings){
-	printf("inside just_testing\n");
-	return 0;
-
-}
-/*******************************************************************************
-* main()
-*
-* Initialize the IMU, start all the threads, and wait still something 
-* triggers a shut down.
-*******************************************************************************/
-int main(){
+/**
+ * Initialize the IMU, start all the threads, and wait still something triggers
+ * a shut down.
+ *
+ * @return     0 on success, -1 on failure
+ */
+int main()
+{
 	// initialize cape hardware, this prints an error itself if unsuccessful
-	printf("initializing rc lib\n");
-	if(rc_initialize()){
-		printf("ERROR: RC lib failed to initialize\n");
+	if(rc_servo_init()==-1) return -1;
+	if(rc_adc_init()==-1) return -1;
+	if(rc_dsm_init()==-1) return -1;
+
+	// make sure another instance isn't running
+	// return value -3 means a root process is running and we need more
+	// privileges to stop it.
+	if(rc_kill_existing_process(2.0)==-3) return -1;
+
+	// start signal handler so we can exit cleanly
+	if(rc_enable_signal_handler()<0){
+		fprintf(stderr,"ERROR: failed to complete rc_enable_signal_handler\n");
 		return -1;
 	}
 
+	// initialize buttons
+	if(rc_button_init(RC_BTN_PIN_PAUSE, RC_BTN_POLARITY_NORM_HIGH,
+						RC_BTN_DEBOUNCE_DEFAULT_US)){
+		fprintf(stderr,"ERROR: failed to init buttons\n");
+		return -1;
+	}
+
+	// Assign functions to be called when button events occur
+	rc_button_set_callbacks(RC_BTN_PIN_PAUSE,on_pause_press,on_pause_release);
+	rc_button_set_callbacks(RC_BTN_PIN_MODE,NULL,on_mode_release);
+
+	// start with both LEDs off
+	if(rc_led_set(RC_LED_GREEN, 0)==-1){
+		fprintf(stderr, "ERROR in rc_blink, failed to set RC_LED_GREEN\n");
+		return -1;
+	}
+	if(rc_led_set(RC_LED_RED, 0)==-1){
+		fprintf(stderr, "ERROR in rc_blink, failed to set RC_LED_RED\n");
+		return -1;
+	}
+
+	// final setup
+	rc_make_pid_file();
+	rc_set_state(RUNNING);
+	mode = 0;
+	printf("\nPress mode to change blink rate\n");
+	printf("hold pause button to exit\n");
+
+
 	printf("RC lib initialized\n");
-	
+
 	// printf("about to load settings from file\n");
 	if(load_settings_from_file(&settings)){
 		printf("ERROR: invalid settings file, quitting fly\n");
@@ -56,8 +96,8 @@ int main(){
 	rc_set_led(RED,1);
 	rc_set_led(GREEN,0);
 	// set state to UNINITIALIZED, although initialize_roboticscape does this
-	rc_set_state(UNINITIALIZED); 
-	
+	rc_set_state(UNINITIALIZED);
+
 	// set up button handler so user can exit by holding pause
 	rc_set_pause_pressed_func(pause_pressed_func);
 
@@ -106,7 +146,7 @@ int main(){
 		printf("ERROR: can't start setpoint_manager\n");
 		rc_blink_led(RED,5,3);
 		return -1;
-	} 
+	}
 	// set up feedback controller
 	initialize_controller(&cstate, &setpoint, &imu_data, &settings);
 
@@ -125,7 +165,7 @@ int main(){
 	while(rc_get_state()!=EXITING){
 		usleep(100000);
 	}
-	
+
 	// cleanup before closing
 	join_setpoint_manager_thread();
 	join_input_manager_thread();

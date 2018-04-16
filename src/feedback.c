@@ -1,31 +1,28 @@
-/*******************************************************************************
-* feedback_controller.c
-*
-* Here lies the heart and soul of the operation. I wish the whole flight
-* controller could be just this file, woe is me. initialize_controllers()
-* pulls in the control constants from json_settings and sets up the 
-* discrete controllers. From then on out, feedback_controller() should be called
-* by the IMU interrupt at feedbacl_hz until the program is shut down. 
-* feedback_controller() will monitor the setpoint which is constantly being 
-* changed by setpoint_manager(). It also does state estimation to update 
-* core_state() even when the controller is disarmed. When controllers are
-* enabled or disabled mid-flight by mode switches then the controllers are
-* started smoothly.
-*******************************************************************************/
+/**
+ * @file feedback.c
+ *
+
+ */
 
 #include <stdio.h>
-#include <roboticscape.h>
 #include <math.h>
-#include "fly_defs.h"
-#include "fly_types.h"
-#include "fly_function_declarations.h"
+#include <rc/math/filter.h>
+#include <rc/start_stop.h>
+#include <rc/led.h>
+#include <rc/mpu.h>
+#include <rc/servo.h>
+
+#include <feedback.h>
+#include <fly_defs.h>
+#include <log_manager.h>
+#include <mixing_matrix.h>
 
 #define TWO_PI (M_PI*2.0)
 
 // pointers to outside structs
 setpoint_t* sp;
 cstate_t* cs;
-rc_imu_data_t* imu;
+rc_mpu_data_t* imu;
 fly_settings_t* set;
 
 // local arm state, set this from outside with arm/disarm_controller
@@ -57,29 +54,18 @@ uint64_t start_time_us;
 int set_motors_to_idle();
 void feedback_controller(); // ISR
 
-/*******************************************************************************
-* int disarm_controller()
-*	
-* This is how outside functions should stop the flight controller.
-* it would be reasonable to set motors to 0 here, but since this function can
-* be called from anywhere that might produce conflicts. Instead the interrupt
-* service routine will do this on the next loop after disarming to maintain
-* timing of pulses to the motors
-*******************************************************************************/
-int disarm_controller(){
+
+int disarm_controller()
+{
 	arm_state = DISARMED;
 	rc_set_led(RED,1);
-	rc_set_led(GREEN,0); 
-	stop_log_manager();
+	rc_set_led(GREEN,0);
 	return 0;
 }
 
-/*******************************************************************************
-* int disarm_controller()
-*	
-* This is how outside functions should stop the flight controller.
-*******************************************************************************/
-int arm_controller(){
+
+int arm_controller()
+{
 	if(arm_state==ARMED){
 		printf("WARNING: trying to arm when controller is already armed\n");
 		return -1;
@@ -107,30 +93,22 @@ int arm_controller(){
 	rc_prefill_filter_inputs(&D_roll, -cs->pitch);
 	// set LEDs
 	rc_set_led(RED,0);
-	rc_set_led(GREEN,1); 
-	// last thing is to flag as armed 
+	rc_set_led(GREEN,1);
+	// last thing is to flag as armed
 	arm_state = ARMED;
 	return 0;
 }
 
-/*******************************************************************************
-* arm_state_t get_controller_arm_state()
-*	
-* Returns the arm state of the controller so outside functions, namely the
-* setpoint_manager, can tell if the controller is armed or not.
-*******************************************************************************/
-arm_state_t get_controller_arm_state(){
+
+arm_state_t get_controller_arm_state()
+{
 	return arm_state;
 }
 
-/*******************************************************************************
-* initialize_controller()
-*
-* initial setup of all feedback controllers. Should only be called once on
-* program start. 
-*******************************************************************************/
-int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
-			rc_imu_data_t* imu_data, fly_settings_t* settings){
+
+int init_controller(cstate_t* cstate, setpoint_t* setpoint, \
+			rc_imu_data_t* imu_data, fly_settings_t* settings)
+{
 
 	// make local copies of pointers to global structs
 	cs = cstate;
@@ -161,33 +139,25 @@ int initialize_controller(cstate_t* cstate, setpoint_t* setpoint, \
 }
 
 
-/*******************************************************************************
-* int set_motors_to_idle()
-*
-* send slightly negative throttle to ESCs which keeps them awake but doesn't
-* move the motors.
-*******************************************************************************/
-int set_motors_to_idle(){
+
+int set_motors_to_idle()
+{
 	int i;
 	if(set->num_rotors>8){
 		printf("ERROR: set_motors_to_idle: too many rotors\n");
 		return -1;
 	}
-	for(i=1;i<=set->num_rotors;i++) rc_send_esc_pulse_normalized(i,-0.1);
+	for(i=1;i<=set->num_rotors;i++) rc_servo_send_esc_pulse_normalized(i,-0.1);
 	return 0;
 }
 
 
-/*******************************************************************************
-* void feedback_controller()
-*	
-* Should be called by the IMU interrupt at SAMPLE_RATE_HZ
-*******************************************************************************/
-void feedback_controller(){
+void feedback_controller()
+{
 	int i;
 	float tmp, min, max;
 	float new_mot[8];
-	
+
 	/***************************************************************************
 	*	STATE_ESTIMATION
 	*	read sensors and compute the state regardless of if the controller
@@ -203,7 +173,7 @@ void feedback_controller(){
 	// detect the crossover point at +-PI and write new value to core state
 	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
 	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
-	// finally num_yaw_spins is updated and the new value can be written 
+	// finally num_yaw_spins is updated and the new value can be written
 	cs->yaw = imu->fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
 	last_yaw = cs->yaw;
 
@@ -242,9 +212,9 @@ void feedback_controller(){
 	/***************************************************************************
 	* Throttle/Altitude Controller
 	*
-	* If transitioning from direct throttle to altitude control, prefill the 
+	* If transitioning from direct throttle to altitude control, prefill the
 	* filter with current throttle input to make smooth transition. This is also
-	* true if taking off for the first time in altitude mode as arm_controller 
+	* true if taking off for the first time in altitude mode as arm_controller
 	* sets up last_en_alt_ctrl and last_usr_thr every time controller arms
 	***************************************************************************/
 	// // run altitude controller if enabled
@@ -273,11 +243,11 @@ void feedback_controller(){
 	u[VEC_Z] = tmp;
 	add_mixed_input(u[VEC_Z], VEC_Z, mot);
 	// save throttle in case of transition to altitude control
-	last_usr_thr = sp->Z_throttle; 
+	last_usr_thr = sp->Z_throttle;
 	last_en_alt_ctrl = 0;
 
 	/***************************************************************************
-	* Roll Pitch Yaw controllers, only run if enabled         
+	* Roll Pitch Yaw controllers, only run if enabled
 	***************************************************************************/
 	if(sp->en_rpy_ctrl){
 		// Roll

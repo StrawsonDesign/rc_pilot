@@ -38,7 +38,7 @@ int initialize_mixing_matrix(rotor_layout_t layout);
  *             then add inputs sequentially with add_mixed_input() instead. Used
  *             in mixing_matrix.c
  *
- * @param      u     { parameter_description }
+ * @param      u     6 control inputs
  * @param      mot   The mot
  *
  * @return     0 on success, -1 on failure
@@ -54,8 +54,8 @@ int mix_all_controls(float u[6], float* mot);
  *             motor array mot. If saturation would occur, it returns the
  *             maximum allowed input u. Used in mixing_matrix.c
  *
- * @param[in]  ch    { parameter_description }
- * @param      mot   The mot
+ * @param[in]  ch    channel
+ * @param      mot   The motor signal to be saturated
  * @param      min   The minimum
  * @param      max   The maximum
  *
@@ -74,9 +74,9 @@ int check_channel_saturation(int ch, float* mot, float* min, float* max);
  *             validity with check_channel_saturation() first. Used in
  *             mixing_matrix.c
  *
- * @param[in]  u     { parameter_description }
- * @param[in]  ch    { parameter_description }
- * @param      mot   The mot
+ * @param[in]  u     control input
+ * @param[in]  ch    channel
+ * @param      mot   array of motor channels
  *
  * @return     0 on success, -1 on failure
  */

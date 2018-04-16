@@ -17,14 +17,10 @@ float apply_deadzone(float in, float zone);
 /**
  * @brief      Disarm the controller on momentary press. If the user holds the
  *             pause button for BUTTON_EXIT_TIME_S, exit cleanly.
- *
- *             Used in other.c
  */
-void pause_pressed_func();
+void on_pause_release();
 
 /**
  * @brief      Make the Pause button toggle between paused and running states.
- *
- *             Used in other.c
  */
-void on_pause_released();
+void on_pause_press();
