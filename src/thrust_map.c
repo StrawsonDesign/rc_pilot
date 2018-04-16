@@ -87,7 +87,7 @@ int initialize_thrust_map(thrust_map_t map){
 *
 * return the required normalized esc signal for desired normalized thrust t
 *******************************************************************************/
-double map_motor_signal(double m){
+float map_motor_signal(float m){
 	int i;
 	double pos;
 
