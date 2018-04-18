@@ -1,8 +1,8 @@
-/*******************************************************************************
-* fly_defs.h
-*
-* constants and parameters
-*******************************************************************************/
+/**
+ * <fly_defs.h>
+ *
+ * @brief constants and parameters
+ */
 
 // Flight Core Constants
 #define ARM_TIP_THRESHOLD	0.2	///< radians from level to allow arming sequence
@@ -42,7 +42,7 @@
 #define SETPOINT_MANAGER_PRI	90
 #define SETPOINT_MANAGER_TOUT	1.0
 #define DSM2_CHECK_HZ		100
-#define INPUT_MANAGER_HZ	100
+#define INPUT_MANAGER_HZ	10
 #define INPUT_MANAGER_PRI	80
 #define INPUT_MANAGER_TOUT	0.3
 #define LOG_MANAGER_HZ		20

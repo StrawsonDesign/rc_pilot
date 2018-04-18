@@ -115,58 +115,6 @@ typedef struct user_input_t{
 } user_input_t;
 
 
-/**
- * Configuration settings read from the json settings file and passed to most
- * threads as they initialize.
- */
-typedef struct fly_settings_t{
-	// physical parameters
-	int num_rotors;
-	rotor_layout_t layout;
-	int dof;
-	thrust_map_t thrust_map;
-	rc_mpu_orientation_t orientation;
-	float v_nominal;
-	battery_connection_t battery_connection;
-	int feedback_hz;
-
-	// features
-	int enable_freefall_detect;
-	int enable_logging;
-
-	// flight modes
-	flight_mode_t flight_mode_1;
-	flight_mode_t flight_mode_2;
-	flight_mode_t flight_mode_3;
-	int num_dsm_modes;
-
-	// dsm radio config
-	int dsm_thr_ch;
-	int dsm_roll_ch;
-	int dsm_pitch_ch;
-	int dsm_yaw_ch;
-	int dsm_mode_ch;
-	int dsm_kill_ch;
-	int dsm_thr_pol;
-	int dsm_roll_pol;
-	int dsm_pitch_pol;
-	int dsm_yaw_pol;
-	int dsm_mode_pol;
-	int dsm_kill_pol;
-
-	// printf settings
-	int printf_arm;
-	int printf_altitude;
-	int printf_rpy;
-	int printf_sticks;
-	int printf_setpoint;
-	int printf_u;
-	int printf_motors;
-	int printf_mode;
-
-} fly_settings_t;
-
-
 
 
 #endif // FLY_TYPES_H

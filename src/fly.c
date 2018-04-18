@@ -40,7 +40,6 @@ int main()
 	// initialize cape hardware, this prints an error itself if unsuccessful
 	if(rc_servo_init()==-1) return -1;
 	if(rc_adc_init()==-1) return -1;
-	if(rc_dsm_init()==-1) return -1;
 
 	// make sure another instance isn't running
 	// return value -3 means a root process is running and we need more
