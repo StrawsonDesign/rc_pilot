@@ -27,8 +27,8 @@ typedef enum thrust_map_t{
 // Tiger Motor MN1806, 1400KV 6x4.5" 3-blade prop, 14.8V,
 // BLheli ESC Low Timing
 // this one is in Newtons but it doesn't really matter
-const int mn1806_1400kv_4s_points = 11;
-double mn1806_1400kv_4s_map[][2] =  \
+#define MN1806_1400KV_4S_POINTS 11
+#define MN1806_1400KV_4S_MAP \
 {{0.0,	0.0000}, \
  {0.1,	0.2982}, \
  {0.2,	0.6310}, \
@@ -39,15 +39,15 @@ double mn1806_1400kv_4s_map[][2] =  \
  {0.7,	3.1365}, \
  {0.8,	3.7282}, \
  {0.9,	4.3147}, \
- {1.0,	4.7258}};
+ {1.0,	4.7258}}
 
 
 
 // tiger motor F20 2300kv motor, 2S lipo, 4x4.0" 3-blade props
 // blheli esc med-low timing
 // thrust units in gram-force but doesn't really matter
-const int f20_2300kv_2s_points = 21;
-double f20_2300kv_2s_map[][2] = \
+#define F20_2300KV_2S_POINTS 21
+#define F20_2300KV_2S_MAP \
 {{0.00,	0.000000}, \
  {0.05,	6.892067}, \
  {0.10,	12.57954}, \
@@ -68,7 +68,7 @@ double f20_2300kv_2s_map[][2] = \
  {0.85,	154.6838}, \
  {0.90,	162.0185}, \
  {0.95,	168.4321}, \
- {1.00,	177.1643}};
+ {1.00,	177.1643}}
 
 
 
