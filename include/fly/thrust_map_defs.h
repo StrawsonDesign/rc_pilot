@@ -1,5 +1,5 @@
 /**
- * @headerfile thrust_map_defs.h
+ * <fly/thrust_map_defs.h>
  *
  * This are the experimental results that map ESC input to thrust output. The
  * inputs (left column) must range from 0 to 1. The units of thrust (right

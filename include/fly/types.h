@@ -22,32 +22,8 @@ typedef enum arm_state_t{
 } arm_state_t;
 
 
-/**
- * flight_mode_t determines how the setpoint manager behaves
- *
- * DIRECT_THROTTLE: user inputs translate directly to the throttle, roll, pitch,
- * & yaw setpoints. No altitude feedback control. On 6DOF platforms roll and
- * pitch are kept level and right joystick inputs are direct to left/right
- * forward/back thrust
- *
- * FALLBACK_4DOF: only applicable to 6DOF platforms. Ignores left/right and
- * forward/back inputs, user controls pitch and roll instead.
- */
-typedef enum flight_mode_t{
-	DIRECT_THROTTLE,
-	FALLBACK_4DOF,
-	TEST_BENCH
-} flight_mode_t;
 
 
-/**
- * The user may elect to power the BBB off the 3-pin JST balance plug or the DC
- * barrel jack. This mode is set in the json config file.
- */
-typedef enum battery_connection_t{
-	BALANCE_PLUG,
-	DC_BARREL_JACK
-} battery_connection_t;
 
 
 /**

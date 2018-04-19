@@ -1,5 +1,5 @@
 /**
- * @headerfile mixing_matrix_defs.h <mixing_matrix_defs.h>
+ * <fly/mixing_matrix_defs.h>
  *
  * matrix definitions for mixing_matrix.c
  *

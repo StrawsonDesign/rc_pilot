@@ -1,5 +1,5 @@
 /**
- * <settings.h>
+ * <fly/settings.h>
  *
  * @brief      Functions to read the json settings file
  */
@@ -7,8 +7,15 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-
 #include <rc/math/filter.h>
+#include <rc/mpu.h>
+
+#include <fly/thrust_map_defs.h>
+#include <fly/mixing_matrix_defs.h>
+#include <fly/battery_manager.h>
+#include <fly/setpoint_manager.h>
+
+#define FLY_SETTINGS_FILE	"/var/lib/roboticscape/fly_settings.json"
 
 /**
  * @brief      determines how the setpoint manager behaves
@@ -89,11 +96,19 @@ typedef struct fly_settings_t{
  *             If no settings file exits, it makes a new one filled
  *             with defaults. Used in json_settings.c
  *
- * @param      settings  pointer to flight setings struct
- *
  * @return     0 on success, -1 on failure
  */
-int load_settings_from_file(fly_settings_t* settings);
+int load_settings_from_file();
+
+
+/**
+ * @brief      populates the caller's settings struct
+ *
+ * @param      set   pointer to settings struct to the populated
+ *
+ * @return     0 on success, -1 if settings have not been loaded from file yet
+ */
+int fly_get_settings(fly_settings_t* set);
 
 /**
  * @brief      Only used in debug mode. Prints settings to console

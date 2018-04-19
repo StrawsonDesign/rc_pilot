@@ -1,5 +1,5 @@
 /**
- * <fly_defs.h>
+ * <fly/defs.h>
  *
  * @brief constants and parameters
  */
@@ -61,7 +61,6 @@
 #define	EMERGENCY_DESCENT_RATE	0.5 // m/s
 
 // Files
-#define FLY_SETTINGS_FILE	"/home/debian/fly_settings.json"
 #define LOG_DIR			"/home/debian/fly_logs/"
 
 // for future modes, not used yet

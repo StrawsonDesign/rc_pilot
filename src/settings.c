@@ -16,8 +16,13 @@
 #include <fly/settings.h>
 #include <fly/defs.h>
 #include <fly/types.h>
+#include <fly/thrust_map_defs.h>
+#include <fly/mixing_matrix_defs.h>
 
-// local copy of controllers to store before feedback_controller.c requests it
+// json object respresentation of the whole settings file
+json_object* jobj;
+// local copy of settings and controllers to be requested by other c files
+static fly_settings_t settings;
 static rc_filter_t roll_controller;
 static rc_filter_t pitch_controller;
 static rc_filter_t yaw_controller;
@@ -32,11 +37,9 @@ static int was_load_successful = 0;
 /**
  * @brief      write a settings object to disk
  *
- * @param      jobj  The jobj containing settings
- *
  * @return     0 on success, -1 on failure
  */
-int __write_settings_to_disk(json_object* jobj){
+int __write_settings_to_disk(){
 	int out;
 	out = json_object_to_file_ext(FLY_SETTINGS_FILE, jobj, \
 		JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY);
@@ -54,15 +57,15 @@ int __write_settings_to_disk(json_object* jobj){
  *
  * @return     returns 0 on success or -1 on failure
  */
-int __parse_flight_mode(json_object* jobj, flight_mode_t* mode)
+int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 {
 	char* tmp_str = NULL;
 
-	if(json_object_is_type(jobj, json_type_string)==0){
+	if(json_object_is_type(jobj_str, json_type_string)==0){
 		fprintf(stderr,"ERROR: flight_mode should be a string\n");
 		return -1;
 	}
-	tmp_str = (char*)json_object_get_string(jobj);
+	tmp_str = (char*)json_object_get_string(jobj_str);
 	if(strcmp(tmp_str, "DIRECT_THROTTLE")==0){
 		*mode = DIRECT_THROTTLE;
 	}
@@ -89,7 +92,7 @@ int __parse_flight_mode(json_object* jobj, flight_mode_t* mode)
  *
  * @return     0 on success, -1 on failure
  */
-int __parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
+int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_hz){
 	struct json_object *array = NULL;	// to hold num & den arrays
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL;
@@ -103,7 +106,7 @@ int __parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 	rc_free_filter(filter);
 
 	// pull out gain
-	if(json_object_object_get_ex(jobj, "gain", &tmp)==0){
+	if(json_object_object_get_ex(jobj_ctl, "gain", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find controller gain in settings file\n");
 		return -1;
 	}
@@ -116,7 +119,7 @@ int __parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 
 
 	// pull out numerator
-	if(json_object_object_get_ex(jobj, "numerator", &array)==0){
+	if(json_object_object_get_ex(jobj_ctl, "numerator", &array)==0){
 		fprintf(stderr,"ERROR: can't find controller numerator in settings file\n");
 		return -1;
 	}
@@ -142,7 +145,7 @@ int __parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 
 
 	// pull out denominator
-	if(json_object_object_get_ex(jobj, "denominator", &array)==0){
+	if(json_object_object_get_ex(jobj_ctl, "denominator", &array)==0){
 		fprintf(stderr,"ERROR: can't find controller denominator in settings file\n");
 		return -1;
 	}
@@ -175,7 +178,7 @@ int __parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 	}
 
 	// check CT continuous time or DT discrete time
-	if(json_object_object_get_ex(jobj, "CT_or_DT", &tmp)==0){
+	if(json_object_object_get_ex(jobj_ctl, "CT_or_DT", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find CT_or_DT in settings file\n");
 		return -1;
 	}
@@ -189,7 +192,7 @@ int __parse_controller(json_object* jobj, rc_filter_t* filter, int feedback_hz){
 	// if CT, use tustin's approx to get to DT
 	if(strcmp(tmp_str, "CT")==0){
 		// get the crossover frequency
-		if(json_object_object_get_ex(jobj, "crossover_freq_rad_per_sec", &tmp)==0){
+		if(json_object_object_get_ex(jobj_ctl, "crossover_freq_rad_per_sec", &tmp)==0){
 			fprintf(stderr,"ERROR: can't find crossover frequency in settings file\n");
 			return -1;
 		}
@@ -438,20 +441,8 @@ json_object* __get_default_settings()
 
 
 
-int load_settings_from_file(fly_settings_t* settings){
-
-	roll_controller = rc_empty_filter();
-	#ifdef DEBUG
-	printf("debug\n");
-	#else
-	printf("no debug\n");
-	#endif
-
-	#ifdef DEBUG
-	//rc_usleep(500000);
-	fprintf(stderr,"beginning of load_settings_from_file\n");
-	rc_usleep(500000);
-	#endif
+int load_settings_from_file()
+{
 	struct json_object *jobj = NULL;	// holds the top level obj from file
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL; // temp string poitner
@@ -461,13 +452,15 @@ int load_settings_from_file(fly_settings_t* settings){
 	was_load_successful = 0;
 
 	#ifdef DEBUG
-	printf("about to check access of fly settings file\n");
+	fprintf(stderr,"beginning of load_settings_from_file\n");
+	fprintf(stderr,"about to check access of fly settings file\n");
 	#endif
+
 	if(access(FLY_SETTINGS_FILE, F_OK)!=0){
 		printf("Fly settings file missing, making default\n");
 		jobj = __get_default_settings();
 		printf("Writing default settings to file\n");
-		__write_settings_to_disk(jobj);
+		__write_settings_to_disk();
 	}
 	else{
 		#ifdef DEBUG
@@ -481,7 +474,7 @@ int load_settings_from_file(fly_settings_t* settings){
 	}
 
 	#ifdef DEBUG
-	print_settings(jobj);
+	print_settings();
 	#endif
 
 	// parse layout
@@ -495,24 +488,24 @@ int load_settings_from_file(fly_settings_t* settings){
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
 	if(strcmp(tmp_str, "LAYOUT_6DOF_ROTORBITS")==0){
-		settings->num_rotors = 6;
-		settings->layout = LAYOUT_6DOF_ROTORBITS;
+		settings.num_rotors = 6;
+		settings.layout = LAYOUT_6DOF_ROTORBITS;
 	}
 	else if(strcmp(tmp_str, "LAYOUT_4X")==0){
-		settings->num_rotors = 4;
-		settings->layout = LAYOUT_4X;
+		settings.num_rotors = 4;
+		settings.layout = LAYOUT_4X;
 	}
 	else if(strcmp(tmp_str, "LAYOUT_4PLUS")==0){
-		settings->num_rotors = 4;
-		settings->layout = LAYOUT_4PLUS;
+		settings.num_rotors = 4;
+		settings.layout = LAYOUT_4PLUS;
 	}
 	else if(strcmp(tmp_str, "LAYOUT_6X")==0){
-		settings->num_rotors = 6;
-		settings->layout = LAYOUT_6X;
+		settings.num_rotors = 6;
+		settings.layout = LAYOUT_6X;
 	}
 	else if(strcmp(tmp_str, "LAYOUT_8X")==0){
-		settings->num_rotors = 8;
-		settings->layout = LAYOUT_8X;
+		settings.num_rotors = 8;
+		settings.layout = LAYOUT_8X;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid layout string\n");
@@ -531,10 +524,10 @@ int load_settings_from_file(fly_settings_t* settings){
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
 	if(strcmp(tmp_str, "MN1806_1400KV_4S")==0){
-		settings->thrust_map = MN1806_1400KV_4S;
+		settings.thrust_map = MN1806_1400KV_4S;
 	}
 	else if(strcmp(tmp_str, "F20_2300KV_2S")==0){
-		settings->thrust_map = F20_2300KV_2S;
+		settings.thrust_map = F20_2300KV_2S;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid thrust_map string\n");
@@ -553,10 +546,10 @@ int load_settings_from_file(fly_settings_t* settings){
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
 	if(strcmp(tmp_str, "ORIENTATION_X_FORWARD")==0){
-		settings->bbb_orientation = ORIENTATION_X_FORWARD;
+		settings.bbb_orientation = ORIENTATION_X_FORWARD;
 	}
 	else if(strcmp(tmp_str, "ORIENTATION_Z_UP")==0){
-		settings->bbb_orientation = ORIENTATION_Z_UP;
+		settings.bbb_orientation = ORIENTATION_Z_UP;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid BBB Orientation\n");
@@ -578,7 +571,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: v_nominal should be between 7 and 18\n");
 		return -1;
 	}
-	settings->v_nominal = tmp_flt;
+	settings.v_nominal = tmp_flt;
 
 
 	// parse enable_freefall_detect
@@ -590,7 +583,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: enable_freefall_detect should be a boolean\n");
 		return -1;
 	}
-	settings->enable_freefall_detect = json_object_get_boolean(tmp);
+	settings.enable_freefall_detect = json_object_get_boolean(tmp);
 
 
 	// parse enable_logging
@@ -602,7 +595,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: enable_logging should be a boolean\n");
 		return -1;
 	}
-	settings->enable_logging = json_object_get_boolean(tmp);
+	settings.enable_logging = json_object_get_boolean(tmp);
 
 
 
@@ -611,21 +604,21 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: can't find flight_mode_1 in settings file\n");
 		return -1;
 	}
-	if(__parse_flight_mode(tmp, &settings->flight_mode_1)) return -1;
+	if(__parse_flight_mode(tmp, &settings.flight_mode_1)) return -1;
 
 	// parse flight_mode_2
 	if(json_object_object_get_ex(jobj, "flight_mode_2", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_2 in settings file\n");
 		return -1;
 	}
-	if(__parse_flight_mode(tmp, &settings->flight_mode_2)) return -1;
+	if(__parse_flight_mode(tmp, &settings.flight_mode_2)) return -1;
 
 	// parse flight_mode_3
 	if(json_object_object_get_ex(jobj, "flight_mode_3", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_3 in settings file\n");
 		return -1;
 	}
-	if(__parse_flight_mode(tmp, &settings->flight_mode_3)) return -1;
+	if(__parse_flight_mode(tmp, &settings.flight_mode_3)) return -1;
 
 
 	// parse num_dsm_modes
@@ -642,7 +635,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: num_dsm_modes must be 1,2 or 3\n");
 		return -1;
 	}
-	settings->num_dsm_modes = tmp_int;
+	settings.num_dsm_modes = tmp_int;
 
 
 	// parse dsm_thr_ch
@@ -659,7 +652,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel must be between 1 & 9\n");
 		return -1;
 	}
-	settings->dsm_thr_ch = tmp_int;
+	settings.dsm_thr_ch = tmp_int;
 
 	// parse dsm_thr_pol
 	if(json_object_object_get_ex(jobj, "dsm_thr_pol", &tmp)==0){
@@ -675,7 +668,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel polarity must be 1 or -1\n");
 		return -1;
 	}
-	settings->dsm_thr_pol = tmp_int;
+	settings.dsm_thr_pol = tmp_int;
 
 
 	// parse dsm_roll_ch
@@ -692,7 +685,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel must be between 1 & 9\n");
 		return -1;
 	}
-	settings->dsm_roll_ch = tmp_int;
+	settings.dsm_roll_ch = tmp_int;
 
 	// parse dsm_roll_pol
 	if(json_object_object_get_ex(jobj, "dsm_roll_pol", &tmp)==0){
@@ -708,7 +701,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel polarity must be 1 or -1\n");
 		return -1;
 	}
-	settings->dsm_roll_pol = tmp_int;
+	settings.dsm_roll_pol = tmp_int;
 
 
 	// parse dsm_pitch_ch
@@ -724,7 +717,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel must be between 1 & 9\n");
 		return -1;
 	}
-	settings->dsm_pitch_ch = tmp_int;
+	settings.dsm_pitch_ch = tmp_int;
 
 	// parse dsm_pitch_pol
 	if(json_object_object_get_ex(jobj, "dsm_pitch_pol", &tmp)==0){
@@ -739,7 +732,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel polarity must be 1 or -1\n");
 		return -1;
 	}
-	settings->dsm_pitch_pol = tmp_int;
+	settings.dsm_pitch_pol = tmp_int;
 
 
 	// parse dsm_yaw_ch
@@ -756,7 +749,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel must be between 1 & 9\n");
 		return -1;
 	}
-	settings->dsm_yaw_ch = tmp_int;
+	settings.dsm_yaw_ch = tmp_int;
 
 	// parse dsm_yaw_pol
 	if(json_object_object_get_ex(jobj, "dsm_yaw_pol", &tmp)==0){
@@ -772,7 +765,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel polarity must be 1 or -1\n");
 		return -1;
 	}
-	settings->dsm_yaw_pol = tmp_int;
+	settings.dsm_yaw_pol = tmp_int;
 
 
 	// parse dsm_mode_ch
@@ -789,7 +782,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel must be between 1 & 9\n");
 		return -1;
 	}
-	settings->dsm_mode_ch = tmp_int;
+	settings.dsm_mode_ch = tmp_int;
 
 	// parse dsm_mode_pol
 	if(json_object_object_get_ex(jobj, "dsm_mode_pol", &tmp)==0){
@@ -805,7 +798,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel polarity must be 1 or -1\n");
 		return -1;
 	}
-	settings->dsm_mode_pol = tmp_int;
+	settings.dsm_mode_pol = tmp_int;
 
 
 	// parse kill mode
@@ -819,10 +812,10 @@ int load_settings_from_file(fly_settings_t* settings){
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
 	if(strcmp(tmp_str, "DSM_KILL_DEDICATED_SWITCH")==0){
-		settings->dsm_kill_mode = DSM_KILL_DEDICATED_SWITCH;
+		settings.dsm_kill_mode = DSM_KILL_DEDICATED_SWITCH;
 	}
 	else if(strcmp(tmp_str, "DSM_KILL_NEGATIVE_THROTTLE")==0){
-		settings->dsm_kill_mode = DSM_KILL_DEDICATED_SWITCH;
+		settings.dsm_kill_mode = DSM_KILL_DEDICATED_SWITCH;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid dsm_kill_mode string\n");
@@ -843,7 +836,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel must be between 1 & 9\n");
 		return -1;
 	}
-	settings->dsm_kill_ch = tmp_int;
+	settings.dsm_kill_ch = tmp_int;
 
 	// parse dsm_kill_pol
 	if(json_object_object_get_ex(jobj, "dsm_kill_pol", &tmp)==0){
@@ -859,7 +852,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: DSM channel polarity must be 1 or -1\n");
 		return -1;
 	}
-	settings->dsm_kill_pol = tmp_int;
+	settings.dsm_kill_pol = tmp_int;
 
 
 
@@ -878,7 +871,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: feedback_hz must be 50,100,or 200\n");
 		return -1;
 	}
-	settings->feedback_hz = tmp_int;
+	settings.feedback_hz = tmp_int;
 	fprintf(stderr, "hz in json_settings: %d\n", tmp_int);
 
 
@@ -892,7 +885,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_arm should be a boolean\n");
 		return -1;
 	}
-	settings->printf_arm = json_object_get_boolean(tmp);
+	settings.printf_arm = json_object_get_boolean(tmp);
 
 	// parse printf_altitude
 	if(json_object_object_get_ex(jobj, "printf_altitude", &tmp)==0){
@@ -903,7 +896,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_altitude should be a boolean\n");
 		return -1;
 	}
-	settings->printf_altitude = json_object_get_boolean(tmp);
+	settings.printf_altitude = json_object_get_boolean(tmp);
 
 
 	// parse printf_rpy
@@ -915,7 +908,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_rpy should be a boolean\n");
 		return -1;
 	}
-	settings->printf_rpy = json_object_get_boolean(tmp);
+	settings.printf_rpy = json_object_get_boolean(tmp);
 
 
 	// parse printf_sticks
@@ -927,7 +920,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_sticks should be a boolean\n");
 		return -1;
 	}
-	settings->printf_sticks = json_object_get_boolean(tmp);
+	settings.printf_sticks = json_object_get_boolean(tmp);
 
 	// parse printf_setpoint
 	if(json_object_object_get_ex(jobj, "printf_setpoint", &tmp)==0){
@@ -938,7 +931,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_setpoint should be a boolean\n");
 		return -1;
 	}
-	settings->printf_setpoint = json_object_get_boolean(tmp);
+	settings.printf_setpoint = json_object_get_boolean(tmp);
 
 	// parse printf_u
 	if(json_object_object_get_ex(jobj, "printf_u", &tmp)==0){
@@ -949,7 +942,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_u should be a boolean\n");
 		return -1;
 	}
-	settings->printf_u = json_object_get_boolean(tmp);
+	settings.printf_u = json_object_get_boolean(tmp);
 
 
 	// parse printf_motors
@@ -961,7 +954,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_motors should be a boolean\n");
 		return -1;
 	}
-	settings->printf_motors = json_object_get_boolean(tmp);
+	settings.printf_motors = json_object_get_boolean(tmp);
 
 
 	// parse printf_mode
@@ -973,7 +966,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: printf_mode should be a boolean\n");
 		return -1;
 	}
-	settings->printf_mode = json_object_get_boolean(tmp);
+	settings.printf_mode = json_object_get_boolean(tmp);
 
 
 
@@ -982,7 +975,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: can't find roll_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &roll_controller, settings->feedback_hz)){
+	if(__parse_controller(tmp, &roll_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse roll_controller\n");
 		return -1;
 	}
@@ -992,7 +985,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: can't find pitch_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &pitch_controller, settings->feedback_hz)){
+	if(__parse_controller(tmp, &pitch_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse pitch_controller\n");
 		return -1;
 	}
@@ -1002,7 +995,7 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: can't find yaw_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &yaw_controller, settings->feedback_hz)){
+	if(__parse_controller(tmp, &yaw_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse yaw_controller\n");
 		return -1;
 	}
@@ -1012,22 +1005,30 @@ int load_settings_from_file(fly_settings_t* settings){
 		fprintf(stderr,"ERROR: can't find altitude_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &altitude_controller, settings->feedback_hz)){
+	if(__parse_controller(tmp, &altitude_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse altitude_controller\n");
 		return -1;
 	}
-
-
 
 	json_object_put(jobj);	// free memory
 	was_load_successful = 1;
 	return 0;
 }
 
+int fly_get_settings(fly_settings_t* set)
+{
+	if(was_load_successful==0){
+		fprintf(stderr, "ERROR in fly_get_settings, settings not loaded from file yet\n");
+		return -1;
+	}
+	*set=settings;
+	return 0;
+}
 
 
 
-int print_settings(json_object* jobj)
+
+int print_settings()
 {
 	if(jobj == NULL){
 		fprintf(stderr,"ERROR: NULL object passed to print_settings\n");

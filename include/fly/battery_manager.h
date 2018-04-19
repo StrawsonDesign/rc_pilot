@@ -1,5 +1,5 @@
 /**
- * @file battery_manager.h
+ * <fly/battery_manager.h>
  *
  * @brief Functions to start and stop the battery manager thread
  *
@@ -8,21 +8,21 @@
 #ifndef BATTERY_MANAGER_H
 #define BATTERY_MANAGER_H
 
-#include <fly_types.h>
-
+/**
+ * The user may elect to power the BBB off the 3-pin JST balance plug or the DC
+ * barrel jack. This mode is set in the json config file.
+ */
+typedef enum battery_connection_t{
+	BALANCE_PLUG,
+	DC_BARREL_JACK
+} battery_connection_t;
 
 /**
  * @brief      Starts a battery manager thread.
  *
- *             Used in battery_manager.c
- *
- * @param      core_state    pointer to the most recent attitude and controller values
- *                           reported by the fly_controller
- * @param      fly_settings  pointer to flight config settings from the json file
- *
  * @return     0 on success, -1 on failure
  */
-int start_battery_manager(cstate_t* core_state, fly_settings_t* fly_settings);
+int start_battery_manager();
 
 /**
  * @brief      Waits for the battery manager thread to exit.

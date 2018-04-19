@@ -14,19 +14,7 @@
 #include <rc/dsm.h>
 #include <rc/bmp.h>
 
-#include "fly_function_declarations.h"
-#include "fly_types.h"
-#include "fly_defs.h"
-
-
-/**
- * Global Variables
- */
-setpoint_t	setpoint;
-cstate_t	cstate;
-user_input_t	user_input;
-rc_imu_data_t	imu_data;
-fly_settings_t	settings;
+#include <fly/settings.h>
 
 
 /**
@@ -37,6 +25,14 @@ fly_settings_t	settings;
  */
 int main()
 {
+	// first things first, load settings which may be used during startup
+	if(load_settings_from_file()){
+		printf("ERROR: failed to load settings file quitting fly\n");
+		return -1;
+	}
+	printf("Loaded settings\n");
+
+/*
 	// initialize cape hardware, this prints an error itself if unsuccessful
 	if(rc_servo_init()==-1) return -1;
 	if(rc_adc_init()==-1) return -1;
@@ -83,13 +79,7 @@ int main()
 
 	printf("RC lib initialized\n");
 
-	// printf("about to load settings from file\n");
-	if(load_settings_from_file(&settings)){
-		printf("ERROR: invalid settings file, quitting fly\n");
-		rc_blink_led(RED,5,3);
-		return -1;
-	}
-	printf("Loaded settings\n");
+
 
 	// set red led to indicate initialization has started
 	rc_set_led(RED,1);
@@ -162,17 +152,19 @@ int main()
 	// set state to running and chill until something exits the program
 	rc_set_state(RUNNING);
 	while(rc_get_state()!=EXITING){
-		usleep(100000);
+		usleep(500000);
 	}
 
+	printf("cleaning up\n");
 	// cleanup before closing
 	join_setpoint_manager_thread();
 	join_input_manager_thread();
 	join_printf_manager_thread();
 
-	rc_power_off_imu();
-	rc_power_off_barometer();
-	rc_cleanup();
+	rc_mpu_power_off();
+	rc_bmp_power_off();
+
+	*/
 	return 0;
 }
 

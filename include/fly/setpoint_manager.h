@@ -1,5 +1,5 @@
 /**
- * @file setpoint_manager.h
+ * <fly/setpoint_manager.h>
  *
  * @brief      Functions to start and stop the setpoint manager thread
  */
@@ -7,27 +7,32 @@
 #ifndef SETPOINT_MANAGER_H
 #define SETPOINT_MANAGER_H
 
-#include <fly_types.h>
+/**
+ * flight_mode_t determines how the setpoint manager behaves
+ *
+ * DIRECT_THROTTLE: user inputs translate directly to the throttle, roll, pitch,
+ * & yaw setpoints. No altitude feedback control. On 6DOF platforms roll and
+ * pitch are kept level and right joystick inputs are direct to left/right
+ * forward/back thrust
+ *
+ * FALLBACK_4DOF: only applicable to 6DOF platforms. Ignores left/right and
+ * forward/back inputs, user controls pitch and roll instead.
+ */
+typedef enum flight_mode_t{
+	DIRECT_THROTTLE,
+	FALLBACK_4DOF,
+	TEST_BENCH
+} flight_mode_t;
 
 /**
  * @brief      Starts the setpoint manager thread.
  *
- *             Used in setpoint_manager.c
- *
- * @param      setpoint    pointer to the setpoint_t struct
- * @param      user_input  pointer to the user_input_t struct, user input command
- * @param      cstate      pointer to the cstate_t struct, feedback controller core struct
- * @param      settings    pointer to the fly_settings_t struct, setting configs from the json file.
- *
  * @return     0 on success, -1 on failure
  */
-int start_setpoint_manager(setpoint_t* setpoint, user_input_t* user_input,
-				cstate_t* cstate, fly_settings_t* settings);
+int start_setpoint_manager();
 
 /**
  * @brief      Waits for the setpoint manager thread to exit.
- *
- *             Used in setpoint_manager.c
  *
  * @return     0 on clean exit, -1 if exit timed out
  */
