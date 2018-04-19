@@ -153,4 +153,4 @@ int get_json_yaw_controller(rc_filter_t* ctrl);
  */
 int get_json_altitude_controller(rc_filter_t* ctrl);
 
-#endif // JSON_SETTINGS_H
+#endif // SETTINGS_H

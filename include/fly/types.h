@@ -9,8 +9,7 @@
 
 #include <stdint.h>
 #include <rc/mpu.h>
-#include <mixing_matrix_defs.h>
-#include <thrust_map_defs.h>
+
 
 /**
  * @brief      ARMED or DISARMED to indicate if the feedback controller is

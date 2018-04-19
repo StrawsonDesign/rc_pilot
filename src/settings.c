@@ -16,8 +16,7 @@
 #include <fly/settings.h>
 #include <fly/defs.h>
 #include <fly/types.h>
-#include <fly/thrust_map_defs.h>
-#include <fly/mixing_matrix_defs.h>
+
 
 // json object respresentation of the whole settings file
 json_object* jobj;
@@ -98,12 +97,12 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 	char* tmp_str = NULL;
 	double tmp_flt;
 	int i, num_len, den_len;
-	rc_vector_t num_vec = rc_empty_vector();
-	rc_vector_t den_vec = rc_empty_vector();
+	rc_vector_t num_vec = rc_vector_empty();
+	rc_vector_t den_vec = rc_vector_empty();
 	double dt = 1.0/feedback_hz;
 
 	// destroy old memory in case the order changes
-	rc_free_filter(filter);
+	rc_filter_free(filter);
 
 	// pull out gain
 	if(json_object_object_get_ex(jobj_ctl, "gain", &tmp)==0){
@@ -132,7 +131,7 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 		fprintf(stderr,"ERROR, numerator must have at least 1 entry\n");
 		return -1;
 	}
-	rc_alloc_vector(&num_vec,num_len);
+	rc_vector_alloc(&num_vec,num_len);
 	for(i=0;i<num_len;i++){
 		tmp = json_object_array_get_idx(array,i);
 		if(json_object_is_type(tmp, json_type_double)==0){
@@ -158,7 +157,7 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 		fprintf(stderr,"ERROR, denominator must have at least 1 entry\n");
 		return -1;
 	}
-	rc_alloc_vector(&den_vec,den_len);
+	rc_vector_alloc(&den_vec,den_len);
 	for(i=0;i<den_len;i++){
 		tmp = json_object_array_get_idx(array,i);
 		if(json_object_is_type(tmp, json_type_double)==0){
@@ -172,8 +171,8 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 	// check for improper TF
 	if(num_len>den_len){
 		fprintf(stderr,"ERROR: improper transfer function\n");
-		rc_free_vector(&num_vec);
-		rc_free_vector(&den_vec);
+		rc_vector_free(&num_vec);
+		rc_vector_free(&den_vec);
 		return -1;
 	}
 
@@ -201,7 +200,7 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		if(rc_c2d_tustin(filter,num_vec, den_vec, dt, tmp_flt)){
+		if(rc_filter_c2d_tustin(filter,num_vec, den_vec, dt, tmp_flt)){
 			fprintf(stderr,"ERROR: failed to c2dtustin while parsing json\n");
 			return -1;
 		}
@@ -209,7 +208,7 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 
 	// if DT, much easier, just construct filter
 	else if(strcmp(tmp_str, "DT")==0){
-		if(rc_alloc_filter(filter,num_vec, den_vec, dt)){
+		if(rc_filter_alloc(filter,num_vec, den_vec, dt)){
 			fprintf(stderr,"ERROR: failed to alloc filter in __parse_controller()");
 			return -1;
 		}
@@ -248,7 +247,7 @@ json_object* __get_default_settings()
 	tmp = json_object_new_string("MN1806_1400KV_4S");
 	json_object_object_add(out, "thrust_map", tmp);
 	tmp = json_object_new_string("ORIENTATION_X_FORWARD");
-	json_object_object_add(out, "bbb_orientation", tmp);
+	json_object_object_add(out, "orientation", tmp);
 	tmp = json_object_new_double(7.4);
 	json_object_object_add(out, "v_nominal", tmp);
 	// feedback loop frequency
@@ -535,21 +534,21 @@ int load_settings_from_file()
 	}
 
 
-	// parse bbb_orientation
-	if(json_object_object_get_ex(jobj, "bbb_orientation", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find bbb_orientation in settings file\n");
+	// parse orientation
+	if(json_object_object_get_ex(jobj, "orientation", &tmp)==0){
+		fprintf(stderr,"ERROR: can't find orientation in settings file\n");
 		return -1;
 	}
 	if(json_object_is_type(tmp, json_type_string)==0){
-		fprintf(stderr,"ERROR: bbb_orientation should be a string\n");
+		fprintf(stderr,"ERROR: orientation should be a string\n");
 		return -1;
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
 	if(strcmp(tmp_str, "ORIENTATION_X_FORWARD")==0){
-		settings.bbb_orientation = ORIENTATION_X_FORWARD;
+		settings.orientation = ORIENTATION_X_FORWARD;
 	}
 	else if(strcmp(tmp_str, "ORIENTATION_Z_UP")==0){
-		settings.bbb_orientation = ORIENTATION_Z_UP;
+		settings.orientation = ORIENTATION_Z_UP;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid BBB Orientation\n");

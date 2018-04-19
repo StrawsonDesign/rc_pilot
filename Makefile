@@ -33,7 +33,7 @@ prefix		?= /usr
 # linking Objects
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(BINDIR)
-	@$(LINKER) $(@) $(OBJECTS) $(LDFLAGS)
+	@$(LINKER) -o $(@) $(OBJECTS) $(LDFLAGS)
 
 # rule for all other objects
 $(BUILDDIR)/%.o : $(SRCDIR)/%.c $(INCLUDES)
