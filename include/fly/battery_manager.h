@@ -22,7 +22,7 @@ typedef enum battery_connection_t{
  *
  * @return     0 on success, -1 on failure
  */
-int start_battery_manager();
+int battery_manager_init();
 
 /**
  * @brief      Waits for the battery manager thread to exit.
@@ -33,6 +33,6 @@ int start_battery_manager();
  *
  * @return     0 if thread exited cleanly, -1 if exit timed out.
  */
-int join_battery_manager_thread();
+int battery_manager_cleanup();
 
 #endif // BATTERY_MANAGER_H

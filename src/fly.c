@@ -26,7 +26,7 @@
 int main()
 {
 	// first things first, load settings which may be used during startup
-	if(load_settings_from_file()){
+	if(settings_load_from_file()){
 		printf("ERROR: failed to load settings file quitting fly\n");
 		return -1;
 	}

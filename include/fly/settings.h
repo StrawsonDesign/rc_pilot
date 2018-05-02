@@ -13,40 +13,21 @@
 #include <fly/thrust_map_defs.h>
 #include <fly/mixing_matrix_defs.h>
 #include <fly/battery_manager.h>
-#include <fly/setpoint_manager.h>
+#include <fly/input_manager.h>
 
-#define FLY_SETTINGS_FILE	"/var/lib/roboticscape/fly_settings.json"
-
-/**
- * @brief      determines how the setpoint manager behaves
- *
- *             DSM_KILL_DEDICATED_SWITCH: A dedicated channel is used as a kill
- *             switch. Carefully set the dsm_kill_ch and dsm_kill_pol channel
- *             and olarity settings.
- *
- *             DSM_KILL_NEGATIVE_THROTTLE: Some radios, such as Spektrum DXe
- *             have an ARM/DISARM switch which forces the throttle channel down
- *             below normal range to disarm. This frees up a channel for other
- *             use and is the preffered method. When using this mode,
- *             dsm_kill_ch and dsm_kill_pol are ignored.
- */
-typedef enum dsm_kill_mode_t{
-	DSM_KILL_DEDICATED_SWITCH,
-	DSM_KILL_NEGATIVE_THROTTLE
-} dsm_kill_mode_t;
+#define FLY_SETTINGS_FILE "/home/debian/fly_settings.json"
 
 
 /**
  * Configuration settings read from the json settings file and passed to most
  * threads as they initialize.
  */
-typedef struct fly_settings_t{
+typedef struct settings_t{
 	// physical parameters
 	int num_rotors;
 	rotor_layout_t layout;
 	int dof;
 	thrust_map_t thrust_map;
-	rc_mpu_orientation_t orientation;
 	float v_nominal;
 	battery_connection_t battery_connection;
 	int feedback_hz;
@@ -86,7 +67,7 @@ typedef struct fly_settings_t{
 	int printf_motors;
 	int printf_mode;
 
-} fly_settings_t;
+}settings_t;
 
 
 
@@ -98,24 +79,24 @@ typedef struct fly_settings_t{
  *
  * @return     0 on success, -1 on failure
  */
-int load_settings_from_file();
+int settings_load_from_file();
 
 
 /**
  * @brief      populates the caller's settings struct
  *
- * @param      set   pointer to settings struct to the populated
+ * @param      set   pointer to settings struct to be populated
  *
  * @return     0 on success, -1 if settings have not been loaded from file yet
  */
-int fly_get_settings(fly_settings_t* set);
+int settings_get(settings_t* set);
 
 /**
  * @brief      Only used in debug mode. Prints settings to console
  *
  * @return     0 on success, -1 on failure
  */
-int print_settings();
+int settings_print();
 
 /**
  * @brief      gets the roll controllers read from the last json read.
@@ -124,7 +105,7 @@ int print_settings();
  *
  * @return     0 on success, -1 on failure
  */
-int get_json_roll_controller(rc_filter_t* ctrl);
+int settings_get_roll_controller(rc_filter_t* ctrl);
 
 /**
  * @brief      gets the pitch controllers read from the last json read.
@@ -133,7 +114,7 @@ int get_json_roll_controller(rc_filter_t* ctrl);
  *
  * @return     0 on success, -1 on failure
  */
-int get_json_pitch_controller(rc_filter_t* ctrl);
+int settings_get_pitch_controller(rc_filter_t* ctrl);
 
 /**
  * @brief      gets the yaw controllers read from the last json read.
@@ -142,7 +123,7 @@ int get_json_pitch_controller(rc_filter_t* ctrl);
  *
  * @return     0 on success, -1 on failure
  */
-int get_json_yaw_controller(rc_filter_t* ctrl);
+int settings_get_yaw_controller(rc_filter_t* ctrl);
 
 /**
  * @brief      gets the altitude controllers read from the last json read.
@@ -151,6 +132,6 @@ int get_json_yaw_controller(rc_filter_t* ctrl);
  *
  * @return     0 on success, -1 on failure
  */
-int get_json_altitude_controller(rc_filter_t* ctrl);
+int settings_get_altitude_controller(rc_filter_t* ctrl);
 
 #endif // SETTINGS_H
