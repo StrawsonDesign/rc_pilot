@@ -10,12 +10,12 @@
 #include <rc/math/filter.h>
 #include <rc/mpu.h>
 
-#include <fly/thrust_map_defs.h>
-#include <fly/mixing_matrix_defs.h>
-#include <fly/battery_manager.h>
-#include <fly/input_manager.h>
+#include <thrust_map.h>
+#include <mixing_matrix_defs.h>
+#include <battery_manager.h>
+#include <input_manager.h>
 
-#define FLY_SETTINGS_FILE "/home/debian/fly_settings.json"
+#define FLY_SETTINGS_FILE "/home/james/fly_settings.json"
 
 
 /**
@@ -69,7 +69,7 @@ typedef struct settings_t{
 
 }settings_t;
 
-
+extern settings_t settings;
 
 /**
  * @brief      Populates the setting sand controller structs with the json file.

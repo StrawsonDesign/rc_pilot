@@ -14,7 +14,7 @@
 #include <rc/dsm.h>
 #include <rc/bmp.h>
 
-#include <fly/settings.h>
+#include <settings.h>
 
 
 /**
@@ -31,6 +31,13 @@ int main()
 		return -1;
 	}
 	printf("Loaded settings\n");
+
+	// do initialization not involving threads
+	printf("initializing thrust map\n");
+	if(thrust_map_init()<0){
+		fprintf(stderr,"ERROR: failed to initialize thrust map\n");
+		return -1;
+	}
 
 /*
 	// initialize cape hardware, this prints an error itself if unsuccessful
@@ -90,13 +97,7 @@ int main()
 	// set up button handler so user can exit by holding pause
 	rc_set_pause_pressed_func(pause_pressed_func);
 
-	// do initialization not involving threads
-	printf("initializing thrust map\n");
-	if(initialize_thrust_map(settings.thrust_map)<0){
-		printf("ERROR: failed to initialize thrust map\n");
-		rc_blink_led(RED,5,3);
-		return -1;
-	}
+
 	if(initialize_mixing_matrix(settings.layout)<0){
 		printf("ERROR: failed to initialize thrust map\n");
 		rc_blink_led(RED,5,3);

@@ -9,17 +9,25 @@
 #ifndef THRUST_MAP_H
 #define THRUST_MAP_H
 
-#include <thrust_map_defs.h>
+/**
+ * enum thrust_map_t
+ *
+ * the user may select from the following preconfigured thrust maps
+ */
+typedef enum thrust_map_t{
+	MN1806_1400KV_4S,
+	F20_2300KV_2S,
+	RX2206_4S
+} thrust_map_t;
+
 
 /**
  * @brief      Check the thrust map for validity and populate data arrays.
  *
- *
- * @param[in]  map   The thrust map to be used
- *
  * @return     0 on success, -1 on failure
  */
-int initialize_thrust_map(thrust_map_t map);
+int thrust_map_init();
+
 
 /**
  * @brief      Corrects the motor signal m for non-linear thrust curve in place.
@@ -29,6 +37,6 @@ int initialize_thrust_map(thrust_map_t map);
  *
  * @return     motor signal value on success, -1 on error
  */
-float map_motor_signal(float m);
+double map_motor_signal(double m);
 
 #endif // THRUST_MAP_H

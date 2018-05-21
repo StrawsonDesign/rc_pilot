@@ -5,7 +5,7 @@ SRCDIR		:= src
 BINDIR		:= bin
 BUILDDIR	:= build
 INCLUDEDIR	:= include
-TARGET		:= $(BINDIR)/fly
+TARGET		:= $(BINDIR)/rc_pilot
 
 # file definitions for rules
 SOURCES		:= $(shell find $(SRCDIR) -type f -name *.c)

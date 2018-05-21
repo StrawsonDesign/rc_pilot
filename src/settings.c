@@ -11,16 +11,19 @@
 #include <unistd.h>	// for access()
 
 #include <json-c/json.h>
-
 #include <rc/math/filter.h>
-#include <fly/settings.h>
-#include <fly/defs.h>
+
+#include <settings.h>
+#include <rc_pilot_defs.h>
 
 
 // json object respresentation of the whole settings file
-json_object* jobj;
-// local copy of settings and controllers to be requested by other c files
-static settings_t settings;
+static json_object* jobj;
+
+// primary settings struct declared as extern in header is defined ONCE here
+settings_t settings;
+
+// filters pulled from settings file
 static rc_filter_t roll_controller;
 static rc_filter_t pitch_controller;
 static rc_filter_t yaw_controller;
@@ -167,6 +170,9 @@ int __parse_thrust_map()
 	}
 	else if(strcmp(tmp_str, "F20_2300KV_2S")==0){
 		settings.thrust_map = F20_2300KV_2S;
+	}
+	else if(strcmp(tmp_str, "RX2206_4S")==0){
+		settings.thrust_map = RX2206_4S;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid thrust_map string\n");
@@ -415,7 +421,7 @@ int __load_default_settings()
 	// Physical Parameters
 	tmp = json_object_new_string("LAYOUT_6DOF_ROTORBITS");
 	json_object_object_add(jobj, "layout", tmp);
-	tmp = json_object_new_string("MN1806_1400KV_4S");
+	tmp = json_object_new_string("RX2206_4S");
 	json_object_object_add(jobj, "thrust_map", tmp);
 	tmp = json_object_new_string("ORIENTATION_X_FORWARD");
 	json_object_object_add(jobj, "orientation", tmp);
@@ -645,9 +651,7 @@ int settings_load_from_file()
 	// start parsing data
 	if(__parse_layout()==-1) return -1; // parse_layout also fill in num_rotors and dof
 	if(__parse_thrust_map()==-1) return -1;
-	printf("before vnom\n");
 	PARSE_DOUBLE_MIN_MAX(v_nominal,7.0,18.0)
-	printf("after vnom\n");
 
 
 	// parse enable_logging

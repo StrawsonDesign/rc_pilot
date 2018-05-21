@@ -9,7 +9,7 @@
 #ifndef INPUT_MANAGER_H
 #define INPUT_MANAGER_H
 
-#include <fly/feedback.h> // only for arm_state_t
+#include <feedback.h> // only for arm_state_t
 
 /**
  * This is how the user interacts with the setpoint manager.
