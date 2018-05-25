@@ -4,10 +4,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <double.h> // for FLT_MAX
-#include <mixing_matrix.h>
-#include <fly_types.h>
-
+#include <float.h> // for DBL_MAX
+#include <mix.h>
 
 
 /**
@@ -193,14 +191,29 @@ int mix_all_controls(double u[6], double* mot)
 
 int mix_check_saturation(int ch, double* mot, double* min, double* max)
 {
-	int i;
+	int i, min_ch;
 	double tmp;
+	double new_max = DBL_MAX;
+	double new_min = -DBL_MAX;
 
 	if(initialized!=1){
 		fprintf(stderr,"ERROR: in check_channel_saturation, mix matrix not set yet\n");
 		return -1;
 	}
-	if(ch<0 || ch>=6){
+
+	switch(dof){
+	case 4:
+		min_ch = 2;
+		break;
+	case 6:
+		min_ch = 0;
+		break;
+	default:
+		fprintf(stderr,"ERROR: in check_channel_saturation, dof should be 4 or 6, currently %d\n", dof);
+		return -1;
+	}
+
+	if(ch<min_ch || ch>=6){
 		fprintf(stderr,"ERROR: in check_channel_saturation, ch out of bounds\n");
 		return -1;
 	}
@@ -214,7 +227,6 @@ int mix_check_saturation(int ch, double* mot, double* min, double* max)
 	}
 
 	// find max positive input
-	double new_max = FLT_MAX;
 	for(i=0;i<rotors;i++){
 		// if mix channel is 0, impossible to saturate
 		if(mix_matrix[i][ch]==0.0) continue;
@@ -227,7 +239,6 @@ int mix_check_saturation(int ch, double* mot, double* min, double* max)
 	}
 
 	// find min (most negative) input
-	double new_min = -FLT_MAX;
 	for(i=0;i<rotors;i++){
 		// if mix channel is 0, impossible to saturate
 		if(mix_matrix[i][ch]==0.0) continue;
@@ -262,7 +273,7 @@ int mix_add_input(double u, int ch, double* mot)
 		min_ch = 0;
 		break;
 	default:
-		fprintf(stderr,"ERROR: in mix_add_input, dof should be 4 or 6, received %d\n", dof);
+		fprintf(stderr,"ERROR: in mix_add_input, dof should be 4 or 6, currently %d\n", dof);
 		return -1;
 	}
 

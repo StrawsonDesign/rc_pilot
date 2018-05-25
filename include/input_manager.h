@@ -1,5 +1,5 @@
 /**
- * <fly/input_manager.h>
+ * <input_manager.h>
  *
  * Functions to start and stop the input manager thread which is the translation
  * beween control inputs from DSM to the user_input struct which is read by the
@@ -9,33 +9,8 @@
 #ifndef INPUT_MANAGER_H
 #define INPUT_MANAGER_H
 
+#include <flight_mode.h>
 #include <feedback.h> // only for arm_state_t
-
-/**
- * This is how the user interacts with the setpoint manager.
- */
-typedef enum flight_mode_t{
-	/**
-	 * test_bench mode does no feedback at all, it takes the raw user inputs
-	 * for 4 or 6 channels and directly outputs to the motors. This could
-	 * technically fly but would not be easy! Designed for confirming mixing
-	 * matrix and motors are working.
-	 */
-	TEST_BENCH,
-	/**
-	 * user inputs translate directly to the throttle, roll, pitch, & yaw
-	 * setpoints. No altitude feedback control. On 6DOF platforms the X & Y
-	 * thrust directions are left at 0.
-	 */
-	DIRECT_THROTTLE_4DOF,
-	/**
-	 * like DIRECT_THROTTLE for roll/pitch/yaw but feedback is performed to
-	 * hold altitude setpoint which is them moved up and down steadily based
-	 * on user input.
-	 */
-	ALT_HOLD_4DOF
-
-} flight_mode_t;
 
 
 /**

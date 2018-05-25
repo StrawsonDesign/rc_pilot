@@ -198,14 +198,23 @@ int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 		return -1;
 	}
 	tmp_str = (char*)json_object_get_string(jobj_str);
-	if(strcmp(tmp_str, "TEST_BENCH")==0){
-		*mode = TEST_BENCH;
+	if(strcmp(tmp_str, "TEST_BENCH_4DOF")==0){
+		*mode = TEST_BENCH_4DOF;
+	}
+	else if(strcmp(tmp_str, "TEST_BENCH_6DOF")==0){
+		*mode = TEST_BENCH_6DOF;
 	}
 	else if(strcmp(tmp_str, "DIRECT_THROTTLE_4DOF")==0){
 		*mode = DIRECT_THROTTLE_4DOF;
 	}
+	else if(strcmp(tmp_str, "DIRECT_THROTTLE_6DOF")==0){
+		*mode = DIRECT_THROTTLE_6DOF;
+	}
 	else if(strcmp(tmp_str, "ALT_HOLD_4DOF")==0){
 		*mode = ALT_HOLD_4DOF;
+	}
+	else if(strcmp(tmp_str, "ALT_HOLD_6DOF")==0){
+		*mode = ALT_HOLD_6DOF;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid flight mode\n");
@@ -391,13 +400,13 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
  */
 int __write_settings_to_disk(){
 	int out;
-	out = json_object_to_file_ext(FLY_SETTINGS_FILE, jobj, \
+	out = json_object_to_file_ext(SETTINGS_FILE, jobj, \
 		JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY);
 	if(out!=0){
 		fprintf(stderr,"failed to write settings to disk\n");
 		return -1;
 	}
-	//out = json_object_to_file(FLY_SETTINGS_FILE, jobj);
+	//out = json_object_to_file(SETTINGS_FILE, jobj);
 	printf("Successfully wrote settings to file\n");
 	return 0;
 }
@@ -438,11 +447,11 @@ int __load_default_settings()
 	// flight modes
 	tmp = json_object_new_int(3);
 	json_object_object_add(jobj, "num_dsm_modes", tmp);
-	tmp = json_object_new_string("TEST_BENCH");
+	tmp = json_object_new_string("TEST_BENCH_4DOF");
 	json_object_object_add(jobj, "flight_mode_1", tmp);
-	tmp = json_object_new_string("DIRECT_THROTTLE_4DOF");
+	tmp = json_object_new_string("TEST_BENCH_6DOF");
 	json_object_object_add(jobj, "flight_mode_2", tmp);
-	tmp = json_object_new_string("ALT_HOLD_4DOF");
+	tmp = json_object_new_string("DIRECT_THROTTLE_4DOF");
 	json_object_object_add(jobj, "flight_mode_3", tmp);
 
 	// DSM radio config
@@ -627,7 +636,7 @@ int settings_load_from_file()
 	#endif
 
 	// read in file contents
-	if(access(FLY_SETTINGS_FILE, F_OK)!=0){
+	if(access(SETTINGS_FILE, F_OK)!=0){
 		printf("Fly settings file missing, making default\n");
 		__load_default_settings();
 		printf("Writing default settings to file\n");
@@ -637,7 +646,7 @@ int settings_load_from_file()
 		#ifdef DEBUG
 		printf("about to read json from file\n");
 		#endif
-		jobj = json_object_from_file(FLY_SETTINGS_FILE);
+		jobj = json_object_from_file(SETTINGS_FILE);
 		if(jobj==NULL){
 			fprintf(stderr,"ERROR, failed to read settings from disk\n");
 			return -1;

@@ -37,31 +37,12 @@
 #define MAX_Z_COMPONENT		0.85
 
 
-// thread speeds, prioritites, and close timeouts
-#define SETPOINT_MANAGER_HZ	100
-#define SETPOINT_MANAGER_PRI	90
-#define SETPOINT_MANAGER_TOUT	1.0
-#define DSM2_CHECK_HZ		100
-#define INPUT_MANAGER_HZ	10
-#define INPUT_MANAGER_PRI	80
-#define INPUT_MANAGER_TOUT	0.3
-#define LOG_MANAGER_HZ		20
-#define LOG_MANAGER_PRI		50
-#define LOG_MANAGER_TOUT	2.0
-#define BATTERY_MANAGER_HZ	10
-#define BATTERY_MANAGER_PRI	60
-#define BATTERY_MANAGER_TOUT	0.5
-#define PRINTF_MANAGER_HZ	20
-#define PRINTF_MANAGER_PRI	60
-#define PRINTF_MANAGER_TOUT	0.3
-#define BUTTON_EXIT_CHECK_HZ	10
-#define BUTTON_EXIT_TIME_S	2
-
-
 #define	EMERGENCY_DESCENT_RATE	0.5 // m/s
 
 // Files
-#define LOG_DIR			"/home/debian/fly_logs/"
+#define LOG_DIR			"/home/james/rc_pilot_logs/"
+#define SETTINGS_FILE		"/home/james/rc_pilot_settings.json"
+
 
 // for future modes, not used yet
 #define LAND_TIMEOUT		0.3

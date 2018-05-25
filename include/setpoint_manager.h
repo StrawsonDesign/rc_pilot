@@ -1,5 +1,5 @@
 /**
- * <fly/setpoint_manager.h>
+ * <setpoint_manager.h>
  *
  * @brief      Functions to start and stop the setpoint manager thread
  */

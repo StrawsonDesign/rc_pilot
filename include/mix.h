@@ -49,8 +49,8 @@ typedef enum rotor_layout_t{
 int mix_init(rotor_layout_t layout);
 
 /**
- * @brief      Fills the vector mot with the linear combination of roll pitch
- *             yaw and throttle based on mixing matrix.
+ * @brief      Fills the vector mot with the linear combination of XYZ, roll
+ *             pitch yaw. Not actually used, only for testing.
  *
  *             Fills the vector mot with the linear combination of roll pitch
  *             yaw and throttle based on mixing matrix. If dof = 6, X and Y are
@@ -61,7 +61,7 @@ int mix_init(rotor_layout_t layout);
  *             in mixing_matrix.c
  *
  * @param      u     6 control inputs
- * @param      mot   The mot
+ * @param      mot   pointer to motor outputs
  *
  * @return     0 on success, -1 on failure
  */
@@ -103,7 +103,7 @@ int mix_check_saturation(int ch, double* mot, double* min, double* max);
  *
  * @return     0 on success, -1 on failure
  */
-int add_mixed_input(double u, int ch, double* mot);
+int mix_add_input(double u, int ch, double* mot);
 
 
 #endif // MIXING_MATRIX_H

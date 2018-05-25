@@ -14,7 +14,9 @@
 #include <rc/dsm.h>
 #include <rc/bmp.h>
 
-#include <settings.h>
+#include <settings.h> // contains extern settings variable
+#include <thrust_map.h>
+#include <mix.h>
 
 
 /**
@@ -38,6 +40,23 @@ int main()
 		fprintf(stderr,"ERROR: failed to initialize thrust map\n");
 		return -1;
 	}
+
+	printf("initializing mixing matrix\n");
+	if(mix_init(settings.layout)<0){
+		fprintf(stderr,"ERROR: failed to initialize mixing matrix\n");
+		return -1;
+	}
+
+	// start threads
+	if(input_manager_init()<0){
+		printf("ERROR: failed to initialize input_manager\n");
+		return -1;
+	}
+	// if(start_setpoint_manager(&setpoint, &user_input, &cstate, &settings)<0){
+	// 	printf("ERROR: can't start setpoint_manager\n");
+	// 	rc_blink_led(RED,5,3);
+	// 	return -1;
+	// }
 
 /*
 	// initialize cape hardware, this prints an error itself if unsuccessful
@@ -98,11 +117,7 @@ int main()
 	rc_set_pause_pressed_func(pause_pressed_func);
 
 
-	if(initialize_mixing_matrix(settings.layout)<0){
-		printf("ERROR: failed to initialize thrust map\n");
-		rc_blink_led(RED,5,3);
-		return -1;
-	}
+
 
 	// start barometer with max oversampling before IMU since imu will hog
 	// i2c bus once setup, barometer will be left alone till we call it.
@@ -126,17 +141,7 @@ int main()
 		rc_cleanup();
 		return -1;
 	}
-	// start threads
-	if(start_input_manager(&user_input, &settings)<0){
-		printf("ERROR: can't start input_manager\n");
-		rc_blink_led(RED,5,3);
-		return -1;
-	}
-	if(start_setpoint_manager(&setpoint, &user_input, &cstate, &settings)<0){
-		printf("ERROR: can't start setpoint_manager\n");
-		rc_blink_led(RED,5,3);
-		return -1;
-	}
+
 	// set up feedback controller
 	initialize_controller(&cstate, &setpoint, &imu_data, &settings);
 

@@ -1,11 +1,11 @@
-/*******************************************************************************
-* setpoint_manager.c
+/**
+* @file setpoint_manager.c
 *
 * This serves to allow the feedback controller to be as simple and clean as
 * possible by putting all high-level manipulation of the setpoints here.
 * Then feedback-controller only needs to march the filters and zero them out
 * when arming or enabling controllers
-*******************************************************************************/
+**/
 #include <stdio.h>
 #include <math.h>
 #include <unistd.h>

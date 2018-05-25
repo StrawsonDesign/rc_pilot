@@ -76,7 +76,7 @@ int arm_controller()
 	// get the current time
 	start_time_us = rc_nanos_since_epoch()/1000;
 	// reset the index
-	cs->loop_index = 0;
+	cs.loop_index = 0;
 	// when swapping from direct throttle to altitude control, the altitude
 	// controller needs to know the last throttle input for smooth transition
 	last_en_alt_ctrl = 0;
@@ -89,8 +89,8 @@ int arm_controller()
 	rc_reset_filter(&D_pitch);
 	rc_reset_filter(&D_yaw);
 	// prefill filters with current error
-	rc_prefill_filter_inputs(&D_roll, -cs->roll);
-	rc_prefill_filter_inputs(&D_roll, -cs->pitch);
+	rc_prefill_filter_inputs(&D_roll, -cs.roll);
+	rc_prefill_filter_inputs(&D_roll, -cs.pitch);
 	// set LEDs
 	rc_set_led(RED,0);
 	rc_set_led(GREEN,1);
@@ -164,8 +164,8 @@ void feedback_controller()
 	*	is ARMED or DISARMED
 	***************************************************************************/
 	// collect new IMU roll/pitch data
-	cs->roll   = imu->fused_TaitBryan[TB_ROLL_Y];
-	cs->pitch  = imu->fused_TaitBryan[TB_PITCH_X];
+	cs.roll   = imu->fused_TaitBryan[TB_ROLL_Y];
+	cs.pitch  = imu->fused_TaitBryan[TB_PITCH_X];
 
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
@@ -174,8 +174,19 @@ void feedback_controller()
 	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
 	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
 	// finally num_yaw_spins is updated and the new value can be written
-	cs->yaw = imu->fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
-	last_yaw = cs->yaw;
+	cs.yaw = imu->fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	last_yaw = cs.yaw;
+
+	if(set->battery_connection==DC_BARREL_JACK){
+		new_v = rc_dc_jack_voltage();
+	}
+	else if(set->battery_connection==BALANCE_PLUG){
+		new_v = rc_battery_voltage();
+	}
+	else{
+		fprintf(stderr,"ERROR: invalid battery_connection_t\n");
+		new_v = set->v_nominal;
+	}
 
 	// TODO: altitude estimate
 
@@ -189,7 +200,7 @@ void feedback_controller()
 	}
 
 	// check for a tipover
-	if(fabs(cs->roll)>TIP_ANGLE || fabs(cs->pitch)>TIP_ANGLE){
+	if(fabs(cs.roll)>TIP_ANGLE || fabs(cs.pitch)>TIP_ANGLE){
 		disarm_controller();
 		printf("\n TIPOVER DETECTED \n");
 	}
@@ -220,16 +231,16 @@ void feedback_controller()
 	// // run altitude controller if enabled
 	// if(sp->en_alt_ctrl){
 	// 	if(last_en_alt_ctrl == 0){
-	// 		sp->altitude = cs->alt; // set altitude setpoint to current altitude
+	// 		sp->altitude = cs.alt; // set altitude setpoint to current altitude
 	// 		rc_reset_filter(&D0);
 	// 		prefill_filter_outputs(&D0,last_usr_thr);
 	// 		last_en_alt_ctrl = 1;
 	// 	}
 	// 	sp->altitude += sp->altitude_rate*DT;
-	// 	saturate_float(&sp->altitude, cs->alt-ALT_BOUND_D, cs->alt+ALT_BOUND_U);
-	// 	D0.gain = D0_GAIN * V_NOMINAL/cs->vbatt;
-	// 	tmp = march_filter(&D0, sp->altitude-cs->alt);
-	// 	u[VEC_Z] = tmp / cos(cs->roll)*cos(cs->pitch);
+	// 	saturate_float(&sp->altitude, cs.alt-ALT_BOUND_D, cs.alt+ALT_BOUND_U);
+	// 	D0.gain = D0_GAIN * V_NOMINAL/cs.vbatt;
+	// 	tmp = march_filter(&D0, sp->altitude-cs.alt);
+	// 	u[VEC_Z] = tmp / cos(cs.roll)*cos(cs.pitch);
 	// 	saturate_float(&u[VEC_Z], MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 	// 	add_mixed_input(u[VEC_Z], VEC_Z, mot);
 	// 	last_en_alt_ctrl = 1;
@@ -238,7 +249,7 @@ void feedback_controller()
 	// else{
 
 	// compensate for tilt
-	tmp = sp->Z_throttle / (cos(cs->roll)*cos(cs->pitch));
+	tmp = sp->Z_throttle / (cos(cs.roll)*cos(cs.pitch));
 	rc_saturate_float(&tmp, -MIN_Z_COMPONENT, -MAX_Z_COMPONENT);
 	u[VEC_Z] = tmp;
 	add_mixed_input(u[VEC_Z], VEC_Z, mot);
@@ -255,8 +266,8 @@ void feedback_controller()
 		if(max>MAX_ROLL_COMPONENT)  max =  MAX_ROLL_COMPONENT;
 		if(min<-MAX_ROLL_COMPONENT) min = -MAX_ROLL_COMPONENT;
 		rc_enable_saturation(&D_roll, min, max);
-		D_roll.gain = D_roll_gain_orig * set->v_nominal/cs->v_batt;
-		u[VEC_ROLL] = rc_march_filter(&D_roll, sp->roll - cs->roll);
+		D_roll.gain = D_roll_gain_orig * set->v_nominal/cs.v_batt;
+		u[VEC_ROLL] = rc_march_filter(&D_roll, sp->roll - cs.roll);
 		add_mixed_input(u[VEC_ROLL], VEC_ROLL, mot);
 
 		// pitch
@@ -264,8 +275,8 @@ void feedback_controller()
 		if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
 		if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
 		rc_enable_saturation(&D_pitch, min, max);
-		D_pitch.gain = D_pitch_gain_orig * set->v_nominal/cs->v_batt;
-		u[VEC_PITCH] = rc_march_filter(&D_pitch, sp->pitch - cs->pitch);
+		D_pitch.gain = D_pitch_gain_orig * set->v_nominal/cs.v_batt;
+		u[VEC_PITCH] = rc_march_filter(&D_pitch, sp->pitch - cs.pitch);
 		add_mixed_input(u[VEC_PITCH], VEC_PITCH, mot);
 
 		// Yaw
@@ -276,8 +287,8 @@ void feedback_controller()
 		if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
 		if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
 		rc_enable_saturation(&D_yaw, min, max);
-		D_yaw.gain = D_yaw_gain_orig * set->v_nominal/cs->v_batt;
-		u[VEC_YAW] = rc_march_filter(&D_yaw, sp->yaw - cs->yaw);
+		D_yaw.gain = D_yaw_gain_orig * set->v_nominal/cs.v_batt;
+		u[VEC_YAW] = rc_march_filter(&D_yaw, sp->yaw - cs.yaw);
 		add_mixed_input(u[VEC_YAW], VEC_YAW, mot);
 	}
 	else{
@@ -319,7 +330,7 @@ void feedback_controller()
 	for(i=0;i<set->num_rotors;i++){
 		// write motor signals to cstate before final saturation so errors
 		// may show up in the logs
-		cs->m[i] = new_mot[i];
+		cs.m[i] = new_mot[i];
 		// Final saturation before sending motor signals to prevent errors
 		rc_saturate_float(&new_mot[i], 0.0, 1.0);
 		rc_send_esc_pulse_normalized(i+1,new_mot[i]);
@@ -329,35 +340,35 @@ void feedback_controller()
 	* Final cleanup, timing, and indexing
 	***************************************************************************/
 	// Load control inputs into cstate for viewing by outside threads
-	for(i=0;i<6;i++) cs->u[i]=u[i];
+	for(i=0;i<6;i++) cs.u[i]=u[i];
 	// keep track of loops since arming
-	cs->loop_index++;
+	cs.loop_index++;
 	// log us since arming, mostly for the log
-	cs->last_step_us = (rc_nanos_since_epoch()/1000)-start_time_us;
+	cs.last_step_us = (rc_nanos_since_epoch()/1000)-start_time_us;
 
 	/***************************************************************************
 	* Add new log entry
 	***************************************************************************/
 	if(set->enable_logging){
-		new_log.loop_index	= cs->loop_index;
-		new_log.last_step_us	= cs->last_step_us;
-		new_log.altitude	= cs->altitude;
-		new_log.roll		= cs->roll;
-		new_log.pitch		= cs->pitch;
-		new_log.yaw		= cs->yaw;
-		new_log.v_batt		= cs->v_batt;
+		new_log.loop_index	= cs.loop_index;
+		new_log.last_step_us	= cs.last_step_us;
+		new_log.altitude	= cs.altitude;
+		new_log.roll		= cs.roll;
+		new_log.pitch		= cs.pitch;
+		new_log.yaw		= cs.yaw;
+		new_log.v_batt		= cs.v_batt;
 		new_log.u_X		= u[VEC_Y];
 		new_log.u_Y		= u[VEC_X];
 		new_log.u_Z		= u[VEC_Z];
 		new_log.u_roll		= u[VEC_ROLL];
 		new_log.u_pitch		= u[VEC_PITCH];
 		new_log.u_yaw		= u[VEC_YAW];
-		new_log.mot_1		= cs->m[0];
-		new_log.mot_2		= cs->m[1];
-		new_log.mot_3		= cs->m[2];
-		new_log.mot_4		= cs->m[3];
-		new_log.mot_5		= cs->m[4];
-		new_log.mot_6		= cs->m[5];
+		new_log.mot_1		= cs.m[0];
+		new_log.mot_2		= cs.m[1];
+		new_log.mot_3		= cs.m[2];
+		new_log.mot_4		= cs.m[3];
+		new_log.mot_5		= cs.m[4];
+		new_log.mot_6		= cs.m[5];
 		add_log_entry(new_log);
 	}
 

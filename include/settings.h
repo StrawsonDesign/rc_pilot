@@ -10,13 +10,20 @@
 #include <rc/math/filter.h>
 #include <rc/mpu.h>
 
+#include <flight_mode.h>
 #include <thrust_map.h>
-#include <mixing_matrix_defs.h>
-#include <battery_manager.h>
+#include <mix.h>
 #include <input_manager.h>
+#include <rc_pilot_defs.h>
 
-#define FLY_SETTINGS_FILE "/home/james/fly_settings.json"
-
+/**
+ * The user may elect to power the BBB off the 3-pin JST balance plug or the DC
+ * barrel jack. This mode is set in the json config file.
+ */
+typedef enum battery_connection_t{
+	BALANCE_PLUG,
+	DC_BARREL_JACK
+} battery_connection_t;
 
 /**
  * Configuration settings read from the json settings file and passed to most
