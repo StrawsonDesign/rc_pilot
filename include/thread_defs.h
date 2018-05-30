@@ -4,9 +4,6 @@
 #define THREAD_DEFS_H
 
 // thread speeds, prioritites, and close timeouts
-#define SETPOINT_MANAGER_HZ	100
-#define SETPOINT_MANAGER_PRI	90
-#define SETPOINT_MANAGER_TOUT	1.0
 #define INPUT_MANAGER_HZ	10
 #define INPUT_MANAGER_PRI	80
 #define INPUT_MANAGER_TOUT	0.3

@@ -40,10 +40,14 @@ int main()
 		fprintf(stderr,"ERROR: failed to initialize thrust map\n");
 		return -1;
 	}
-
 	printf("initializing mixing matrix\n");
 	if(mix_init(settings.layout)<0){
 		fprintf(stderr,"ERROR: failed to initialize mixing matrix\n");
+		return -1;
+	}
+	printf("initializing setpoint_manager\n");
+	if(setpoint_manager_init()<0){
+		fprintf(stderr, "ERROR: failed to initialize setpoint_manager\n");
 		return -1;
 	}
 
