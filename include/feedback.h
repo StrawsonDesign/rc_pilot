@@ -19,36 +19,32 @@
 #ifndef FEEDBACK_H
 #define FEEDBACK_H
 
-/**
- * @brief      ARMED or DISARMED to indicate if the feedback controller is
- *             allowed to output to the motors
- */
-typedef enum arm_state_t{
-	DISARMED,
-	ARMED
-} arm_state_t;
-
-
+#include <stdint.h> // for uint64_t
+#include <rc_pilot_defs.h>
 
 /**
- * This is the core state of the feedback loop. contains most recent values
+ * This is the state of the feedback loop. contains most recent values
  * reported by the feedback controller. Should only be written to by the
  * feedback controller after initialization.
  */
-typedef struct cstate_t{
-	uint64_t loop_index;
-	uint64_t last_step_us;	// last time controller has finished a step
+typedef struct feedback_state_t{
+	int initialized;	///< set to 1 after feedback_init()
+	arm_state_t arm_state;	///< actual arm state as reported by feedback controller
+	uint64_t arm_time_ns;	///< time since boot when controller was armed
+	uint64_t loop_index;	///< increases every time feedback loop runs
+	uint64_t last_step_ns;	///< last time controller has finished a step
 
-	float altitude;		// altitude estimate from sea level (m)
-	float roll;		// current roll angle (rad)
-	float pitch;		// current pitch angle (rad)
-	float yaw;		// current yaw angle (rad)
-	float v_batt;		// main battery pack voltage (v)
+	double altitude;	///< altitude estimate from sea level (m)
+	double roll;		///< current roll angle (rad)
+	double pitch;		///< current pitch angle (rad)
+	double yaw;		///< current yaw angle (rad)
+	double v_batt;		///< main battery pack voltage (v)
 
-	float u[6];		// siso controller outputs
-	float m[8];		// signals sent to motors after mapping
-} cstate_t;
+	double u[6];		///< siso controller outputs
+	double m[8];		///< signals sent to motors after mapping
+} feedback_state_t;
 
+extern feedback_state_t fstate;
 
 /**
  * @brief      Initial setup of all feedback controllers. Should only be called
@@ -81,25 +77,11 @@ int feedback_disarm();
  */
 int feedback_arm();
 
-/**
- * @brief      Gets the arm state.of the feedback controller
- *
- *             Returns the arm state of the feedback controller so outside
- *             functions, namely the setpoint_manager, can tell if the feedback
- *             controller is armed or not.
- *
- * @return     The controller arm state.
- */
-arm_state_t feedback_get_arm_state();
+int feedback_state_estimate();
 
-/**
- * @brief      gets a copy of the current feedback controller state
- *
- *             mostly used by printf_manager to print status
- *
- * @return     copy of the current cstate struct
- */
-cstate_t feedback_get_cstate();
+int feedback_control();
+
+
 
 
 

@@ -18,7 +18,7 @@
 #ifndef SETPOINT_MANAGER_H
 #define SETPOINT_MANAGER_H
 
-#include <fly/feedback.h> // for arm_state_t
+#include <rc_pilot_defs.h>
 
 /**
  * Setpoint for the feedback controllers. This is written by setpoint_manager
@@ -26,18 +26,18 @@
  * and log_manager for telemetry
  */
 typedef struct setpoint_t{
-	arm_state_t arm_state;
+	int initialized;	///< set to 1 once setpoint manager has initialized
 	int en_alt_ctrl;	///< enable altitude feedback.
-	int en_6dof;		///< enable direct XY control via 6DOF model
 	int en_rpy_ctrl;	///< enable the roll pitch yaw controllers
+	int en_6dof;		///< enable direct XY control via 6DOF model
 
 	// direct passthrough user inputs to mixing matrix
 	double Z_throttle;	///< used only when altitude controller disabled
-	double X_throttle;	///< only used when 6dof is enabled
-	double Y_throttle;	///< only used when 6dof is enabled
-	double Roll_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
-	double Pitch_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
-	double Yaw_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
+	double X_throttle;	///< only used when 6dof is enabled, positive forward
+	double Y_throttle;	///< only used when 6dof is enabled, positive right
+	double roll_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
+	double pitch_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
+	double yaw_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
 
 	// attitude setpoint
 	double altitude;	///< altitude from sea level, positive up (m)
@@ -48,21 +48,14 @@ typedef struct setpoint_t{
 	double yaw_rate;	///< desired rate of change in yaw rad/s
 } setpoint_t;
 
+extern setpoint_t setpoint;
+
 /**
  * @brief      Initializes the setpoint manager.
  *
  * @return     0 on success, -1 on failure
  */
 int setpoint_manager_init();
-
-/**
- * @brief      fetches a copy of the current setpoint
- *
- * @param      setpoint  The setpoint pointer to write out to
- *
- * @return     0 on success, -1 on failure
- */
-int setpoint_manager_get_sp(setpoint_t* setpoint)
 
 /**
  * @brief      updates the setpoint manager, call this before feedback loop

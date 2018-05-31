@@ -38,17 +38,19 @@ typedef enum dsm_kill_mode_t{
  * what it is receiving.
  */
 typedef struct user_input_t{
-	int user_input_active;		// set to 1 if continuous user input is working
-	flight_mode_t flight_mode;	// this is the user commanded flight_mode.
-	arm_state_t kill_switch;	// kill motors if set to DISARMED
+	int initialized;		///< set to 1 after input_manager_init()
+	flight_mode_t flight_mode;	///< this is the user commanded flight_mode.
+	int input_active;		///< nonzero indicates some user control is coming in
+	arm_state_t requested_arm_mode;	///< set to ARMED after arming sequence is entered.
 
 	// All sticks scaled from -1 to 1
-	float thr_stick;		// positive forward
-	float yaw_stick;		// positive to the right, CW yaw
-	float roll_stick;		// positive to the right
-	float pitch_stick;		// positive forward
+	double thr_stick;		///< positive forward
+	double yaw_stick;		///< positive to the right, CW yaw
+	double roll_stick;		///< positive to the right
+	double pitch_stick;		///< positive forward
 } user_input_t;
 
+extern user_input_t user_input;
 
 /**
  * @brief      Starts an input manager thread.

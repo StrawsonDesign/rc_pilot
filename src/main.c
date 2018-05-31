@@ -17,6 +17,8 @@
 #include <settings.h> // contains extern settings variable
 #include <thrust_map.h>
 #include <mix.h>
+#include <input_manager.h>
+#include <setpoint_manager.h>
 
 
 /**

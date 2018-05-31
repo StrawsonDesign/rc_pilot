@@ -1,8 +1,20 @@
 /**
- * <fly/defs.h>
+ * <rc_pilot_defs.h>
  *
  * @brief constants and parameters
  */
+
+#ifndef RC_PILOT_DEFS_H
+#define RC_PILOT_DEFS_H
+
+/**
+ * @brief      ARMED or DISARMED to indicate if the feedback controller is
+ *             allowed to output to the motors
+ */
+typedef enum arm_state_t{
+	DISARMED,
+	ARMED
+} arm_state_t;
 
 // Flight Core Constants
 #define ARM_TIP_THRESHOLD	0.2	///< radians from level to allow arming sequence
@@ -22,10 +34,9 @@
 #define MAX_ROLL_SETPOINT	0.4	// rad
 #define MAX_PITCH_SETPOINT	0.4	// rad
 #define MAX_CLIMB_RATE		1.0	// m/s
-#define YAW_DEADZONE		0.03
-#define ALTITUDE_STICK_DEADZONE	0.06
+#define YAW_DEADZONE		0.02
+#define THROTTLE_DEADZONE	0.02
 #define SOFT_START_SECONDS	1.0	// controller soft start seconds
-#define TEST_BENCH_HOVER_THR	-0.372	// negative because Z points down
 
 // controller absolute limits
 #define MAX_ROLL_COMPONENT	0.8
@@ -36,9 +47,6 @@
 #define MIN_Z_COMPONENT		0.10
 #define MAX_Z_COMPONENT		0.85
 
-
-#define	EMERGENCY_DESCENT_RATE	0.5 // m/s
-
 // Files
 #define LOG_DIR			"/home/james/rc_pilot_logs/"
 #define SETTINGS_FILE		"/home/james/rc_pilot_settings.json"
@@ -47,3 +55,5 @@
 // for future modes, not used yet
 #define LAND_TIMEOUT		0.3
 #define DISARM_TIMEOUT		4.0
+
+#endif // RC_PILOT_DEFS_H
