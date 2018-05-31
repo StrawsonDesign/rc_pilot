@@ -34,12 +34,26 @@ static int num_yaw_spins;
 static double last_yaw;
 static double tmp;
 static rc_filter_t D_roll, D_pitch, D_yaw, D_batt;
+static rc_mpu_data_t mpu_data;
 
-rc_mpu_data_t* imu;
+// local functions
+static void __feedback_isr(void);
+static int __set_motors_to_idle();
+static double __batt_voltage();
+static int __feedback_control();
+static int __feedback_state_estimate();
 
 
 
-int __set_motors_to_idle()
+static void __feedback_isr(void)
+{
+	setpoint_manager_update();
+	__feedback_state_estimate();
+	__feedback_control();
+}
+
+
+static int __set_motors_to_idle()
 {
 	int i;
 	if(settings.num_rotors>8){
@@ -50,7 +64,7 @@ int __set_motors_to_idle()
 	return 0;
 }
 
-double __batt_voltage()
+static double __batt_voltage()
 {
 	float tmp;
 
@@ -98,7 +112,7 @@ int feedback_arm()
 	//last_usr_thr = MIN_Z_COMPONENT;
 	// yaw estimator can be zero'd too
 	num_yaw_spins = 0;
-	last_yaw = -imu->fused_TaitBryan[TB_YAW_Z]; // minus because NED coordinates
+	last_yaw = -mpu_data.fused_TaitBryan[TB_YAW_Z]; // minus because NED coordinates
 	// zero out all filters
 	rc_filter_reset(&D_roll);
 	rc_filter_reset(&D_pitch);
@@ -117,12 +131,9 @@ int feedback_arm()
 
 
 
-int feedback_init(rc_mpu_data_t* mpu_data)
+int feedback_init()
 {
 	double tmp;
-
-	// save pointer to the imu struct used in main during init
-	imu=mpu_data;
 
 	// get controllers from settings
 	if(settings_get_roll_controller(&D_roll)) return -1;
@@ -146,14 +157,36 @@ int feedback_init(rc_mpu_data_t* mpu_data)
 	rc_filter_prefill_inputs(&D_batt, tmp);
 	rc_filter_prefill_outputs(&D_batt, tmp);
 
+	// start the IMU
+	rc_mpu_config_t conf = rc_mpu_default_config();
+	conf.dmp_sample_rate = settings.feedback_hz;
+	conf.enable_magnetometer = 1;
+	conf.orient = ORIENTATION_Z_UP;
+
+	// now set up the imu for dmp interrupt operation
+	printf("initializing MPU\n");
+	if(rc_mpu_initialize_dmp(&mpu_data, conf)){
+		fprintf(stderr,"ERROR: in feedback_init, failed to start MPU DMP\n");
+		return -1;
+	}
+
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
+	rc_mpu_set_dmp_callback(__feedback_isr);
+
 	return 0;
 }
 
 
+int feedback_cleanup()
+{
+	__set_motors_to_idle();
+	rc_mpu_power_off();
+	return 0;
+}
 
-int feedback_state_estimate()
+
+static int __feedback_state_estimate()
 {
 	double tmp;
 
@@ -163,17 +196,17 @@ int feedback_state_estimate()
 	}
 
 	// collect new IMU roll/pitch data
-	fstate.roll   = imu->fused_TaitBryan[TB_ROLL_Y];
-	fstate.pitch  = imu->fused_TaitBryan[TB_PITCH_X];
+	fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
+	fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
 
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
-	tmp = -imu->fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	tmp = -mpu_data.fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
 	// detect the crossover point at +-PI and write new value to core state
 	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
 	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
 	// finally num_yaw_spins is updated and the new value can be written
-	fstate.yaw = imu->fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	fstate.yaw = mpu_data.fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
 	last_yaw = fstate.yaw;
 
 	// filter battery voltage.
@@ -183,7 +216,7 @@ int feedback_state_estimate()
 	return 0;
 }
 
-int feedback_control()
+static int __feedback_control()
 {
 	int i;
 	double tmp, min, max;
@@ -385,3 +418,5 @@ int feedback_control()
 
 	return 0;
 }
+
+

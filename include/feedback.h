@@ -77,9 +77,8 @@ int feedback_disarm();
  */
 int feedback_arm();
 
-int feedback_state_estimate();
+int feedback_cleanup();
 
-int feedback_control();
 
 
 
