@@ -48,8 +48,8 @@ typedef enum arm_state_t{
 #define MAX_Z_COMPONENT		0.85
 
 // Files
-#define LOG_DIR			"/home/james/rc_pilot_logs/"
-#define SETTINGS_FILE		"/home/james/rc_pilot_settings.json"
+#define LOG_DIR			"/home/debian/rc_pilot_logs/"
+#define SETTINGS_FILE		"/home/debian/rc_pilot_settings.json"
 
 
 // for future modes, not used yet

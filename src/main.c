@@ -100,7 +100,7 @@ int main()
 
 	// do initialization not involving threads
 	printf("initializing thrust map\n");
-	if(thrust_map_init()<0){
+	if(thrust_map_init(settings.thrust_map)<0){
 		fprintf(stderr,"ERROR: failed to initialize thrust map\n");
 		return -1;
 	}
