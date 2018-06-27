@@ -162,8 +162,6 @@ int main()
 
 	// final setup
 	rc_make_pid_file();
-	rc_set_state(RUNNING);
-
 	// set state to running and chill until something exits the program
 	rc_set_state(RUNNING);
 	while(rc_get_state()!=EXITING){
