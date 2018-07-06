@@ -96,13 +96,13 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 
 	initialized = 1;
 	__print_header();
+
 	prev_arm_state = fstate.arm_state;
 
-	while(rc_get_state()==EXITING){
+	while(rc_get_state()!=EXITING){
 		// re-print header on disarming
 		if(fstate.arm_state==DISARMED && prev_arm_state==ARMED){
 			__print_header();
-			printf("hello\n");
 		}
 
 		printf("\r");
@@ -111,40 +111,40 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			else                       printf("DISARMED|");
 		}
 		if(settings.printf_altitude){
-			printf("%7.2f |", fstate.altitude);
+			printf("%+5.2f |", fstate.altitude);
 		}
 		if(settings.printf_rpy){
-			printf("%6.2f |", fstate.roll);
-			printf("%6.2f |", fstate.roll);
-			printf("%6.2f |", fstate.roll);
+			printf("%+5.2f|", fstate.roll);
+			printf("%+5.2f|", fstate.pitch);
+			printf("%+5.2f|", fstate.yaw);
 		}
 		if(settings.printf_sticks){
-			printf("%6.2f |", user_input.thr_stick);
-			printf("%6.2f |", user_input.roll_stick);
-			printf("%6.2f |", user_input.pitch_stick);
-			printf("%6.2f |", user_input.yaw_stick);
+			printf("%+5.2f|", user_input.thr_stick);
+			printf("%+5.2f|", user_input.roll_stick);
+			printf("%+5.2f|", user_input.pitch_stick);
+			printf("%+5.2f|", user_input.yaw_stick);
 		}
 		if(settings.printf_setpoint){
-			printf("%6.2f |", setpoint.altitude);
-			printf("%6.2f |", setpoint.roll);
-			printf("%6.2f |", setpoint.pitch);
-			printf("%6.2f |", setpoint.yaw);
+			printf("%+5.2f |", setpoint.altitude);
+			printf("%+5.2f |", setpoint.roll);
+			printf("%+5.2f |", setpoint.pitch);
+			printf("%+5.2f |", setpoint.yaw);
 		}
 		if(settings.printf_u){
-			printf("%6.2f |", fstate.u[0]);
-			printf("%6.2f |", fstate.u[1]);
-			printf("%6.2f |", fstate.u[2]);
-			printf("%6.2f |", fstate.u[3]);
-			printf("%6.2f |", fstate.u[4]);
-			printf("%6.2f |", fstate.u[5]);
+			printf("%+5.2f |", fstate.u[0]);
+			printf("%+5.2f |", fstate.u[1]);
+			printf("%+5.2f |", fstate.u[2]);
+			printf("%+5.2f |", fstate.u[3]);
+			printf("%+5.2f |", fstate.u[4]);
+			printf("%+5.2f |", fstate.u[5]);
 		}
 		if(settings.printf_motors){
-			printf("%5.2f |", fstate.m[0]);
-			printf("%5.2f |", fstate.m[1]);
-			printf("%5.2f |", fstate.m[2]);
-			printf("%5.2f |", fstate.m[3]);
-			printf("%5.2f |", fstate.m[4]);
-			printf("%5.2f |", fstate.m[5]);
+			printf("%+5.2f |", fstate.m[0]);
+			printf("%+5.2f |", fstate.m[1]);
+			printf("%+5.2f |", fstate.m[2]);
+			printf("%+5.2f |", fstate.m[3]);
+			printf("%+5.2f |", fstate.m[4]);
+			printf("%+5.2f |", fstate.m[5]);
 		}
 		if(settings.printf_mode){
 			print_flight_mode(user_input.flight_mode);

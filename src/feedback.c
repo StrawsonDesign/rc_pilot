@@ -204,17 +204,20 @@ static int __feedback_state_estimate()
 	}
 
 	// collect new IMU roll/pitch data
-	fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
-	fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
+	//fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
+	//fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
+
+	fstate.roll   = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
+	fstate.pitch  = mpu_data.dmp_TaitBryan[TB_PITCH_X];
 
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
-	tmp = -mpu_data.fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	//tmp = -mpu_data.TaitBryan[TB_YAW_Z];// + (num_yaw_spins * TWO_PI);
 	// detect the crossover point at +-PI and write new value to core state
-	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
-	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
+	//if(tmp-last_yaw < -M_PI) num_yaw_spins++;
+	//else if (tmp-last_yaw > M_PI) num_yaw_spins--;
 	// finally num_yaw_spins is updated and the new value can be written
-	fstate.yaw = mpu_data.fused_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];// + (num_yaw_spins * TWO_PI);
 	last_yaw = fstate.yaw;
 
 	// filter battery voltage.
