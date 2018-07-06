@@ -140,11 +140,18 @@ int feedback_init()
 	if(settings_get_pitch_controller(&D_pitch)) return -1;
 	if(settings_get_yaw_controller(&D_yaw)) return -1;
 	dt = 1.0/settings.feedback_hz;
+	//printf("dt:%f", dt);
 
 	// save original gains as we will scale these by battery voltage later
 	D_roll_gain_orig = D_roll.gain;
 	D_pitch_gain_orig = D_pitch.gain;
 	D_yaw_gain_orig = D_yaw.gain;
+
+
+	//enable saturation
+	rc_filter_enable_saturation(&D_roll,  -1.0, 1.0);
+	rc_filter_enable_saturation(&D_pitch,  -1.0, 1.0);
+	rc_filter_enable_saturation(&D_yaw, -1.0, 1.0);
 
 	// enable soft start
 	rc_filter_enable_soft_start(&D_roll, SOFT_START_SECONDS);
@@ -152,7 +159,7 @@ int feedback_init()
 	rc_filter_enable_soft_start(&D_yaw, SOFT_START_SECONDS);
 
 	// make battery filter
-	rc_filter_moving_average(&D_batt, 20, dt);
+	rc_filter_moving_average(&D_batt, 20, 0.01);
 	tmp = __batt_voltage();
 	rc_filter_prefill_inputs(&D_batt, tmp);
 	rc_filter_prefill_outputs(&D_batt, tmp);
@@ -172,6 +179,7 @@ int feedback_init()
 
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
+	fstate.initialized=1;  //pg
 	rc_mpu_set_dmp_callback(__feedback_isr);
 
 	return 0;

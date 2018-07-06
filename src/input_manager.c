@@ -22,7 +22,6 @@
 user_input_t user_input; // extern variable in input_manager.h
 
 static pthread_t input_manager_thread;
-static int initialized_flag = 0;
 static arm_state_t kill_switch = DISARMED; // raw kill switch on the radio
 
 /**
@@ -180,7 +179,7 @@ void dsm_disconnect_callback(void)
 
 void* input_manager(void* ptr)
 {
-	initialized_flag = 1;
+	user_input.initialized = 1;
 	// wait for first packet
 	while(rc_get_state()!=EXITING){
 		if(user_input.input_active) break;
@@ -211,6 +210,7 @@ void* input_manager(void* ptr)
 
 int input_manager_init()
 {
+	user_input.initialized = 0;
 	int i;
 	// start dsm hardware
 	if(rc_dsm_init()==-1){

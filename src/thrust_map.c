@@ -70,7 +70,7 @@ static double f20_2300kv_2s_map[][2] = \
  * blheli esc high timing
  * for 5" monocoque hex
  */
-static const int rx2206_4s_points = 11;
+static const int rx2206_4s_points = 12;
 static double rx2206_4s_map[][2] = \
 {{0.0	,	0.00000000000000}, \
  {0.05	,	17.8844719758775}, \
@@ -121,6 +121,7 @@ int thrust_map_init(thrust_map_t map)
 	}
 	if(data[points-1][0] != 1.0){
 		fprintf(stderr,"ERROR: last row input must be 1.0\n");
+		printf("data: %f\n",data[points-1][0]);
 		return -1;
 	}
 	if(data[0][1] != 0.0){

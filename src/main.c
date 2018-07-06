@@ -22,6 +22,8 @@
 #include <mix.h>
 #include <input_manager.h>
 #include <setpoint_manager.h>
+#include <printf_manager.h>
+
 
 
 #define FAIL(str) \
@@ -150,15 +152,18 @@ int main()
 	feedback_init();
 
 
-	// print header before starting printf thread
-	printf("\nTurn your transmitter kill switch to arm.\n");
-	printf("Then move throttle UP then DOWN to arm controller\n");
+	if(isatty(fileno(stdout))){
+	 	printf("initializing printf manager\n");
+	}
 
-	// // start printf_thread if running from a terminal
-	// // if it was started as a background process then don't bother
-	// if(isatty(fileno(stdout))){
-	// 	start_printf_manager(&cstate, &setpoint, &user_input, &settings);
-	// }
+	printf("\nTurn your transmitter kill switch to arm.\n");
+	printf("Then move throttle UP then DOWN to arm controller\n\n");
+
+	 // start printf_thread if running from a terminal
+	 // if it was started as a background process then don't bother
+	 if(isatty(fileno(stdout))){
+	 	printf_init();
+	 }
 
 	// final setup
 	rc_make_pid_file();

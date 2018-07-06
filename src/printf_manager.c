@@ -20,7 +20,7 @@
 
 
 
-static pthread_t pthread;
+static pthread_t printf_manager_thread;
 static int initialized = 0;
 
 /**
@@ -99,10 +99,10 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 	prev_arm_state = fstate.arm_state;
 
 	while(rc_get_state()==EXITING){
-
 		// re-print header on disarming
 		if(fstate.arm_state==DISARMED && prev_arm_state==ARMED){
 			__print_header();
+			printf("hello\n");
 		}
 
 		printf("\r");
@@ -161,7 +161,8 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 
 int printf_init()
 {
-	if(rc_pthread_create(&pthread, __printf_manager_func, NULL, SCHED_FIFO, PRINTF_MANAGER_PRI)<0){
+	if(rc_pthread_create(&printf_manager_thread, __printf_manager_func, NULL,
+				SCHED_FIFO, PRINTF_MANAGER_PRI)==-1){
 		fprintf(stderr,"ERROR in start_printf_manager, failed to start thread\n");
 		return -1;
 	}
@@ -174,7 +175,7 @@ int join_printf_manager_thread(){
 	int ret = 0;
 	if(initialized){
 		// wait for the thread to exit
-		ret = rc_pthread_timed_join(pthread,NULL,PRINTF_MANAGER_TOUT);
+		ret = rc_pthread_timed_join(printf_manager_thread,NULL,PRINTF_MANAGER_TOUT);
 		if(ret==1) fprintf(stderr,"WARNING: printf_manager_thread exit timeout\n");
 		else if(ret==-1) fprintf(stderr,"ERROR: failed to join printf_manager thread\n");
 	}
