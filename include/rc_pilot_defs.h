@@ -39,13 +39,15 @@ typedef enum arm_state_t{
 #define SOFT_START_SECONDS	1.0	// controller soft start seconds
 
 // controller absolute limits
-#define MAX_ROLL_COMPONENT	0.8
-#define MAX_PITCH_COMPONENT	0.8
-#define MAX_YAW_COMPONENT	0.8
+#define MAX_ROLL_COMPONENT	1.0
+#define MAX_PITCH_COMPONENT	1.0
+#define MAX_YAW_COMPONENT	1.0
+
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
-#define MIN_Z_COMPONENT		0.10
-#define MAX_Z_COMPONENT		0.85
+
+#define MIN_Z_COMPONENT		-1.0
+#define MAX_Z_COMPONENT		1.0
 
 // Files
 #define LOG_DIR			"/home/debian/rc_pilot_logs/"

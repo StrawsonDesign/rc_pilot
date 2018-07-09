@@ -98,6 +98,7 @@ void new_dsm_data_callback()
 	new_yaw   = __deadzone(rc_dsm_ch_normalized(settings.dsm_yaw_ch)*settings.dsm_yaw_pol, YAW_DEADZONE);
 	new_mode  = rc_dsm_ch_normalized(settings.dsm_mode_ch)*settings.dsm_mode_pol;
 
+
 	// kill mode behaviors
 	switch(settings.dsm_kill_mode){
 	case DSM_KILL_DEDICATED_SWITCH:
@@ -123,6 +124,9 @@ void new_dsm_data_callback()
 	rc_saturate_double(&new_roll,  -1.0, 1.0);
 	rc_saturate_double(&new_pitch, -1.0, 1.0);
 	rc_saturate_double(&new_yaw,   -1.0, 1.0);
+
+	//printf("t: %+f r: %+f p: %+f y: %+f m: %+f k: %+f \r", new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill);
+
 
 	// pick flight mode
 	switch(settings.num_dsm_modes){
@@ -218,7 +222,7 @@ int input_manager_init()
 		return -1;
 	}
 	rc_dsm_set_disconnect_callback(dsm_disconnect_callback);
-
+	rc_dsm_set_callback(new_dsm_data_callback);
 	// start thread
 	if(rc_pthread_create(&input_manager_thread, &input_manager, NULL,
 				SCHED_FIFO, INPUT_MANAGER_PRI)==-1){

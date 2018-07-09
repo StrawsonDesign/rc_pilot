@@ -204,6 +204,11 @@ static int __feedback_state_estimate()
 	}
 
 	// collect new IMU roll/pitch data
+
+	// We don't want to use magnetometer at the moment...
+	// should add option to use this to the config file
+	// and switch here
+
 	//fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
 	//fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
 
@@ -217,8 +222,11 @@ static int __feedback_state_estimate()
 	//if(tmp-last_yaw < -M_PI) num_yaw_spins++;
 	//else if (tmp-last_yaw > M_PI) num_yaw_spins--;
 	// finally num_yaw_spins is updated and the new value can be written
-	fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];// + (num_yaw_spins * TWO_PI);
-	last_yaw = fstate.yaw;
+	//fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z]; + (num_yaw_spins * TWO_PI);
+	//last_yaw = fstate.yaw;
+	
+	// For the moment use raw yaw data
+	fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];
 
 	// filter battery voltage.
 	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());
@@ -287,7 +295,7 @@ static int __feedback_control()
 
 		// compensate for tilt
 		tmp = setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
-		rc_saturate_double(&tmp, -MIN_Z_COMPONENT, -MAX_Z_COMPONENT);
+		rc_saturate_double(&tmp, MIN_Z_COMPONENT, MAX_Z_COMPONENT);
 		u[VEC_Z] = tmp;
 		mix_add_input(u[VEC_Z], VEC_Z, mot);
 	//}
@@ -354,31 +362,6 @@ static int __feedback_control()
 		u[VEC_ROLL]	= 0.0;
 		u[VEC_PITCH]	= 0.0;
 		u[VEC_YAW]	= 0.0;
-	}
-
-	/***********************************************************************
-	* X (Side) and Y (Forward) inputs, only when 6dof is enabled
-	***********************************************************************/
-	if(setpoint.en_6dof){
-		// Y (sideways, positive right)
-		mix_check_saturation(VEC_Y, mot, &min, &max);
-		if(max>MAX_Y_COMPONENT)  max =  MAX_X_COMPONENT;
-		if(min<-MAX_Y_COMPONENT) min = -MAX_X_COMPONENT;
-		u[VEC_Y] = setpoint.Y_throttle;
-		rc_saturate_double(&u[VEC_Y], min, max);
-		mix_add_input(u[VEC_Y], VEC_Y, mot);
-
-		// X (forward)
-		mix_check_saturation(VEC_X, mot, &min, &max);
-		if(max>MAX_X_COMPONENT)  max =  MAX_Y_COMPONENT;
-		if(min<-MAX_X_COMPONENT) min = -MAX_Y_COMPONENT;
-		u[VEC_X] = setpoint.X_throttle;
-		rc_saturate_double(&u[VEC_X], min, max);
-		mix_add_input(u[VEC_X], VEC_Y, mot);
-	}
-	else{
-		u[VEC_Y] = 0.0;
-		u[VEC_X] = 0.0;
 	}
 
 	/***************************************************************************
