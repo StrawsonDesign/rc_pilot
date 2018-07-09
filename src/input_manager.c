@@ -104,8 +104,9 @@ void new_dsm_data_callback()
 	case DSM_KILL_DEDICATED_SWITCH:
 		new_kill  = rc_dsm_ch_normalized(settings.dsm_kill_ch)*settings.dsm_kill_pol;
 		// determine the kill state
-		if(new_kill<=0.0)	kill_switch = DISARMED;
+		if(new_kill<=0.1)	kill_switch = DISARMED;
 		else			kill_switch = ARMED;
+
 		break;
 
 	case DSM_KILL_NEGATIVE_THROTTLE:
@@ -124,9 +125,6 @@ void new_dsm_data_callback()
 	rc_saturate_double(&new_roll,  -1.0, 1.0);
 	rc_saturate_double(&new_pitch, -1.0, 1.0);
 	rc_saturate_double(&new_yaw,   -1.0, 1.0);
-
-	//printf("t: %+f r: %+f p: %+f y: %+f m: %+f k: %+f \r", new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill);
-
 
 	// pick flight mode
 	switch(settings.num_dsm_modes){
@@ -155,6 +153,7 @@ void new_dsm_data_callback()
 		user_input.roll_stick  = new_roll;
 		user_input.pitch_stick = new_pitch;
 		user_input.yaw_stick   = new_yaw;
+		user_input.requested_arm_mode = kill_switch;
 	}
 	else{
 		// during arming sequence keep sticks zeroed
@@ -201,7 +200,7 @@ void* input_manager(void* ptr)
 			if(rc_get_state()!=RUNNING) continue;
 			else{
 				user_input.requested_arm_mode=ARMED;
-				printf("DSM ARM REQUEST\n");
+				//printf("\n\nDSM ARM REQUEST\n\n");
 			}
 		}
 		// wait
