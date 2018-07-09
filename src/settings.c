@@ -264,7 +264,7 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 	struct json_object *array = NULL;	// to hold num & den arrays
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL;
-	double tmp_flt;
+	double tmp_flt, tmp_kp, tmp_ki, tmp_kd;
 	int i, num_len, den_len;
 	rc_vector_t num_vec = rc_vector_empty();
 	rc_vector_t den_vec = rc_vector_empty();
@@ -285,80 +285,141 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 	// }
 	tmp_flt = json_object_get_double(tmp);
 
-
-	// pull out numerator
-	if(json_object_object_get_ex(jobj_ctl, "numerator", &array)==0){
-		fprintf(stderr,"ERROR: can't find controller numerator in settings file\n");
-		return -1;
-	}
-	if(json_object_is_type(array, json_type_array)==0){
-		fprintf(stderr,"ERROR: controller numerator should be an array\n");
-		return -1;
-	}
-	num_len = json_object_array_length(array);
-	if(num_len<1){
-		fprintf(stderr,"ERROR, numerator must have at least 1 entry\n");
-		return -1;
-	}
-	rc_vector_alloc(&num_vec,num_len);
-	for(i=0;i<num_len;i++){
-		tmp = json_object_array_get_idx(array,i);
-		if(json_object_is_type(tmp, json_type_double)==0){
-			fprintf(stderr,"ERROR: numerator array entries should be a doubles\n");
-			return -1;
-		}
-		tmp_flt = json_object_get_double(tmp);
-		num_vec.d[i]=tmp_flt;
-	}
-
-
-	// pull out denominator
-	if(json_object_object_get_ex(jobj_ctl, "denominator", &array)==0){
-		fprintf(stderr,"ERROR: can't find controller denominator in settings file\n");
-		return -1;
-	}
-	if(json_object_is_type(array, json_type_array)==0){
-		fprintf(stderr,"ERROR: controller denominator should be an array\n");
-		return -1;
-	}
-	den_len = json_object_array_length(array);
-	if(den_len<1){
-		fprintf(stderr,"ERROR, denominator must have at least 1 entry\n");
-		return -1;
-	}
-	rc_vector_alloc(&den_vec,den_len);
-	for(i=0;i<den_len;i++){
-		tmp = json_object_array_get_idx(array,i);
-		if(json_object_is_type(tmp, json_type_double)==0){
-			fprintf(stderr,"ERROR: denominator array entries should be a doubles\n");
-			return -1;
-		}
-		tmp_flt = json_object_get_double(tmp);
-		den_vec.d[i]=tmp_flt;
-	}
-
-	// check for improper TF
-	if(num_len>den_len){
-		fprintf(stderr,"ERROR: improper transfer function\n");
-		rc_vector_free(&num_vec);
-		rc_vector_free(&den_vec);
-		return -1;
-	}
-
-	// check CT continuous time or DT discrete time
-	if(json_object_object_get_ex(jobj_ctl, "CT_or_DT", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find CT_or_DT in settings file\n");
+	// check if PID gains or transfer function coefficients
+	if(json_object_object_get_ex(jobj_ctl, "TF_or_PID", &tmp)==0){
+		fprintf(stderr,"ERROR: can't find TF_or_PID in settings file\n");
 		return -1;
 	}
 	if(json_object_is_type(tmp, json_type_string)==0){
-		fprintf(stderr,"ERROR: CT_or_DT should be a string\n");
+		fprintf(stderr,"ERROR: TF_or_PID should be a string\n");
 		return -1;
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
 
+	if(strcmp(tmp_str, "TF")==0){
 
-	// if CT, use tustin's approx to get to DT
-	if(strcmp(tmp_str, "CT")==0){
+		// pull out numerator
+		if(json_object_object_get_ex(jobj_ctl, "numerator", &array)==0){
+			fprintf(stderr,"ERROR: can't find controller numerator in settings file\n");
+			return -1;
+		}
+		if(json_object_is_type(array, json_type_array)==0){
+			fprintf(stderr,"ERROR: controller numerator should be an array\n");
+			return -1;
+		}
+		num_len = json_object_array_length(array);
+		if(num_len<1){
+			fprintf(stderr,"ERROR, numerator must have at least 1 entry\n");
+			return -1;
+		}
+		rc_vector_alloc(&num_vec,num_len);
+		for(i=0;i<num_len;i++){
+			tmp = json_object_array_get_idx(array,i);
+			if(json_object_is_type(tmp, json_type_double)==0){
+				fprintf(stderr,"ERROR: numerator array entries should be a doubles\n");
+				return -1;
+			}
+			tmp_flt = json_object_get_double(tmp);
+			num_vec.d[i]=tmp_flt;
+		}
+
+
+		// pull out denominator
+		if(json_object_object_get_ex(jobj_ctl, "denominator", &array)==0){
+			fprintf(stderr,"ERROR: can't find controller denominator in settings file\n");
+			return -1;
+		}
+		if(json_object_is_type(array, json_type_array)==0){
+			fprintf(stderr,"ERROR: controller denominator should be an array\n");
+			return -1;
+		}
+		den_len = json_object_array_length(array);
+		if(den_len<1){
+			fprintf(stderr,"ERROR, denominator must have at least 1 entry\n");
+			return -1;
+		}
+		rc_vector_alloc(&den_vec,den_len);
+		for(i=0;i<den_len;i++){
+			tmp = json_object_array_get_idx(array,i);
+			if(json_object_is_type(tmp, json_type_double)==0){
+				fprintf(stderr,"ERROR: denominator array entries should be a doubles\n");
+				return -1;
+			}
+			tmp_flt = json_object_get_double(tmp);
+			den_vec.d[i]=tmp_flt;
+		}
+
+		// check for improper TF
+		if(num_len>den_len){
+			fprintf(stderr,"ERROR: improper transfer function\n");
+			rc_vector_free(&num_vec);
+			rc_vector_free(&den_vec);
+			return -1;
+		}
+
+		// check CT continuous time or DT discrete time
+		if(json_object_object_get_ex(jobj_ctl, "CT_or_DT", &tmp)==0){
+			fprintf(stderr,"ERROR: can't find CT_or_DT in settings file\n");
+			return -1;
+		}
+		if(json_object_is_type(tmp, json_type_string)==0){
+			fprintf(stderr,"ERROR: CT_or_DT should be a string\n");
+			return -1;
+		}
+		tmp_str = (char*)json_object_get_string(tmp);
+
+
+		// if CT, use tustin's approx to get to DT
+		if(strcmp(tmp_str, "CT")==0){
+			// get the crossover frequency
+			if(json_object_object_get_ex(jobj_ctl, "crossover_freq_rad_per_sec", &tmp)==0){
+				fprintf(stderr,"ERROR: can't find crossover frequency in settings file\n");
+				return -1;
+			}
+			if(json_object_is_type(tmp, json_type_double)==0){
+				fprintf(stderr,"ERROR: crossover frequency should be a double\n");
+				return -1;
+			}
+			tmp_flt = json_object_get_double(tmp);
+			if(rc_filter_c2d_tustin(filter,dt, num_vec, den_vec, tmp_flt)){
+				fprintf(stderr,"ERROR: failed to c2dtustin while parsing json\n");
+				return -1;
+			}
+		}
+
+		// if DT, much easier, just construct filter
+		else if(strcmp(tmp_str, "DT")==0){
+			if(rc_filter_alloc(filter,num_vec, den_vec, dt)){
+				fprintf(stderr,"ERROR: failed to alloc filter in __parse_controller()");
+				return -1;
+			}
+		}
+
+		// wrong value for CT_or_DT
+		else{
+			fprintf(stderr,"ERROR: CT_or_DT must be 'CT' or 'DT'\n");
+			printf("instead got :%s\n", tmp_str);
+			return -1;
+		}
+	}
+
+	else if(strcmp(tmp_str, "PID")==0){
+		// pull out gains
+		if(json_object_object_get_ex(jobj_ctl, "kp", &tmp)==0){
+			fprintf(stderr,"ERROR: can't find kp in settings file\n");
+			return -1;
+		}
+		tmp_kp = json_object_get_double(tmp);
+		if(json_object_object_get_ex(jobj_ctl, "ki", &tmp)==0){
+			fprintf(stderr,"ERROR: can't find ki in settings file\n");
+			return -1;
+		}
+		tmp_ki = json_object_get_double(tmp);
+		if(json_object_object_get_ex(jobj_ctl, "kd", &tmp)==0){
+			fprintf(stderr,"ERROR: can't find kd in settings file\n");
+			return -1;
+		}
+		tmp_kd = json_object_get_double(tmp);
 		// get the crossover frequency
 		if(json_object_object_get_ex(jobj_ctl, "crossover_freq_rad_per_sec", &tmp)==0){
 			fprintf(stderr,"ERROR: can't find crossover frequency in settings file\n");
@@ -369,29 +430,17 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		if(rc_filter_c2d_tustin(filter,dt, num_vec, den_vec, tmp_flt)){
-			fprintf(stderr,"ERROR: failed to c2dtustin while parsing json\n");
-			return -1;
-		}
-	}
+		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt,dt)){
+				fprintf(stderr,"ERROR: failed to alloc pid filter in __parse_controller()");
+				return -1;
+			}
 
-	// if DT, much easier, just construct filter
-	else if(strcmp(tmp_str, "DT")==0){
-		if(rc_filter_alloc(filter,num_vec, den_vec, dt)){
-			fprintf(stderr,"ERROR: failed to alloc filter in __parse_controller()");
-			return -1;
-		}
-	}
 
-	// wrong value for CT_or_DT
-	else{
-		fprintf(stderr,"ERROR: CT_or_DT must be 'CT' or 'DT'\n");
-		printf("instead got :%s\n", tmp_str);
-		return -1;
 	}
 
 	return 0;
 }
+
 
 /**
  * @brief      write a settings object to disk

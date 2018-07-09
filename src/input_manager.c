@@ -138,8 +138,8 @@ void new_dsm_data_callback()
 		else user_input.flight_mode = settings.flight_mode_1;
 		break;
 	case 3:
-		if(new_mode>0.5f) user_input.flight_mode = settings.flight_mode_3;
-		else if(new_mode<-0.5f) user_input.flight_mode = settings.flight_mode_1;
+		if(new_mode>0.6f) user_input.flight_mode = settings.flight_mode_3;
+		else if(new_mode<0.1f) user_input.flight_mode = settings.flight_mode_1;
 		else user_input.flight_mode = settings.flight_mode_2;
 		break;
 	default:

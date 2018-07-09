@@ -6,9 +6,9 @@
    "feedback_hz": 100,
    "enable_logging": false,
    "num_dsm_modes": 3,
-   "flight_mode_1": "TEST_BENCH_4DOF",
-   "flight_mode_2": "TEST_BENCH_6DOF",
-   "flight_mode_3": "DIRECT_THROTTLE_4DOF",
+   "flight_mode_1": "DIRECT_THROTTLE_4DOF",
+   "flight_mode_2": "TEST_BENCH_4DOF",
+   "flight_mode_3": "ALT_HOLD_4DOF",
    "dsm_thr_ch": 1,
    "dsm_thr_pol": 1,
    "dsm_roll_ch": 2,
@@ -25,69 +25,85 @@
    "printf_arm": true,
    "printf_altitude": false,
    "printf_rpy": true,
-   "printf_sticks": true,
-   "printf_setpoint": false,
+   "printf_sticks": false,
+   "printf_setpoint": true,
    "printf_u": false,
-   "printf_motors": false,
+   "printf_motors": true,
    "printf_mode": true,
    "roll_controller": {
      "gain": 1,
      "CT_or_DT": "CT",
-     "crossover_freq_rad_per_sec": 6.2830000000000004,
+     "TF_or_PID": "PID",
+     "kp":1,
+     "ki":0.1,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 62.83,
      "numerator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ],
      "denominator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ]
    },
    "pitch_controller": {
      "gain": 1,
      "CT_or_DT": "CT",
-     "crossover_freq_rad_per_sec": 6.2830000000000004,
+     "TF_or_PID": "PID",
+     "kp":1,
+     "ki":0.1,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 62.83,
      "numerator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ],
      "denominator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ]
    },
    "yaw_controller": {
      "gain": 1,
      "CT_or_DT": "CT",
-     "crossover_freq_rad_per_sec": 3.141,
+     "TF_or_PID": "PID",
+     "kp":1,
+     "ki":0.1,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 31.41,
      "numerator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ],
      "denominator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ]
    },
    "altitude_controller": {
      "gain": 1,
      "CT_or_DT": "CT",
-     "crossover_freq_rad_per_sec": 0.62829999999999997,
+     "TF_or_PID": "PID",
+     "kp":1,
+     "ki":0.1,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 6.283,
      "numerator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ],
      "denominator": [
-       0.10000000000000001,
-       0.20000000000000001,
-       0.29999999999999999
+       0.1,
+       0.2,
+       0.3
      ]
    }
  }

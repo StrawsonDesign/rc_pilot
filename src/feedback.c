@@ -33,7 +33,7 @@ static double dt; // controller timestep
 static int num_yaw_spins;
 static double last_yaw;
 static double tmp;
-static rc_filter_t D_roll, D_pitch, D_yaw, D_batt;
+static rc_filter_t D_roll, D_pitch, D_yaw, D_batt, D_altitude;
 static rc_mpu_data_t mpu_data;
 
 // local functions
@@ -139,8 +139,16 @@ int feedback_init()
 	if(settings_get_roll_controller(&D_roll)) return -1;
 	if(settings_get_pitch_controller(&D_pitch)) return -1;
 	if(settings_get_yaw_controller(&D_yaw)) return -1;
+	if(settings_get_altitude_controller(&D_altitude)) return -1;
 	dt = 1.0/settings.feedback_hz;
 	//printf("dt:%f", dt);
+
+	printf("ROLL CONTROLLER:\n");
+	rc_filter_print(D_roll);
+	printf("PITCH CONTROLLER:\n");
+	rc_filter_print(D_pitch);
+	printf("YAW CONTROLLER:\n");
+	rc_filter_print(D_yaw);
 
 	// save original gains as we will scale these by battery voltage later
 	D_roll_gain_orig = D_roll.gain;
@@ -179,7 +187,7 @@ int feedback_init()
 
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
-	fstate.initialized=1;  //pg
+	fstate.initialized=1;
 	rc_mpu_set_dmp_callback(__feedback_isr);
 
 	return 0;
