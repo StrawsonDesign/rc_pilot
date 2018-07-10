@@ -19,6 +19,7 @@
 #include <feedback.h>
 #include <rc_pilot_defs.h>
 #include <setpoint_manager.h>
+#include <log_manager.h>
 #include <settings.h>
 #include <mix.h>
 #include <thrust_map.h>
@@ -35,6 +36,8 @@ static double last_yaw;
 static double tmp;
 static rc_filter_t D_roll, D_pitch, D_yaw, D_batt, D_altitude;
 static rc_mpu_data_t mpu_data;
+
+log_entry_t new_log;
 
 // local functions
 static void __feedback_isr(void);
@@ -400,28 +403,28 @@ static int __feedback_control()
 	/***************************************************************************
 	* Add new log entry
 	***************************************************************************/
-	// if(settings.enable_logging){
-	// 	new_log.loop_index	= fstate.loop_index;
-	// 	new_log.last_step_us	= fstate.last_step_us;
-	// 	new_log.altitude	= fstate.altitude;
-	// 	new_log.roll		= fstate.roll;
-	// 	new_log.pitch		= fstate.pitch;
-	// 	new_log.yaw		= fstate.yaw;
-	// 	new_log.v_batt		= fstate.v_batt;
-	// 	new_log.u_X		= u[VEC_Y];
-	// 	new_log.u_Y		= u[VEC_X];
-	// 	new_log.u_Z		= u[VEC_Z];
-	// 	new_log.u_roll		= u[VEC_ROLL];
-	// 	new_log.u_pitch		= u[VEC_PITCH];
-	// 	new_log.u_yaw		= u[VEC_YAW];
-	// 	new_log.mot_1		= fstate.m[0];
-	// 	new_log.mot_2		= fstate.m[1];
-	// 	new_log.mot_3		= fstate.m[2];
-	// 	new_log.mot_4		= fstate.m[3];
-	// 	new_log.mot_5		= fstate.m[4];
-	// 	new_log.mot_6		= fstate.m[5];
-	// 	add_log_entry(new_log);
-	// }
+	 if(settings.enable_logging){
+	 	new_log.loop_index	= fstate.loop_index;
+	 	new_log.last_step_ns	= fstate.last_step_ns;
+	 	new_log.altitude	= fstate.altitude;
+	 	new_log.roll		= fstate.roll;
+	 	new_log.pitch		= fstate.pitch;
+	 	new_log.yaw		= fstate.yaw;
+		new_log.v_batt		= fstate.v_batt;
+		new_log.u_X		= u[VEC_Y];
+		new_log.u_Y		= u[VEC_X];
+		new_log.u_Z		= u[VEC_Z];
+		new_log.u_roll		= u[VEC_ROLL];
+		new_log.u_pitch		= u[VEC_PITCH];
+		new_log.u_yaw		= u[VEC_YAW];
+		new_log.mot_1		= fstate.m[0];
+		new_log.mot_2		= fstate.m[1];
+		new_log.mot_3		= fstate.m[2];
+		new_log.mot_4		= fstate.m[3];
+		new_log.mot_5		= fstate.m[4];
+		new_log.mot_6		= fstate.m[5];
+		add_log_entry(new_log);
+	}
 
 	return 0;
 }

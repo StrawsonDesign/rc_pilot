@@ -22,6 +22,7 @@
 #include <mix.h>
 #include <input_manager.h>
 #include <setpoint_manager.h>
+#include <log_manager.h>
 #include <printf_manager.h>
 
 
@@ -152,6 +153,12 @@ int main()
 	feedback_init();
 
 
+	// initalize log_manager
+	if(log_manager_init()<0){
+		printf("ERROR: failed to initialize input_manager\n");
+		return -1;
+	}
+
 	if(isatty(fileno(stdout))){
 	 	printf("initializing printf manager\n");
 	}
@@ -179,6 +186,7 @@ int main()
 	feedback_cleanup();
 	setpoint_manager_cleanup();
 	input_manager_cleanup();
+	log_manager_cleanup();
 	return 0;
 }
 

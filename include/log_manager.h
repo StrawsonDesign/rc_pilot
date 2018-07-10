@@ -14,7 +14,7 @@
  */
 #define LOG_TABLE \
 	X(uint64_t,	"%lld",	loop_index	) \
-	X(uint64_t,	"%lld",	last_step_us	) \
+	X(uint64_t,	"%lld",	last_step_ns	) \
 						  \
 	X(double,	"%f",	altitude	) \
 	X(double,	"%f",	roll		) \
@@ -53,7 +53,7 @@ typedef struct log_entry_t { LOG_TABLE } log_entry_t;
  *
  * @return     0 on success, -1 on failure
  */
-int start_log_manager();
+int log_manager_init();
 
 /**
  * @brief      Write the contents of one entry to the console.
@@ -84,6 +84,6 @@ int add_log_entry(log_entry_t new_entry);
  *
  * @return     0 on sucess and clean exit, -1 on exit timeout/force close.
  */
-int join_log_manager_thread();
+int log_manager_cleanup();
 
 #endif // LOG_MANAGER_H

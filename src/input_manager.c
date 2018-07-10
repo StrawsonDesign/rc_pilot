@@ -17,7 +17,6 @@
 #include <settings.h>
 #include <rc_pilot_defs.h>
 #include <thread_defs.h>
-#include <rc_pilot_defs.h>
 
 user_input_t user_input; // extern variable in input_manager.h
 

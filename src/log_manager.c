@@ -11,11 +11,12 @@
 #include <dirent.h>
 #include <string.h>
 
-#include <rc/state.h>
+#include <rc/start_stop.h>
 #include <rc/time.h>
-#include <rc/pthread_helpers.h>
+#include <rc/pthread.h>
 
-#include <fly_defs.h>
+#include <rc_pilot_defs.h>
+#include <thread_defs.h>
 #include <log_manager.h>
 
 
@@ -35,8 +36,6 @@ log_entry_t buffer[2][BUF_LEN];
 // background thread and running flag
 pthread_t pthread;
 int logging_enabled; // set to 0 to exit the write_thread
-
-
 
 int print_entry(log_entry_t entry){
 	#define X(type, fmt, name) printf("%s " fmt "\n", #name, entry.name);
@@ -101,9 +100,13 @@ void* log_manager_func(__attribute__ ((unused)) void* ptr){
 
 	// if program is exiting or logging got disabled, write out the rest of
 	// the logs that are in the buffer current being filled
-	for(i=0;i<num_entries;i++) write_log_entry(buffer[current_buf][i]);
+	//printf("writing out remaining log file\n");
+	for(i=0;i<buffer_pos;i++){
+		write_log_entry(buffer[current_buf][i]);
+	}
 	fflush(fd);
 	fclose(fd);
+	//printf("log file closed\n");
 	// zero out state
 	logging_enabled = 0;
 	num_entries = 0;
@@ -114,7 +117,7 @@ void* log_manager_func(__attribute__ ((unused)) void* ptr){
 }
 
 
-int start_log_manager(){
+int log_manager_init(){
 	int i;
 	char path[100];
 	struct stat st = {0};
@@ -174,7 +177,7 @@ int start_log_manager(){
 }
 
 
-int join_log_manager_thread(){
+int log_manager_cleanup(){
 	// disable logging so the thread can stop and start multiple times
 	// thread also exits on rc_get_state()==EXITING
 	logging_enabled = 0;
