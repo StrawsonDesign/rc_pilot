@@ -21,6 +21,12 @@
 	X(double,	"%f",	pitch		) \
 	X(double,	"%f",	yaw		) \
 						  \
+	X(double,	"%f",	Z_throttle_sp	) \
+	X(double,	"%f",	altitude_sp	) \
+	X(double,	"%f",	roll_sp		) \
+	X(double,	"%f",	pitch_sp		) \
+	X(double,	"%f",	yaw_sp		) \
+						\
 	X(double,	"%f",	u_X		) \
 	X(double,	"%f",	u_Y		) \
 	X(double,	"%f",	u_Z		) \

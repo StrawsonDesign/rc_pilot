@@ -410,6 +410,11 @@ static int __feedback_control()
 	 	new_log.roll		= fstate.roll;
 	 	new_log.pitch		= fstate.pitch;
 	 	new_log.yaw		= fstate.yaw;
+	 	new_log.Z_throttle_sp	= setpoint.Z_throttle;
+	 	new_log.altitude_sp	= setpoint.altitude;
+	 	new_log.roll_sp		= setpoint.roll;
+	 	new_log.pitch_sp		= setpoint.pitch;
+	 	new_log.yaw_sp		= setpoint.yaw;
 		new_log.v_batt		= fstate.v_batt;
 		new_log.u_X		= u[VEC_Y];
 		new_log.u_Y		= u[VEC_X];
