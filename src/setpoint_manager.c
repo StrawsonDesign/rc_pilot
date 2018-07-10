@@ -26,8 +26,8 @@ void __direct_throttle()
 	// then scale and shift to be between thrust min/max
 	// Z-throttle should be negative since Z points down
 	tmp = (user_input.thr_stick + 1.0)/2.0;
-	tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
-	setpoint.Z_throttle = -(tmp + MIN_Z_COMPONENT);
+	//tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
+	setpoint.Z_throttle = -tmp;
 	return;
 }
 
@@ -86,6 +86,7 @@ int setpoint_manager_update()
 	switch(user_input.flight_mode){
 
 
+	//TODO: pitch doesn't work in this mode... why? 
 	case TEST_BENCH_4DOF:
 		setpoint.en_alt_ctrl = 0;
 		setpoint.en_rpy_ctrl = 0;
@@ -93,7 +94,7 @@ int setpoint_manager_update()
 		setpoint.roll_throttle = user_input.roll_stick;
 		setpoint.pitch_throttle = user_input.pitch_stick;
 		setpoint.yaw_throttle = user_input.yaw_stick;
-		setpoint.Z_throttle = -user_input.thr_stick;
+		setpoint.Z_throttle = -(user_input.thr_stick+1.0)/2.0;
 		break;
 
 	case TEST_BENCH_6DOF:
@@ -116,6 +117,7 @@ int setpoint_manager_update()
 		setpoint.pitch = user_input.pitch_stick;
 		__direct_throttle();
 		__direct_yaw();
+		setpoint.altitude = setpoint.Z_throttle;
 		break;
 
 	case DIRECT_THROTTLE_6DOF:

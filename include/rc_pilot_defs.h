@@ -46,7 +46,8 @@ typedef enum arm_state_t{
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
 
-#define MIN_Z_COMPONENT		-1.0
+#define MOTOR_IDLE_CMD      0.05
+#define MIN_Z_COMPONENT		0.0
 #define MAX_Z_COMPONENT		1.0
 
 // Files

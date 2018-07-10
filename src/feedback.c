@@ -60,7 +60,10 @@ static int __set_motors_to_idle()
 		printf("ERROR: set_motors_to_idle: too many rotors\n");
 		return -1;
 	}
-	for(i=1;i<=settings.num_rotors;i++) rc_servo_send_esc_pulse_normalized(i,-0.1);
+	for(i=0;i<settings.num_rotors;i++){
+		fstate.m[i] = -0.1;
+		rc_servo_send_esc_pulse_normalized(i+1,-0.1);
+	}
 	return 0;
 }
 
@@ -303,7 +306,8 @@ static int __feedback_control()
 
 		// compensate for tilt
 		tmp = setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
-		rc_saturate_double(&tmp, MIN_Z_COMPONENT, MAX_Z_COMPONENT);
+		//printf("throttle: %f\n",tmp);
+		rc_saturate_double(&tmp, -MAX_Z_COMPONENT, -MIN_Z_COMPONENT);
 		u[VEC_Z] = tmp;
 		mix_add_input(u[VEC_Z], VEC_Z, mot);
 	//}
@@ -355,12 +359,12 @@ static int __feedback_control()
 		mix_check_saturation(VEC_PITCH, mot, &min, &max);
 		if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
 		if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
-		u[VEC_PITCH] = setpoint.roll_throttle;
+		u[VEC_PITCH] = setpoint.pitch_throttle;
 		rc_saturate_double(&u[VEC_PITCH], min, max);
 		mix_add_input(u[VEC_PITCH], VEC_PITCH, mot);
 
 		// YAW
-		mix_check_saturation(VEC_ROLL, mot, &min, &max);
+		mix_check_saturation(VEC_YAW, mot, &min, &max);
 		if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
 		if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
 		u[VEC_YAW] = setpoint.yaw_throttle;
@@ -378,6 +382,7 @@ static int __feedback_control()
 	for(i=0;i<settings.num_rotors;i++){
 		rc_saturate_double(&mot[i], 0.0, 1.0);
 		fstate.m[i] = map_motor_signal(mot[i]);
+		rc_saturate_double(&fstate.m[i], 0.135, 1.0);
 		rc_servo_send_esc_pulse_normalized(i+1,fstate.m[i]);
 	}
 

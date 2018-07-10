@@ -104,9 +104,13 @@ void new_dsm_data_callback()
 	case DSM_KILL_DEDICATED_SWITCH:
 		new_kill  = rc_dsm_ch_normalized(settings.dsm_kill_ch)*settings.dsm_kill_pol;
 		// determine the kill state
-		if(new_kill<=0.1)	kill_switch = DISARMED;
-		else			kill_switch = ARMED;
-
+		if(new_kill<=0.1){
+			kill_switch = DISARMED;
+			user_input.requested_arm_mode=DISARMED;
+		}
+		else{
+			kill_switch = ARMED;
+		}
 		break;
 
 	case DSM_KILL_NEGATIVE_THROTTLE:
