@@ -34,8 +34,8 @@
      "gain": 1,
      "CT_or_DT": "CT",
      "TF_or_PID": "PID",
-     "kp":1,
-     "ki":0.1,
+     "kp":0.3,
+     "ki":0.01,
      "kd":0.1,
      "crossover_freq_rad_per_sec": 62.83,
      "numerator": [
@@ -53,8 +53,8 @@
      "gain": 1,
      "CT_or_DT": "CT",
      "TF_or_PID": "PID",
-     "kp":1,
-     "ki":0.1,
+     "kp":0.3,
+     "ki":0.01,
      "kd":0.1,
      "crossover_freq_rad_per_sec": 62.83,
      "numerator": [
@@ -72,8 +72,8 @@
      "gain": 1,
      "CT_or_DT": "CT",
      "TF_or_PID": "PID",
-     "kp":1,
-     "ki":0.1,
+     "kp":0.3,
+     "ki":0.01,
      "kd":0.1,
      "crossover_freq_rad_per_sec": 31.41,
      "numerator": [

@@ -30,7 +30,7 @@ typedef enum arm_state_t{
 #define VEC_YAW			5
 
 // user control parameters
-#define MAX_YAW_RATE		2.5	// rad/s
+#define MAX_YAW_RATE		1.0	// rad/s
 #define MAX_ROLL_SETPOINT	0.4	// rad
 #define MAX_PITCH_SETPOINT	0.4	// rad
 #define MAX_CLIMB_RATE		1.0	// m/s

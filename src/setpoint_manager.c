@@ -43,7 +43,7 @@ void __direct_yaw()
 	// and move yaw setpoint
 	else{
 		setpoint.yaw_rate = user_input.yaw_stick * MAX_YAW_RATE;
-		setpoint.yaw_rate += setpoint.yaw_rate/settings.feedback_hz;
+		setpoint.yaw += setpoint.yaw_rate/settings.feedback_hz;
 	}
 	return;
 }
@@ -117,7 +117,6 @@ int setpoint_manager_update()
 		setpoint.pitch = user_input.pitch_stick;
 		__direct_throttle();
 		__direct_yaw();
-		setpoint.altitude = setpoint.Z_throttle;
 		break;
 
 	case DIRECT_THROTTLE_6DOF:
