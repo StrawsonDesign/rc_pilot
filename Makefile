@@ -17,7 +17,7 @@ LINKER		:= gcc
 WFLAGS		:= -Wall -Wextra
 CFLAGS		:= -I $(INCLUDEDIR)
 OPT_FLAGS	:= -O1
-LDFLAGS		:= -lm -lrt -pthread -lroboticscape -ljson-c
+LDFLAGS		:= -lm -lrt -pthread -lrobotcontrol -ljson-c
 
 RM		:= rm -rf
 INSTALL		:= install -m 4755
