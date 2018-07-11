@@ -345,7 +345,7 @@ static int __feedback_control()
 		if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
 		rc_filter_enable_saturation(&D_yaw, min, max);
 		D_yaw.gain = D_yaw_gain_orig * settings.v_nominal/fstate.v_batt;
-		u[VEC_YAW] = rc_filter_march(&D_yaw, setpoint.yaw - fstate.yaw);
+		u[VEC_YAW] = -rc_filter_march(&D_yaw, setpoint.yaw - fstate.yaw);
 		mix_add_input(u[VEC_YAW], VEC_YAW, mot);
 	}
 	// otherwise direct throttle
@@ -385,7 +385,7 @@ static int __feedback_control()
 	for(i=0;i<settings.num_rotors;i++){
 		rc_saturate_double(&mot[i], 0.0, 1.0);
 		fstate.m[i] = map_motor_signal(mot[i]);
-		rc_saturate_double(&fstate.m[i], 0.135, 1.0);
+		rc_saturate_double(&fstate.m[i], MOTOR_IDLE_CMD, 1.0);
 		rc_servo_send_esc_pulse_normalized(i+1,fstate.m[i]);
 	}
 
