@@ -317,7 +317,7 @@ int feedback_init()
 	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
 	mpu_conf.dmp_sample_rate = settings.feedback_hz;
 	mpu_conf.dmp_fetch_accel_gyro = 1;
-	mpu_conf.enable_magnetometer = 0;
+	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
 	mpu_conf.orient = ORIENTATION_Z_UP;
 
 	// now set up the imu for dmp interrupt operation
