@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <rc/math/filter.h>
+ #include <rc/math/kalman.h>
+ #include <rc/math/quaternion.h>
 #include <rc/math/other.h>
 #include <rc/start_stop.h>
 #include <rc/led.h>
@@ -14,7 +16,7 @@
 #include <rc/servo.h>
 #include <rc/adc.h>
 #include <rc/time.h>
-#include <rc/mpu.h>
+#include <rc/bmp.h>
 
 #include <feedback.h>
 #include <rc_pilot_defs.h>
@@ -29,13 +31,22 @@
 feedback_state_t fstate; // extern variable in feedback.h
 
 // keep original controller gains for scaling later
-static double D_roll_gain_orig, D_pitch_gain_orig, D_yaw_gain_orig;
+static double D_roll_gain_orig, D_pitch_gain_orig, D_yaw_gain_orig, D_altitude_gain_orig;
 static double dt; // controller timestep
 static int num_yaw_spins;
 static double last_yaw;
 static double tmp;
-static rc_filter_t D_roll, D_pitch, D_yaw, D_batt, D_altitude;
+static int last_en_alt_ctrl;
+
+static rc_filter_t D_roll, D_pitch, D_yaw, D_batt, D_altitude, altitude_lp;
 static rc_mpu_data_t mpu_data;
+static rc_bmp_data_t bmp_data;
+
+// altitude kalman filer elements
+static rc_matrix_t F, G, H, Q, R, Pi;
+static rc_kalman_t kf;
+static rc_vector_t u,y;
+static rc_filter_t acc_lp;
 
 log_entry_t new_log;
 
@@ -43,6 +54,7 @@ log_entry_t new_log;
 static void __feedback_isr(void);
 static int __set_motors_to_idle();
 static double __batt_voltage();
+static int __estimate_altitude();
 static int __feedback_control();
 static int __feedback_state_estimate();
 
@@ -51,6 +63,7 @@ static int __feedback_state_estimate();
 static void __feedback_isr(void)
 {
 	setpoint_manager_update();
+	__estimate_altitude();
 	__feedback_state_estimate();
 	__feedback_control();
 }
@@ -89,6 +102,46 @@ static double __batt_voltage()
 	return tmp;
 }
 
+static int __estimate_altitude()
+{
+	int i;
+	double accel_vec[3];
+	static int bmp_sample_counter = 0;
+
+	// make copy of acceleration reading before rotating
+	for(i=0;i<3;i++) accel_vec[i]=mpu_data.accel[i];
+	// rotate accel vector
+	rc_quaternion_rotate_vector_array(accel_vec,mpu_data.dmp_quat);
+
+	// do first-run filter setup
+	if(kf.step==0){
+		kf.x_est.d[0] = bmp_data.alt_m;
+		rc_filter_prefill_inputs(&acc_lp, accel_vec[2]-9.80665);
+		rc_filter_prefill_outputs(&acc_lp, accel_vec[2]-9.80665);
+	}
+
+	// calculate acceleration and smooth it just a tad
+	rc_filter_march(&acc_lp, accel_vec[2]-9.80665);
+	u.d[0] = acc_lp.newest_output;
+
+	// don't bother filtering Barometer, kalman will deal with that
+	y.d[0] = bmp_data.alt_m;
+	rc_kalman_update_lin(&kf, u, y);
+
+	// now check if we need to sample BMP this loop
+	bmp_sample_counter++;
+	if(bmp_sample_counter>=BMP_RATE_DIV){
+		// perform the i2c reads to the sensor, on bad read just try later
+		if(rc_bmp_read(&bmp_data)) return -1;
+		bmp_sample_counter=0;
+	}
+
+
+
+	return 0;
+}
+
+
 int feedback_disarm()
 {
 	fstate.arm_state = DISARMED;
@@ -123,6 +176,8 @@ int feedback_arm()
 	rc_filter_reset(&D_roll);
 	rc_filter_reset(&D_pitch);
 	rc_filter_reset(&D_yaw);
+	rc_filter_reset(&D_altitude);
+
 	// prefill filters with current error
 	rc_filter_prefill_inputs(&D_roll, -fstate.roll);
 	rc_filter_prefill_inputs(&D_pitch, -fstate.pitch);
@@ -147,7 +202,82 @@ int feedback_init()
 	if(settings_get_yaw_controller(&D_yaw)) return -1;
 	if(settings_get_altitude_controller(&D_altitude)) return -1;
 	dt = 1.0/settings.feedback_hz;
-	//printf("dt:%f", dt);
+
+	//initialize altitude kalman filter and bmp sensor
+	F = rc_matrix_empty();
+	G = rc_matrix_empty();
+	H = rc_matrix_empty();
+	Q = rc_matrix_empty();
+	R = rc_matrix_empty();
+	Pi = rc_matrix_empty();
+	u = rc_vector_empty();
+	y = rc_vector_empty();
+	kf = rc_kalman_empty();
+	acc_lp = rc_filter_empty();
+	altitude_lp = rc_filter_empty();
+
+	int Nx = 3;
+	int Ny = 1;
+	int Nu = 1;
+	// allocate appropirate memory for system
+	rc_matrix_zeros(&F, Nx, Nx);
+	rc_matrix_zeros(&G, Nx, Nu);
+	rc_matrix_zeros(&H, Ny, Nx);
+	rc_matrix_zeros(&Q, Nx, Nx);
+	rc_matrix_zeros(&R, Ny, Ny);
+	rc_matrix_zeros(&Pi, Nx, Nx);
+	rc_vector_zeros(&u, Nu);
+	rc_vector_zeros(&y, Ny);
+
+// define system -DT; // accel bias
+	F.d[0][0] = 1.0;
+	F.d[0][1] = dt;
+	F.d[0][2] = 0.0;
+	F.d[1][0] = 0.0;
+	F.d[1][1] = 1.0;
+	F.d[1][2] = -dt; // subtract accel bias
+	F.d[2][0] = 0.0;
+	F.d[2][1] = 0.0;
+	F.d[2][2] = 1.0; // accel bias state
+
+	G.d[0][0] = 0.5*dt*dt;
+	G.d[0][1] = dt;
+	G.d[0][2] = 0.0;
+
+	H.d[0][0] = 1.0;
+	H.d[0][1] = 0.0;
+	H.d[0][2] = 0.0;
+
+	// covariance matrices
+	Q.d[0][0] = 0.000000001;
+	Q.d[1][1] = 0.000000001;
+	Q.d[2][2] = 0.0001; // don't want bias to change too quickly
+	R.d[0][0] = 1000000.0;
+
+	// initial P, cloned from converged P while running
+	Pi.d[0][0] = 1258.69;
+	Pi.d[0][1] = 158.6114;
+	Pi.d[0][2] = -9.9937;
+	Pi.d[1][0] = 158.6114;
+	Pi.d[1][1] = 29.9870;
+	Pi.d[1][2] = -2.5191;
+	Pi.d[2][0] = -9.9937;
+	Pi.d[2][1] = -2.5191;
+	Pi.d[2][2] = 0.3174;
+
+	// initialize the kalman filter
+	if(rc_kalman_alloc_lin(&kf,F,G,H,Q,R,Pi)==-1) return -1;
+	// initialize the little LP filter to take out accel noise
+	if(rc_filter_first_order_lowpass(&acc_lp, dt, 20*dt)) return -1;
+
+	if(rc_filter_butterworth_lowpass(&altitude_lp,2, dt, ALT_CUTOFF_FREQ)) return -1;
+	
+	// init barometer and read in first data
+	if(rc_bmp_init(BMP_OVERSAMPLE_16, BMP_FILTER_16))	return -1;
+	if(rc_bmp_read(&bmp_data)) return -1;
+	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
+	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);
+
 
 	printf("ROLL CONTROLLER:\n");
 	rc_filter_print(D_roll);
@@ -155,22 +285,27 @@ int feedback_init()
 	rc_filter_print(D_pitch);
 	printf("YAW CONTROLLER:\n");
 	rc_filter_print(D_yaw);
+	printf("ALTITUDE CONTROLLER:\n");
+	rc_filter_print(D_altitude);
 
 	// save original gains as we will scale these by battery voltage later
 	D_roll_gain_orig = D_roll.gain;
 	D_pitch_gain_orig = D_pitch.gain;
 	D_yaw_gain_orig = D_yaw.gain;
+	D_altitude_gain_orig = D_altitude.gain;
 
 
 	//enable saturation
 	rc_filter_enable_saturation(&D_roll,  -1.0, 1.0);
 	rc_filter_enable_saturation(&D_pitch,  -1.0, 1.0);
 	rc_filter_enable_saturation(&D_yaw, -1.0, 1.0);
+	rc_filter_enable_saturation(&D_altitude, -1.0, 1.0);
 
 	// enable soft start
 	rc_filter_enable_soft_start(&D_roll, SOFT_START_SECONDS);
 	rc_filter_enable_soft_start(&D_pitch, SOFT_START_SECONDS);
 	rc_filter_enable_soft_start(&D_yaw, SOFT_START_SECONDS);
+	rc_filter_enable_soft_start(&D_altitude, SOFT_START_SECONDS);
 
 	// make battery filter
 	rc_filter_moving_average(&D_batt, 20, 0.01);
@@ -179,14 +314,15 @@ int feedback_init()
 	rc_filter_prefill_outputs(&D_batt, tmp);
 
 	// start the IMU
-	rc_mpu_config_t conf = rc_mpu_default_config();
-	conf.dmp_sample_rate = settings.feedback_hz;
-	conf.enable_magnetometer = 1;
-	conf.orient = ORIENTATION_Z_UP;
+	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
+	mpu_conf.dmp_sample_rate = settings.feedback_hz;
+	mpu_conf.dmp_fetch_accel_gyro = 1;
+	mpu_conf.enable_magnetometer = 0;
+	mpu_conf.orient = ORIENTATION_Z_UP;
 
 	// now set up the imu for dmp interrupt operation
 	printf("initializing MPU\n");
-	if(rc_mpu_initialize_dmp(&mpu_data, conf)){
+	if(rc_mpu_initialize_dmp(&mpu_data, mpu_conf)){
 		fprintf(stderr,"ERROR: in feedback_init, failed to start MPU DMP\n");
 		return -1;
 	}
@@ -227,7 +363,9 @@ static int __feedback_state_estimate()
 	//fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
 
 	fstate.roll   = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
+	fstate.roll_rate = mpu_data.gyro[0];
 	fstate.pitch  = mpu_data.dmp_TaitBryan[TB_PITCH_X];
+	fstate.pitch_rate = mpu_data.gyro[1];
 
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
@@ -241,11 +379,17 @@ static int __feedback_state_estimate()
 	
 	// For the moment use raw yaw data
 	fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];
+	fstate.yaw_rate = mpu_data.gyro[2];
 
 	// filter battery voltage.
 	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());
 
-	// TODO: altitude estimate
+	// altitude estimate
+	fstate.altitude_bmp = rc_filter_march(&altitude_lp,bmp_data.alt_m);
+	fstate.altitude_kf = kf.x_est.d[0];
+	fstate.alt_kf_vel = kf.x_est.d[1];
+	fstate.alt_kf_accel = kf.x_est.d[2];
+
 	return 0;
 }
 
@@ -287,33 +431,37 @@ static int __feedback_control()
 	* true if taking off for the first time in altitude mode as arm_controller
 	* sets up last_en_alt_ctrl and last_usr_thr every time controller arms
 	***************************************************************************/
-	// // run altitude controller if enabled
-	// if(setpoint.en_alt_ctrl){
-	// 	if(last_en_alt_ctrl == 0){
-	// 		setpoint.altitude = fstate.alt; // set altitude setpoint to current altitude
-	// 		rc_reset_filter(&D0);
-	// 		prefill_filter_outputs(&D0,last_usr_thr);
-	// 		last_en_alt_ctrl = 1;
-	// 	}
-	// 	setpoint.altitude += setpoint.altitude_rate*DT;
-	// 	saturate_float(&setpoint.altitude, fstate.alt-ALT_BOUND_D, fstate.alt+ALT_BOUND_U);
-	// 	D0.gain = D0_GAIN * V_NOMINAL/fstate.vbatt;
-	// 	tmp = march_filter(&D0, setpoint.altitude-fstate.alt);
-	// 	u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch);
-	// 	saturate_float(&u[VEC_Z], MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-	// 	mix_add_input(u[VEC_Z], VEC_Z, mot);
-	// 	last_en_alt_ctrl = 1;
-	// }
-	// // else use direct throttle
-	// else{
+	// run altitude controller if enabled
+	// this needs work...
+	// we need to:
+	//		fuse baraometer and accelerometer
+	//		find hover thrust and correct from there
+	//		this code does not work a.t.m.
+	 if(setpoint.en_alt_ctrl){
+	 	if(last_en_alt_ctrl == 0){
+	 		setpoint.altitude = fstate.altitude_kf; // set altitude setpoint to current altitude
+	 		rc_filter_reset(&D_altitude);
+	 		tmp = -setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
+	 		rc_filter_prefill_outputs(&D_altitude, tmp);
+	 		last_en_alt_ctrl = 1;
+	 	}
+	 	D_altitude.gain = D_altitude_gain_orig * settings.v_nominal/fstate.v_batt;
+	 	tmp = rc_filter_march(&D_altitude, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
+	 	rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
+	 	u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch); 	
+	 	mix_add_input(u[VEC_Z], VEC_Z, mot);
+	 	last_en_alt_ctrl = 1;
+	 }
+	// else use direct throttle
+	 else{
 
 		// compensate for tilt
 		tmp = setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
 		//printf("throttle: %f\n",tmp);
-		rc_saturate_double(&tmp, -MAX_Z_COMPONENT, -MIN_Z_COMPONENT);
+		rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 		u[VEC_Z] = tmp;
 		mix_add_input(u[VEC_Z], VEC_Z, mot);
-	//}
+	}
 
 	/***************************************************************************
 	* Roll Pitch Yaw controllers, only run if enabled
@@ -406,7 +554,8 @@ static int __feedback_control()
 	 if(settings.enable_logging){
 	 	new_log.loop_index	= fstate.loop_index;
 	 	new_log.last_step_ns	= fstate.last_step_ns;
-	 	new_log.altitude	= fstate.altitude;
+	 	new_log.altitude_kf	= fstate.altitude_kf;
+	 	new_log.altitude_bmp	= fstate.altitude_bmp;
 	 	new_log.roll		= fstate.roll;
 	 	new_log.pitch		= fstate.pitch;
 	 	new_log.yaw		= fstate.yaw;

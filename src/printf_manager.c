@@ -112,7 +112,7 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			else                       printf("%sDISARMED%s|",KGRN,KNRM);
 		}
 		if(settings.printf_altitude){
-			printf("%+5.2f |", fstate.altitude);
+			printf("%+5.2f |", fstate.altitude_kf);
 		}
 		if(settings.printf_rpy){
 			printf("%+5.2f|", fstate.roll);

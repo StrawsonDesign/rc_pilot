@@ -48,6 +48,25 @@ void __direct_yaw()
 	return;
 }
 
+void __altitude_hold()
+{
+	// if throttle stick is down all the way, probably landed, so
+	// keep the altitude setpoint at current altitude
+	// printf("user_input.thr_stick: %f\n", user_input.thr_stick);
+	if(user_input.requested_arm_mode == DISARMED){
+		setpoint.altitude = fstate.altitude_kf;
+		setpoint.altitude_rate = 0.0;
+	}
+	// otherwise, scale altitude_rate by max climb rate in m/s
+	// and move altitude setpoint
+	else{
+		setpoint.altitude_rate = user_input.thr_stick * MAX_CLIMB_RATE;
+		setpoint.altitude += setpoint.altitude_rate/settings.feedback_hz;
+	}
+	return;
+}
+
+
 int setpoint_manager_init()
 {
 	if(setpoint.initialized){
@@ -132,24 +151,24 @@ int setpoint_manager_update()
 		break;
 
 	case ALT_HOLD_4DOF:
-		setpoint.en_alt_ctrl = 0;
+		setpoint.en_alt_ctrl = 1;
 		setpoint.en_rpy_ctrl = 1;
 		setpoint.en_6dof = 0;
 		setpoint.roll = user_input.roll_stick;
 		setpoint.pitch = user_input.pitch_stick;
-		__direct_throttle();
+		__altitude_hold();
 		__direct_yaw();
 		break;
 
 	case ALT_HOLD_6DOF:
-		setpoint.en_alt_ctrl = 0;
+		setpoint.en_alt_ctrl = 1;
 		setpoint.en_rpy_ctrl = 1;
 		setpoint.en_6dof = 0;
 		setpoint.roll = 0.0;
 		setpoint.pitch = 0.0;
 		setpoint.X_throttle = -user_input.pitch_stick;
 		setpoint.Y_throttle = user_input.roll_stick;
-		__direct_throttle();
+		__altitude_hold();
 		__direct_yaw();
 		break;
 

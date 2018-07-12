@@ -16,7 +16,8 @@
 	X(uint64_t,	"%lld",	loop_index	) \
 	X(uint64_t,	"%lld",	last_step_ns	) \
 						  \
-	X(double,	"%f",	altitude	) \
+	X(double,	"%f",	altitude_kf	) \
+	X(double,	"%f",	altitude_bmp) \
 	X(double,	"%f",	roll		) \
 	X(double,	"%f",	pitch		) \
 	X(double,	"%f",	yaw		) \

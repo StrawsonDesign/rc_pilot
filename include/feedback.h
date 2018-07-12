@@ -34,10 +34,16 @@ typedef struct feedback_state_t{
 	uint64_t loop_index;	///< increases every time feedback loop runs
 	uint64_t last_step_ns;	///< last time controller has finished a step
 
-	double altitude;	///< altitude estimate from sea level (m)
+	double altitude_bmp;	///< altitude estimate using bmp from sea level (m)
+	double altitude_kf;     ///< altitude estimate using kalman filter
+	double alt_kf_vel;		///< z velocity estimate using kalman filter
+	double alt_kf_accel;    ///< z accel estimate using kalman filter
 	double roll;		///< current roll angle (rad)
+	double roll_rate;     ///< current roll anglular velocity (rad/s)
 	double pitch;		///< current pitch angle (rad)
+	double pitch_rate;     ///< current pitch anglular velocity (rad/s)
 	double yaw;		///< current yaw angle (rad)
+	double yaw_rate;     ///< current yaw anglular velocity (rad/s)
 	double v_batt;		///< main battery pack voltage (v)
 
 	double u[6];		///< siso controller outputs
