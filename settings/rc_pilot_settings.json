@@ -2,6 +2,7 @@
    "layout": "LAYOUT_4X",
    "thrust_map": "LINEAR_MAP",
    "orientation": "ORIENTATION_X_FORWARD",
+   "enable_magnetometer": false,
    "v_nominal": 11.1000,
    "feedback_hz": 100,
    "enable_logging": true,

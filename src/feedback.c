@@ -160,7 +160,7 @@ int feedback_arm()
 	}
 	// start a new log file every time controller is armed, this may take some
 	// time so do it before touching anything else
-	//if(settings.enable_logging) start_log_manager();
+	if(settings.enable_logging) log_manager_init();
 	// get the current time
 	fstate.arm_time_ns = rc_nanos_since_boot();
 	// reset the index
@@ -346,7 +346,7 @@ int feedback_cleanup()
 
 static int __feedback_state_estimate()
 {
-	double tmp;
+	double tmp, yaw_reading;
 
 	if(fstate.initialized==0){
 		fprintf(stderr, "ERROR in feedback_state_estimate, feedback controller not initialized\n");
@@ -359,27 +359,31 @@ static int __feedback_state_estimate()
 	// should add option to use this to the config file
 	// and switch here
 
-	//fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
-	//fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
+	if(settings.enable_magnetometer){
+		fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
+		fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
+		yaw_reading = mpu_data.fused_TaitBryan[TB_YAW_Z];
 
-	fstate.roll   = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
+	}	
+	else{
+		fstate.roll   = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
+		fstate.pitch  = mpu_data.dmp_TaitBryan[TB_PITCH_X];
+		yaw_reading = mpu_data.dmp_TaitBryan[TB_YAW_Z];	
+	}
+
 	fstate.roll_rate = mpu_data.gyro[0];
-	fstate.pitch  = mpu_data.dmp_TaitBryan[TB_PITCH_X];
 	fstate.pitch_rate = mpu_data.gyro[1];
+	fstate.yaw_rate = -mpu_data.gyro[2];
 
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
-	tmp = -mpu_data.dmp_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	tmp = -yaw_reading + (num_yaw_spins * TWO_PI);
 	//detect the crossover point at +-PI and write new value to core state
 	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
 	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
 	// finally num_yaw_spins is updated and the new value can be written
-	fstate.yaw = -mpu_data.dmp_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	fstate.yaw = -yaw_reading + (num_yaw_spins * TWO_PI);
 	last_yaw = fstate.yaw;
-	
-	// For the moment use raw yaw data
-	//fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];
-	fstate.yaw_rate = -mpu_data.gyro[2];
 
 	// filter battery voltage.
 	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());

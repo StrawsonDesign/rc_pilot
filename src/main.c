@@ -153,11 +153,12 @@ int main()
 	feedback_init();
 
 
-	// initalize log_manager
+	/* initalize log_manager
 	if(log_manager_init()<0){
 		printf("ERROR: failed to initialize input_manager\n");
 		return -1;
 	}
+	*/
 
 	if(isatty(fileno(stdout))){
 	 	printf("initializing printf manager\n");

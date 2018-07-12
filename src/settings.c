@@ -716,6 +716,17 @@ int settings_load_from_file()
 	if(__parse_thrust_map()==-1) return -1;
 	PARSE_DOUBLE_MIN_MAX(v_nominal,7.0,18.0)
 
+	// parse enable_magnetometer
+	if(json_object_object_get_ex(jobj, "enable_magnetometer", &tmp)==0){
+		fprintf(stderr,"ERROR: can't find enable_magnetometer in settings file\n");
+		return -1;
+	}
+	if(json_object_is_type(tmp, json_type_boolean)==0){
+		fprintf(stderr,"ERROR: enable_logging should be a boolean\n");
+		return -1;
+	}
+	settings.enable_magnetometer = json_object_get_boolean(tmp);
+
 
 	// parse enable_logging
 	if(json_object_object_get_ex(jobj, "enable_logging", &tmp)==0){

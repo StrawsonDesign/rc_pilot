@@ -42,6 +42,7 @@ typedef struct settings_t{
 	// features
 	int enable_freefall_detect;
 	int enable_logging;
+	int enable_magnetometer;
 
 	// flight modes
 	flight_mode_t flight_mode_1;

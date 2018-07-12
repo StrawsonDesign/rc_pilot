@@ -124,8 +124,9 @@ int log_manager_init(){
 
 	// if the thread if running, stop before starting a new log file
 	if(logging_enabled){
-		fprintf(stderr,"ERROR: in start_log_manager, log manager already running.\n");
-		return -1;
+		//fprintf(stderr,"ERROR: in start_log_manager, log manager already running.\n");
+		//return -1;
+		log_manager_cleanup();
 	}
 
 	// first make sure the directory exists, make it if not
@@ -184,6 +185,6 @@ int log_manager_cleanup(){
 
 	int ret = rc_pthread_timed_join(pthread,NULL,LOG_MANAGER_TOUT);
 	if(ret==1) fprintf(stderr,"WARNING: log_manager_thread exit timeout\n");
-	else if(ret==-1) fprintf(stderr,"ERROR: failed to joing log_manager thread\n");
+	else if(ret==-1) fprintf(stderr,"ERROR: failed to join log_manager thread\n");
 	return ret;
 }
