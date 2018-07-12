@@ -54,7 +54,9 @@ void __altitude_hold()
 	// keep the altitude setpoint at current altitude
 	// printf("user_input.thr_stick: %f\n", user_input.thr_stick);
 	if(user_input.requested_arm_mode == DISARMED){
-		setpoint.altitude = fstate.altitude_kf;
+		// make altitude setpoint 1m lower than current altitude when arming
+		// to prevent motor spin up due to drift
+		setpoint.altitude = fstate.altitude_kf - 1.0;
 		setpoint.altitude_rate = 0.0;
 	}
 	// otherwise, scale altitude_rate by max climb rate in m/s

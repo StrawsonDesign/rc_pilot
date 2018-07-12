@@ -91,9 +91,9 @@
      "gain": 1,
      "CT_or_DT": "CT",
      "TF_or_PID": "PID",
-     "kp":0.25,
-     "ki":0.0,
-     "kd":0.0,
+     "kp":0.85,
+     "ki":0.1,
+     "kd":0.005,
      "crossover_freq_rad_per_sec": 6.283,
      "numerator": [
        0.1,
