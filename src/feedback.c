@@ -369,17 +369,17 @@ static int __feedback_state_estimate()
 
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
-	//tmp = -mpu_data.TaitBryan[TB_YAW_Z];// + (num_yaw_spins * TWO_PI);
-	// detect the crossover point at +-PI and write new value to core state
-	//if(tmp-last_yaw < -M_PI) num_yaw_spins++;
-	//else if (tmp-last_yaw > M_PI) num_yaw_spins--;
+	tmp = -mpu_data.dmp_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	//detect the crossover point at +-PI and write new value to core state
+	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
+	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
 	// finally num_yaw_spins is updated and the new value can be written
-	//fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z]; + (num_yaw_spins * TWO_PI);
-	//last_yaw = fstate.yaw;
+	fstate.yaw = -mpu_data.dmp_TaitBryan[TB_YAW_Z] + (num_yaw_spins * TWO_PI);
+	last_yaw = fstate.yaw;
 	
 	// For the moment use raw yaw data
-	fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];
-	fstate.yaw_rate = mpu_data.gyro[2];
+	//fstate.yaw = mpu_data.dmp_TaitBryan[TB_YAW_Z];
+	fstate.yaw_rate = -mpu_data.gyro[2];
 
 	// filter battery voltage.
 	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());
@@ -434,7 +434,6 @@ static int __feedback_control()
 	// run altitude controller if enabled
 	// this needs work...
 	// we need to:
-	//		fuse baraometer and accelerometer
 	//		find hover thrust and correct from there
 	//		this code does not work a.t.m.
 	 if(setpoint.en_alt_ctrl){

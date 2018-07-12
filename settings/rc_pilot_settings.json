@@ -1,6 +1,6 @@
 {
    "layout": "LAYOUT_4X",
-   "thrust_map": "MN1806_1400KV_4S",
+   "thrust_map": "LINEAR_MAP",
    "orientation": "ORIENTATION_X_FORWARD",
    "v_nominal": 11.1000,
    "feedback_hz": 100,
@@ -16,7 +16,7 @@
    "dsm_pitch_ch": 3,
    "dsm_pitch_pol": -1,
    "dsm_yaw_ch": 4,
-   "dsm_yaw_pol": 1,
+   "dsm_yaw_pol": -1,
    "dsm_mode_ch": 5,
    "dsm_mode_pol": 1,
    "dsm_kill_mode": "DSM_KILL_DEDICATED_SWITCH",
@@ -92,8 +92,8 @@
      "CT_or_DT": "CT",
      "TF_or_PID": "PID",
      "kp":0.85,
-     "ki":0.1,
-     "kd":0.005,
+     "ki":0.0,
+     "kd":0.0,
      "crossover_freq_rad_per_sec": 6.283,
      "numerator": [
        0.1,

@@ -16,6 +16,20 @@ static double* signal;
 static double* thrust;
 static int points;
 
+// Generic linear mapping
+static const int linear_map_points = 11;
+static double linear_map[][2] = \
+{{0.0,	0.0000}, \
+ {0.1,	0.1000}, \
+ {0.2,	0.2000}, \
+ {0.3,	0.3000}, \
+ {0.4,	0.4000}, \
+ {0.5,	0.5000}, \
+ {0.6,	0.6000}, \
+ {0.7,	0.7000}, \
+ {0.8,	0.8000}, \
+ {0.9,	0.9000}, \
+ {1.0,	1.0000}};
 
 // Tiger Motor MN1806, 1400KV 6x4.5" 3-blade prop, 14.8V,
 // BLheli ESC Low Timing
@@ -33,7 +47,6 @@ static double mn1806_1400kv_4s_map[][2] = \
  {0.8,	3.7282}, \
  {0.9,	4.3147}, \
  {1.0,	4.7258}};
-
 
 
 // tiger motor F20 2300kv motor, 2S lipo, 4x4.0" 3-blade props
@@ -93,6 +106,10 @@ int thrust_map_init(thrust_map_t map)
 	double (*data)[2]; // pointer to constant data
 
 	switch(map){
+	case LINEAR_MAP:
+		points = linear_map_points;
+		data = linear_map;
+		break;
 	case MN1806_1400KV_4S:
 		points = mn1806_1400kv_4s_points;
 		data = mn1806_1400kv_4s_map;

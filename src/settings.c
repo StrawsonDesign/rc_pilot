@@ -165,7 +165,10 @@ int __parse_thrust_map()
 		return -1;
 	}
 	tmp_str = (char*)json_object_get_string(tmp);
-	if(strcmp(tmp_str, "MN1806_1400KV_4S")==0){
+	if(strcmp(tmp_str, "LINEAR_MAP")==0){
+		settings.thrust_map = LINEAR_MAP;
+	}
+	else if(strcmp(tmp_str, "MN1806_1400KV_4S")==0){
 		settings.thrust_map = MN1806_1400KV_4S;
 	}
 	else if(strcmp(tmp_str, "F20_2300KV_2S")==0){
@@ -467,6 +470,8 @@ int __write_settings_to_disk(){
  *
  * @return     0 on success
  */
+
+ //Need to modify to be compatible with new pid controller
 int __load_default_settings()
 {
 	struct json_object *array = NULL;	// temp object for new arrays
