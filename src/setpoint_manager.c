@@ -26,8 +26,8 @@ void __direct_throttle()
 	// then scale and shift to be between thrust min/max
 	// Z-throttle should be negative since Z points down
 	tmp = (user_input.thr_stick + 1.0)/2.0;
-	tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
-	setpoint.Z_throttle = -(tmp + MIN_Z_COMPONENT);
+	//tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
+	setpoint.Z_throttle = -tmp;
 	return;
 }
 
@@ -43,10 +43,31 @@ void __direct_yaw()
 	// and move yaw setpoint
 	else{
 		setpoint.yaw_rate = user_input.yaw_stick * MAX_YAW_RATE;
-		setpoint.yaw_rate += setpoint.yaw_rate/settings.feedback_hz;
+		setpoint.yaw += setpoint.yaw_rate/settings.feedback_hz;
 	}
 	return;
 }
+
+void __altitude_hold()
+{
+	// if throttle stick is down all the way, probably landed, so
+	// keep the altitude setpoint at current altitude
+	// printf("user_input.thr_stick: %f\n", user_input.thr_stick);
+	if(user_input.requested_arm_mode == DISARMED){
+		// make altitude setpoint 1m lower than current altitude when arming
+		// to prevent motor spin up due to drift
+		setpoint.altitude = fstate.altitude_kf - 1.0;
+		setpoint.altitude_rate = 0.0;
+	}
+	// otherwise, scale altitude_rate by max climb rate in m/s
+	// and move altitude setpoint
+	else{
+		setpoint.altitude_rate = user_input.thr_stick * MAX_CLIMB_RATE;
+		setpoint.altitude += setpoint.altitude_rate/settings.feedback_hz;
+	}
+	return;
+}
+
 
 int setpoint_manager_init()
 {
@@ -86,6 +107,7 @@ int setpoint_manager_update()
 	switch(user_input.flight_mode){
 
 
+	//TODO: pitch doesn't work in this mode... why? 
 	case TEST_BENCH_4DOF:
 		setpoint.en_alt_ctrl = 0;
 		setpoint.en_rpy_ctrl = 0;
@@ -93,7 +115,7 @@ int setpoint_manager_update()
 		setpoint.roll_throttle = user_input.roll_stick;
 		setpoint.pitch_throttle = user_input.pitch_stick;
 		setpoint.yaw_throttle = user_input.yaw_stick;
-		setpoint.Z_throttle = -user_input.thr_stick;
+		setpoint.Z_throttle = -(user_input.thr_stick+1.0)/2.0;
 		break;
 
 	case TEST_BENCH_6DOF:
@@ -131,24 +153,24 @@ int setpoint_manager_update()
 		break;
 
 	case ALT_HOLD_4DOF:
-		setpoint.en_alt_ctrl = 0;
+		setpoint.en_alt_ctrl = 1;
 		setpoint.en_rpy_ctrl = 1;
 		setpoint.en_6dof = 0;
 		setpoint.roll = user_input.roll_stick;
 		setpoint.pitch = user_input.pitch_stick;
-		__direct_throttle();
+		__altitude_hold();
 		__direct_yaw();
 		break;
 
 	case ALT_HOLD_6DOF:
-		setpoint.en_alt_ctrl = 0;
+		setpoint.en_alt_ctrl = 1;
 		setpoint.en_rpy_ctrl = 1;
 		setpoint.en_6dof = 0;
 		setpoint.roll = 0.0;
 		setpoint.pitch = 0.0;
 		setpoint.X_throttle = -user_input.pitch_stick;
 		setpoint.Y_throttle = user_input.roll_stick;
-		__direct_throttle();
+		__altitude_hold();
 		__direct_yaw();
 		break;
 

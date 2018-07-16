@@ -22,6 +22,9 @@
 #include <mix.h>
 #include <input_manager.h>
 #include <setpoint_manager.h>
+#include <log_manager.h>
+#include <printf_manager.h>
+
 
 
 #define FAIL(str) \
@@ -100,7 +103,7 @@ int main()
 
 	// do initialization not involving threads
 	printf("initializing thrust map\n");
-	if(thrust_map_init()<0){
+	if(thrust_map_init(settings.thrust_map)<0){
 		fprintf(stderr,"ERROR: failed to initialize thrust map\n");
 		return -1;
 	}
@@ -150,18 +153,30 @@ int main()
 	feedback_init();
 
 
-	// print header before starting printf thread
-	printf("\nTurn your transmitter kill switch to arm.\n");
-	printf("Then move throttle UP then DOWN to arm controller\n");
+	/* initalize log_manager
+	if(log_manager_init()<0){
+		printf("ERROR: failed to initialize input_manager\n");
+		return -1;
+	}
+	*/
 
-	// // start printf_thread if running from a terminal
-	// // if it was started as a background process then don't bother
-	// if(isatty(fileno(stdout))){
-	// 	start_printf_manager(&cstate, &setpoint, &user_input, &settings);
-	// }
+	if(isatty(fileno(stdout))){
+	 	printf("initializing printf manager\n");
+	}
+
+	printf("\nTurn your transmitter kill switch to arm.\n");
+	printf("Then move throttle UP then DOWN to arm controller\n\n");
+
+	 // start printf_thread if running from a terminal
+	 // if it was started as a background process then don't bother
+	 if(isatty(fileno(stdout))){
+	 	printf_init();
+	 }
 
 	// final setup
 	rc_make_pid_file();
+	rc_set_state(RUNNING);
+
 	// set state to running and chill until something exits the program
 	rc_set_state(RUNNING);
 	while(rc_get_state()!=EXITING){
@@ -172,6 +187,7 @@ int main()
 	feedback_cleanup();
 	setpoint_manager_cleanup();
 	input_manager_cleanup();
+	log_manager_cleanup();
 	return 0;
 }
 

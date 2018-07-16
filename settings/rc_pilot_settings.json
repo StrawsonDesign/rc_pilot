@@ -1,0 +1,110 @@
+{
+   "layout": "LAYOUT_4X",
+   "thrust_map": "LINEAR_MAP",
+   "orientation": "ORIENTATION_X_FORWARD",
+   "enable_magnetometer": false,
+   "v_nominal": 11.1000,
+   "feedback_hz": 100,
+   "enable_logging": true,
+   "num_dsm_modes": 3,
+   "flight_mode_1": "DIRECT_THROTTLE_4DOF",
+   "flight_mode_2": "TEST_BENCH_4DOF",
+   "flight_mode_3": "ALT_HOLD_4DOF",
+   "dsm_thr_ch": 1,
+   "dsm_thr_pol": 1,
+   "dsm_roll_ch": 2,
+   "dsm_roll_pol": -1,
+   "dsm_pitch_ch": 3,
+   "dsm_pitch_pol": -1,
+   "dsm_yaw_ch": 4,
+   "dsm_yaw_pol": -1,
+   "dsm_mode_ch": 5,
+   "dsm_mode_pol": 1,
+   "dsm_kill_mode": "DSM_KILL_DEDICATED_SWITCH",
+   "dsm_kill_ch": 6,
+   "dsm_kill_pol": 1,
+   "printf_arm": true,
+   "printf_altitude": true,
+   "printf_rpy": true,
+   "printf_sticks": false,
+   "printf_setpoint": true,
+   "printf_u": false,
+   "printf_motors": true,
+   "printf_mode": true,
+   "roll_controller": {
+     "gain": 1,
+     "CT_or_DT": "CT",
+     "TF_or_PID": "PID",
+     "kp":0.3,
+     "ki":0.01,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 62.83,
+     "numerator": [
+       0.1,
+       0.2,
+       0.3
+     ],
+     "denominator": [
+       0.1,
+       0.2,
+       0.3
+     ]
+   },
+   "pitch_controller": {
+     "gain": 1,
+     "CT_or_DT": "CT",
+     "TF_or_PID": "PID",
+     "kp":0.3,
+     "ki":0.01,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 62.83,
+     "numerator": [
+       0.1,
+       0.2,
+       0.3
+     ],
+     "denominator": [
+       0.1,
+       0.2,
+       0.3
+     ]
+   },
+   "yaw_controller": {
+     "gain": 1,
+     "CT_or_DT": "CT",
+     "TF_or_PID": "PID",
+     "kp":0.3,
+     "ki":0.01,
+     "kd":0.1,
+     "crossover_freq_rad_per_sec": 31.41,
+     "numerator": [
+       0.1,
+       0.2,
+       0.3
+     ],
+     "denominator": [
+       0.1,
+       0.2,
+       0.3
+     ]
+   },
+   "altitude_controller": {
+     "gain": 1,
+     "CT_or_DT": "CT",
+     "TF_or_PID": "PID",
+     "kp":0.85,
+     "ki":0.0,
+     "kd":0.0,
+     "crossover_freq_rad_per_sec": 6.283,
+     "numerator": [
+       0.1,
+       0.2,
+       0.3
+     ],
+     "denominator": [
+       0.1,
+       0.2,
+       0.3
+     ]
+   }
+ }

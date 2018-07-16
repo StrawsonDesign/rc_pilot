@@ -24,7 +24,7 @@ INSTALL		:= install -m 4755
 INSTALLDIR	:= install -d -m 755
 
 LINK		:= ln -s -f
-LINKDIR		:= /etc/roboticscape
+LINKDIR		:= /etc/robotcontrol
 LINKNAME	:= link_to_startup_program
 
 prefix		?= /usr

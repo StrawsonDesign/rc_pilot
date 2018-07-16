@@ -37,19 +37,24 @@ typedef enum arm_state_t{
 #define YAW_DEADZONE		0.02
 #define THROTTLE_DEADZONE	0.02
 #define SOFT_START_SECONDS	1.0	// controller soft start seconds
+#define ALT_CUTOFF_FREQ     2.0
+#define BMP_RATE_DIV        10  // optionally sample bmp less frequently than mpu
 
 // controller absolute limits
-#define MAX_ROLL_COMPONENT	0.8
-#define MAX_PITCH_COMPONENT	0.8
-#define MAX_YAW_COMPONENT	0.8
+#define MAX_ROLL_COMPONENT	0.4
+#define MAX_PITCH_COMPONENT	0.4
+#define MAX_YAW_COMPONENT	0.4
+
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
-#define MIN_Z_COMPONENT		0.10
-#define MAX_Z_COMPONENT		0.85
+
+#define MOTOR_IDLE_CMD          0.135
+#define MIN_THRUST_COMPONENT    -0.8
+#define MAX_THRUST_COMPONENT	0.0
 
 // Files
-#define LOG_DIR			"/home/james/rc_pilot_logs/"
-#define SETTINGS_FILE		"/home/james/rc_pilot_settings.json"
+#define LOG_DIR			"/home/debian/rc_pilot_logs/"
+#define SETTINGS_FILE	"/home/debian/rc_pilot/settings/rc_pilot_settings.json"
 
 
 // for future modes, not used yet
