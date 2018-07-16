@@ -107,7 +107,6 @@ int setpoint_manager_update()
 	switch(user_input.flight_mode){
 
 
-	//TODO: pitch doesn't work in this mode... why? 
 	case TEST_BENCH_4DOF:
 		setpoint.en_alt_ctrl = 0;
 		setpoint.en_rpy_ctrl = 0;

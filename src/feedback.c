@@ -63,8 +63,8 @@ static int __feedback_state_estimate();
 static void __feedback_isr(void)
 {
 	setpoint_manager_update();
-	__estimate_altitude();
 	__feedback_state_estimate();
+	__estimate_altitude();
 	__feedback_control();
 }
 
@@ -108,6 +108,14 @@ static int __estimate_altitude()
 	double accel_vec[3];
 	static int bmp_sample_counter = 0;
 
+	// check if we need to sample BMP this loop
+	if(bmp_sample_counter>=BMP_RATE_DIV){
+		// perform the i2c reads to the sensor, on bad read just try later
+		if(rc_bmp_read(&bmp_data)) return -1;
+		bmp_sample_counter=0;
+	}
+	bmp_sample_counter++;
+
 	// make copy of acceleration reading before rotating
 	for(i=0;i<3;i++) accel_vec[i]=mpu_data.accel[i];
 	// rotate accel vector
@@ -128,15 +136,11 @@ static int __estimate_altitude()
 	y.d[0] = bmp_data.alt_m;
 	rc_kalman_update_lin(&kf, u, y);
 
-	// now check if we need to sample BMP this loop
-	bmp_sample_counter++;
-	if(bmp_sample_counter>=BMP_RATE_DIV){
-		// perform the i2c reads to the sensor, on bad read just try later
-		if(rc_bmp_read(&bmp_data)) return -1;
-		bmp_sample_counter=0;
-	}
-
-
+	// altitude estimate
+	fstate.altitude_bmp = rc_filter_march(&altitude_lp,bmp_data.alt_m);
+	fstate.altitude_kf = kf.x_est.d[0];
+	fstate.alt_kf_vel = kf.x_est.d[1];
+	fstate.alt_kf_accel = kf.x_est.d[2];
 
 	return 0;
 }
@@ -270,14 +274,14 @@ int feedback_init()
 	// initialize the little LP filter to take out accel noise
 	if(rc_filter_first_order_lowpass(&acc_lp, dt, 20*dt)) return -1;
 
-	if(rc_filter_butterworth_lowpass(&altitude_lp,2, dt, ALT_CUTOFF_FREQ)) return -1;
+	// initialize a LP on baromter for comparison to KF
+	if(rc_filter_butterworth_lowpass(&altitude_lp, 2, dt, ALT_CUTOFF_FREQ)) return -1;
 	
 	// init barometer and read in first data
 	if(rc_bmp_init(BMP_OVERSAMPLE_16, BMP_FILTER_16))	return -1;
 	if(rc_bmp_read(&bmp_data)) return -1;
 	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
 	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);
-
 
 	printf("ROLL CONTROLLER:\n");
 	rc_filter_print(D_roll);
@@ -354,11 +358,6 @@ static int __feedback_state_estimate()
 	}
 
 	// collect new IMU roll/pitch data
-
-	// We don't want to use magnetometer at the moment...
-	// should add option to use this to the config file
-	// and switch here
-
 	if(settings.enable_magnetometer){
 		fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
 		fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
@@ -387,13 +386,7 @@ static int __feedback_state_estimate()
 
 	// filter battery voltage.
 	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());
-
-	// altitude estimate
-	fstate.altitude_bmp = rc_filter_march(&altitude_lp,bmp_data.alt_m);
-	fstate.altitude_kf = kf.x_est.d[0];
-	fstate.alt_kf_vel = kf.x_est.d[1];
-	fstate.alt_kf_accel = kf.x_est.d[2];
-
+	
 	return 0;
 }
 
