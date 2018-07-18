@@ -37,7 +37,8 @@ log_entry_t buffer[2][BUF_LEN];
 pthread_t pthread;
 int logging_enabled; // set to 0 to exit the write_thread
 
-int print_entry(log_entry_t entry){
+int print_entry(log_entry_t entry)
+{
 	#define X(type, fmt, name) printf("%s " fmt "\n", #name, entry.name);
 	LOG_TABLE
 	#undef X
@@ -46,7 +47,8 @@ int print_entry(log_entry_t entry){
 }
 
 
-int add_log_entry(log_entry_t new){
+int add_log_entry(log_entry_t new)
+{
 	if(!logging_enabled){
 		fprintf(stderr,"ERROR: trying to log entry while logger isn't running\n");
 		return -1;
@@ -71,7 +73,8 @@ int add_log_entry(log_entry_t new){
 }
 
 
-int write_log_entry(log_entry_t entry){
+int __write_log_entry(log_entry_t entry)
+{
 	#define X(type, fmt, name) fprintf(fd, fmt "," , entry.name);
 	LOG_TABLE
 	#undef X
@@ -80,7 +83,8 @@ int write_log_entry(log_entry_t entry){
 }
 
 
-void* log_manager_func(__attribute__ ((unused)) void* ptr){
+void* __log_manager_func(__attribute__ ((unused)) void* ptr)
+{
 	int i, buf_to_write;
 	// while logging enabled and not exiting, write full buffers to disk
 	while(rc_get_state()!=EXITING && logging_enabled){
@@ -90,7 +94,7 @@ void* log_manager_func(__attribute__ ((unused)) void* ptr){
 			else buf_to_write=0;
 			// write the full buffer to disk;
 			for(i=0;i<BUF_LEN;i++){
-				write_log_entry(buffer[buf_to_write][i]);
+				__write_log_entry(buffer[buf_to_write][i]);
 			}
 			fflush(fd);
 			needs_writing = 0;
@@ -102,7 +106,7 @@ void* log_manager_func(__attribute__ ((unused)) void* ptr){
 	// the logs that are in the buffer current being filled
 	//printf("writing out remaining log file\n");
 	for(i=0;i<buffer_pos;i++){
-		write_log_entry(buffer[current_buf][i]);
+		__write_log_entry(buffer[current_buf][i]);
 	}
 	fflush(fd);
 	fclose(fd);
@@ -117,7 +121,8 @@ void* log_manager_func(__attribute__ ((unused)) void* ptr){
 }
 
 
-int log_manager_init(){
+int log_manager_init()
+{
 	int i;
 	char path[100];
 	struct stat st = {0};
@@ -169,7 +174,7 @@ int log_manager_init(){
 	needs_writing = 0;
 
 	// start logging thread
-	if(rc_pthread_create(&pthread, log_manager_func, NULL, SCHED_FIFO, LOG_MANAGER_PRI)<0){
+	if(rc_pthread_create(&pthread, __log_manager_func, NULL, SCHED_FIFO, LOG_MANAGER_PRI)<0){
 		fprintf(stderr,"ERROR in start_log_manager, failed to start thread\n");
 		return -1;
 	}
@@ -178,7 +183,8 @@ int log_manager_init(){
 }
 
 
-int log_manager_cleanup(){
+int log_manager_cleanup()
+{
 	// disable logging so the thread can stop and start multiple times
 	// thread also exits on rc_get_state()==EXITING
 	logging_enabled = 0;
