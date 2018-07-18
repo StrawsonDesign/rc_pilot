@@ -15,6 +15,7 @@
  * the user may select from the following preconfigured thrust maps
  */
 typedef enum thrust_map_t{
+    LINEAR_MAP,
 	MN1806_1400KV_4S,
 	F20_2300KV_2S,
 	RX2206_4S

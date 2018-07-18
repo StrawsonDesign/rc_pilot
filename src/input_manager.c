@@ -17,12 +17,10 @@
 #include <settings.h>
 #include <rc_pilot_defs.h>
 #include <thread_defs.h>
-#include <rc_pilot_defs.h>
 
 user_input_t user_input; // extern variable in input_manager.h
 
 static pthread_t input_manager_thread;
-static int initialized_flag = 0;
 static arm_state_t kill_switch = DISARMED; // raw kill switch on the radio
 
 /**
@@ -99,13 +97,19 @@ void new_dsm_data_callback()
 	new_yaw   = __deadzone(rc_dsm_ch_normalized(settings.dsm_yaw_ch)*settings.dsm_yaw_pol, YAW_DEADZONE);
 	new_mode  = rc_dsm_ch_normalized(settings.dsm_mode_ch)*settings.dsm_mode_pol;
 
+
 	// kill mode behaviors
 	switch(settings.dsm_kill_mode){
 	case DSM_KILL_DEDICATED_SWITCH:
 		new_kill  = rc_dsm_ch_normalized(settings.dsm_kill_ch)*settings.dsm_kill_pol;
 		// determine the kill state
-		if(new_kill<=0.0)	kill_switch = DISARMED;
-		else			kill_switch = ARMED;
+		if(new_kill<=0.1){
+			kill_switch = DISARMED;
+			user_input.requested_arm_mode=DISARMED;
+		}
+		else{
+			kill_switch = ARMED;
+		}
 		break;
 
 	case DSM_KILL_NEGATIVE_THROTTLE:
@@ -135,8 +139,8 @@ void new_dsm_data_callback()
 		else user_input.flight_mode = settings.flight_mode_1;
 		break;
 	case 3:
-		if(new_mode>0.5f) user_input.flight_mode = settings.flight_mode_3;
-		else if(new_mode<-0.5f) user_input.flight_mode = settings.flight_mode_1;
+		if(new_mode>0.6f) user_input.flight_mode = settings.flight_mode_3;
+		else if(new_mode<0.1f) user_input.flight_mode = settings.flight_mode_1;
 		else user_input.flight_mode = settings.flight_mode_2;
 		break;
 	default:
@@ -152,6 +156,7 @@ void new_dsm_data_callback()
 		user_input.roll_stick  = new_roll;
 		user_input.pitch_stick = new_pitch;
 		user_input.yaw_stick   = new_yaw;
+		user_input.requested_arm_mode = kill_switch;
 	}
 	else{
 		// during arming sequence keep sticks zeroed
@@ -180,7 +185,7 @@ void dsm_disconnect_callback(void)
 
 void* input_manager(void* ptr)
 {
-	initialized_flag = 1;
+	user_input.initialized = 1;
 	// wait for first packet
 	while(rc_get_state()!=EXITING){
 		if(user_input.input_active) break;
@@ -198,7 +203,7 @@ void* input_manager(void* ptr)
 			if(rc_get_state()!=RUNNING) continue;
 			else{
 				user_input.requested_arm_mode=ARMED;
-				printf("DSM ARM REQUEST\n");
+				//printf("\n\nDSM ARM REQUEST\n\n");
 			}
 		}
 		// wait
@@ -211,6 +216,7 @@ void* input_manager(void* ptr)
 
 int input_manager_init()
 {
+	user_input.initialized = 0;
 	int i;
 	// start dsm hardware
 	if(rc_dsm_init()==-1){
@@ -218,7 +224,7 @@ int input_manager_init()
 		return -1;
 	}
 	rc_dsm_set_disconnect_callback(dsm_disconnect_callback);
-
+	rc_dsm_set_callback(new_dsm_data_callback);
 	// start thread
 	if(rc_pthread_create(&input_manager_thread, &input_manager, NULL,
 				SCHED_FIFO, INPUT_MANAGER_PRI)==-1){
