@@ -134,7 +134,7 @@ int setpoint_manager_update()
 	case DIRECT_THROTTLE_6DOF:
 		setpoint.en_alt_ctrl = 0;
 		setpoint.en_rpy_ctrl = 1;
-		setpoint.en_6dof = 0;
+		setpoint.en_6dof = 1;
 		setpoint.roll = 0.0;
 		setpoint.pitch = 0.0;
 		setpoint.X_throttle = -user_input.pitch_stick;
