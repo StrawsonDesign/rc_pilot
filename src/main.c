@@ -269,6 +269,10 @@ int main(int argc, char *argv[])
 	setpoint_manager_cleanup();
 	input_manager_cleanup();
 	log_manager_cleanup();
+
+	// turn off red LED and blink green to say shut down was safe
+	rc_led_set(RC_LED_RED,0);
+	rc_led_blink(RC_LED_GREEN,8.0,2.0); \
 	return 0;
 }
 

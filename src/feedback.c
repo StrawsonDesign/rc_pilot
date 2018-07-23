@@ -51,7 +51,7 @@ log_entry_t new_log;
 
 // local functions
 static void __feedback_isr(void);
-static int __set_motors_to_idle();
+static int __send_motor_stop_pulse();
 static double __batt_voltage();
 static int __estimate_altitude();
 static int __feedback_control();
@@ -68,7 +68,7 @@ static void __feedback_isr(void)
 }
 
 
-static int __set_motors_to_idle()
+static int __send_motor_stop_pulse()
 {
 	int i;
 	if(settings.num_rotors>8){
@@ -183,20 +183,9 @@ int feedback_arm()
 }
 
 
-
-
-int feedback_init()
+int __init_altitude_kf()
 {
-	double tmp;
-
-	// get controllers from settings
-	if(settings_get_roll_controller(&D_roll)) return -1;
-	if(settings_get_pitch_controller(&D_pitch)) return -1;
-	if(settings_get_yaw_controller(&D_yaw)) return -1;
-	if(settings_get_altitude_controller(&D_altitude)) return -1;
-	dt = 1.0/settings.feedback_hz;
-
-	//initialize altitude kalman filter and bmp sensor
+//initialize altitude kalman filter and bmp sensor
 	F = rc_matrix_empty();
 	G = rc_matrix_empty();
 	H = rc_matrix_empty();
@@ -272,6 +261,22 @@ int feedback_init()
 	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
 	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);
 
+	return 0;
+}
+
+int feedback_init()
+{
+	double tmp;
+
+	// get controllers from settings
+	if(settings_get_roll_controller(&D_roll)) return -1;
+	if(settings_get_pitch_controller(&D_pitch)) return -1;
+	if(settings_get_yaw_controller(&D_yaw)) return -1;
+	if(settings_get_altitude_controller(&D_altitude)) return -1;
+	dt = 1.0/settings.feedback_hz;
+
+	if(__init_altitude_kf()) return -1;
+
 	#ifdef DEBUG
 	printf("ROLL CONTROLLER:\n");
 	rc_filter_print(D_roll);
@@ -291,9 +296,9 @@ int feedback_init()
 
 
 	//enable saturation
-	rc_filter_enable_saturation(&D_roll,  -1.0, 1.0);
-	rc_filter_enable_saturation(&D_pitch,  -1.0, 1.0);
-	rc_filter_enable_saturation(&D_yaw, -1.0, 1.0);
+	rc_filter_enable_saturation(&D_roll,     -1.0, 1.0);
+	rc_filter_enable_saturation(&D_pitch,    -1.0, 1.0);
+	rc_filter_enable_saturation(&D_yaw,      -1.0, 1.0);
 	rc_filter_enable_saturation(&D_altitude, -1.0, 1.0);
 
 	// enable soft start
@@ -334,7 +339,7 @@ int feedback_init()
 
 int feedback_cleanup()
 {
-	__set_motors_to_idle();
+	__send_motor_stop_pulse();
 	rc_mpu_power_off();
 	return 0;
 }
@@ -402,7 +407,7 @@ static int __feedback_control()
 
 	// if not running or not armed, keep the motors in an idle state
 	if(rc_get_state()!=RUNNING || fstate.arm_state==DISARMED){
-		__set_motors_to_idle();
+		__send_motor_stop_pulse();
 		return 0;
 	}
 
@@ -481,10 +486,10 @@ static int __feedback_control()
 		if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
 		rc_filter_enable_saturation(&D_yaw, min, max);
 		D_yaw.gain = D_yaw_gain_orig * settings.v_nominal/fstate.v_batt;
-		u[VEC_YAW] = -rc_filter_march(&D_yaw, setpoint.yaw - fstate.yaw);
+		u[VEC_YAW] = rc_filter_march(&D_yaw, setpoint.yaw - fstate.yaw);
 		mix_add_input(u[VEC_YAW], VEC_YAW, mot);
 	}
-	// otherwise direct throttle
+	// otherwise direct throttle to roll pitch yaw
 	else{
 		// roll
 		mix_check_saturation(VEC_ROLL, mot, &min, &max);
@@ -509,10 +514,25 @@ static int __feedback_control()
 		u[VEC_YAW] = setpoint.yaw_throttle;
 		rc_saturate_double(&u[VEC_YAW], min, max);
 		mix_add_input(u[VEC_YAW], VEC_YAW, mot);
+	}
 
-		u[VEC_ROLL]	= 0.0;
-		u[VEC_PITCH]	= 0.0;
-		u[VEC_YAW]	= 0.0;
+	// for 6dof systems, add X and Y
+	if(setpoint.en_6dof){
+		// X
+		mix_check_saturation(VEC_X, mot, &min, &max);
+		if(max>MAX_X_COMPONENT)  max =  MAX_X_COMPONENT;
+		if(min<-MAX_X_COMPONENT) min = -MAX_X_COMPONENT;
+		u[VEC_X] = setpoint.X_throttle;
+		rc_saturate_double(&u[VEC_X], min, max);
+		mix_add_input(u[VEC_X], VEC_X, mot);
+
+		// Y
+		mix_check_saturation(VEC_Y, mot, &min, &max);
+		if(max>MAX_Y_COMPONENT)  max =  MAX_Y_COMPONENT;
+		if(min<-MAX_Y_COMPONENT) min = -MAX_Y_COMPONENT;
+		u[VEC_Y] = setpoint.Y_throttle;
+		rc_saturate_double(&u[VEC_Y], min, max);
+		mix_add_input(u[VEC_Y], VEC_Y, mot);
 	}
 
 	/***************************************************************************
@@ -521,7 +541,17 @@ static int __feedback_control()
 	for(i=0;i<settings.num_rotors;i++){
 		rc_saturate_double(&mot[i], 0.0, 1.0);
 		fstate.m[i] = map_motor_signal(mot[i]);
-		rc_saturate_double(&fstate.m[i], MOTOR_IDLE_CMD, 1.0);
+
+		// NO NO NO this undoes all the fancy mixing-based saturation
+		// done above, idle should be done with MAX_THRUST_COMPONENT instead
+		//rc_saturate_double(&fstate.m[i], MOTOR_IDLE_CMD, 1.0);
+
+
+		// final saturation just to take care of possible rounding errors
+		// this should not change the values and is probably excessive
+		rc_saturate_double(&fstate.m[i], 0.0, 1.0);
+
+		// finally send pulses!
 		rc_servo_send_esc_pulse_normalized(i+1,fstate.m[i]);
 	}
 
@@ -539,19 +569,19 @@ static int __feedback_control()
 	/***************************************************************************
 	* Add new log entry
 	***************************************************************************/
-	 if(settings.enable_logging){
-	 	new_log.loop_index	= fstate.loop_index;
-	 	new_log.last_step_ns	= fstate.last_step_ns;
-	 	new_log.altitude_kf	= fstate.altitude_kf;
-	 	new_log.altitude_bmp	= fstate.altitude_bmp;
-	 	new_log.roll		= fstate.roll;
-	 	new_log.pitch		= fstate.pitch;
-	 	new_log.yaw		= fstate.yaw;
-	 	new_log.Z_throttle_sp	= setpoint.Z_throttle;
-	 	new_log.altitude_sp	= setpoint.altitude;
-	 	new_log.roll_sp		= setpoint.roll;
-	 	new_log.pitch_sp		= setpoint.pitch;
-	 	new_log.yaw_sp		= setpoint.yaw;
+	if(settings.enable_logging){
+		new_log.loop_index	= fstate.loop_index;
+		new_log.last_step_ns	= fstate.last_step_ns;
+		new_log.altitude_kf	= fstate.altitude_kf;
+		new_log.altitude_bmp	= fstate.altitude_bmp;
+		new_log.roll		= fstate.roll;
+		new_log.pitch		= fstate.pitch;
+		new_log.yaw		= fstate.yaw;
+		new_log.Z_throttle_sp	= setpoint.Z_throttle;
+		new_log.altitude_sp	= setpoint.altitude;
+		new_log.roll_sp		= setpoint.roll;
+		new_log.pitch_sp	= setpoint.pitch;
+		new_log.yaw_sp		= setpoint.yaw;
 		new_log.v_batt		= fstate.v_batt;
 		new_log.u_X		= u[VEC_Y];
 		new_log.u_Y		= u[VEC_X];

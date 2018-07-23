@@ -55,7 +55,7 @@ static int __print_header(){
 	if(settings.printf_motors){
 		printf(KGRN);
 		for(i=0;i<settings.num_rotors;i++){
-			printf("  M%d |", i);
+			printf("  M%d |", i+1);
 		}
 	}
 	printf(KNRM);

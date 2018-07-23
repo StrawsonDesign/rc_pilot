@@ -19,17 +19,6 @@
 
 setpoint_t setpoint; // extern variable in setpoint_manager.h
 
-void __direct_throttle()
-{
-	double tmp;
-	// translate throttle stick (-1,1) to throttle (0,1)
-	// then scale and shift to be between thrust min/max
-	// Z-throttle should be negative since Z points down
-	tmp = (user_input.thr_stick + 1.0)/2.0;
-	//tmp = tmp * (MAX_Z_COMPONENT - MIN_Z_COMPONENT);
-	setpoint.Z_throttle = -tmp;
-	return;
-}
 
 void __direct_yaw()
 {
@@ -114,7 +103,10 @@ int setpoint_manager_update()
 		setpoint.roll_throttle = user_input.roll_stick;
 		setpoint.pitch_throttle = user_input.pitch_stick;
 		setpoint.yaw_throttle = user_input.yaw_stick;
-		setpoint.Z_throttle = -(user_input.thr_stick+1.0)/2.0;
+		setpoint.Z_throttle = -user_input.thr_stick;
+		// TODO add these two throttle modes as options to settings, I use a radio
+		// with self-centering throttle so having 0 in the middle is safest
+		// setpoint.Z_throttle = -(user_input.thr_stick+1.0)/2.0;
 		break;
 
 	case TEST_BENCH_6DOF:
@@ -135,7 +127,7 @@ int setpoint_manager_update()
 		setpoint.en_6dof = 0;
 		setpoint.roll = user_input.roll_stick;
 		setpoint.pitch = user_input.pitch_stick;
-		__direct_throttle();
+		setpoint.Z_throttle = -user_input.thr_stick;
 		__direct_yaw();
 		break;
 
@@ -147,7 +139,7 @@ int setpoint_manager_update()
 		setpoint.pitch = 0.0;
 		setpoint.X_throttle = -user_input.pitch_stick;
 		setpoint.Y_throttle = user_input.roll_stick;
-		__direct_throttle();
+		setpoint.Z_throttle = -user_input.thr_stick;
 		__direct_yaw();
 		break;
 

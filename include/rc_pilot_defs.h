@@ -31,8 +31,8 @@ typedef enum arm_state_t{
 
 // user control parameters
 #define MAX_YAW_RATE		2.5	// rad/s
-#define MAX_ROLL_SETPOINT	0.4	// rad
-#define MAX_PITCH_SETPOINT	0.4	// rad
+#define MAX_ROLL_SETPOINT	0.2	// rad
+#define MAX_PITCH_SETPOINT	0.2	// rad
 #define MAX_CLIMB_RATE		1.0	// m/s
 #define YAW_DEADZONE		0.02
 #define THROTTLE_DEADZONE	0.02
@@ -41,16 +41,18 @@ typedef enum arm_state_t{
 #define BMP_RATE_DIV		10	// optionally sample bmp less frequently than mpu
 
 // controller absolute limits
-#define MAX_ROLL_COMPONENT	0.4
-#define MAX_PITCH_COMPONENT	0.4
-#define MAX_YAW_COMPONENT	0.4
-
+#define MAX_ROLL_COMPONENT	.8
+#define MAX_PITCH_COMPONENT	.8
+#define MAX_YAW_COMPONENT	.8
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
-
-#define MOTOR_IDLE_CMD		0.135
-#define MIN_THRUST_COMPONENT	-0.8
-#define MAX_THRUST_COMPONENT	0.0
+/**
+ * MAX_THRUST_COMPONENT is really "lowest power state" or idle value. Note that
+ * after the thrust mapping a different value will actually be sent to the motors.
+ * The sign is inverted because these are control values in NED coordinates
+ */
+#define MAX_THRUST_COMPONENT	-0.05
+#define MIN_THRUST_COMPONENT	-0.75
 
 // Files
 #define LOG_DIR		"/home/debian/rc_pilot_logs/"
