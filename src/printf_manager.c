@@ -16,49 +16,18 @@
 #include <feedback.h>
 #include <thread_defs.h>
 #include <settings.h>
-#include <flight_mode.h>
-
 
 
 
 static pthread_t printf_manager_thread;
 static int initialized = 0;
 
-/**
- * @brief      Only used by printf_manager right now, but could be useful elsewhere.
- *
- * @param[in]  mode  The mode
- *
- * @return     0 on success or -1 on error
- */
-int print_flight_mode(flight_mode_t mode){
-	switch(mode){
-	case TEST_BENCH_4DOF:
-		printf("%sTEST_BENCH_4DOF     %s",KYEL,KNRM);
-		return 0;
-	case TEST_BENCH_6DOF:
-		printf("TEST_BENCH_6DOF         ");
-		return 0;
-	case DIRECT_THROTTLE_4DOF:
-		printf("%sDIRECT_THROTTLE_4DOF%s",KCYN,KNRM);
-		return 0;
-	case DIRECT_THROTTLE_6DOF:
-		printf("DIRECT_THROTTLE_6DOF    ");
-		return 0;
-	case ALT_HOLD_4DOF:
-		printf("%sALT_HOLD_4DOF       %s",KBLU,KNRM);
-		return 0;
-	case ALT_HOLD_6DOF:
-		printf("ALT_HOLD_6DOF           ");
-		return 0;
-	default:
-		fprintf(stderr,"ERROR in print_flight_mode, unknown flight mode\n");
-		return -1;
-	}
-}
+
 
 
 static int __print_header(){
+	int i;
+
 	printf("\n");
 	if(settings.printf_arm){
 		printf("  arm   |");
@@ -79,7 +48,9 @@ static int __print_header(){
 		printf(" U0X | U1Y | U2Z | U3r | U4p | U5y |");
 	}
 	if(settings.printf_motors){
-		printf("  M1 |  M2 |  M3 |  M4 |");
+		for(i=0;i<settings.num_rotors;i++){
+			printf("  M%d |", i);
+		}
 	}
 	if(settings.printf_mode){
 		printf("   MODE ");
@@ -94,8 +65,10 @@ static int __print_header(){
 static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 {
 	arm_state_t prev_arm_state;
-
+	int i;
 	initialized = 1;
+	printf("\nTurn your transmitter kill switch to arm.\n");
+	printf("Then move throttle UP then DOWN to arm controller\n\n");
 	__print_header();
 
 	prev_arm_state = fstate.arm_state;
@@ -108,8 +81,8 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 
 		printf("\r");
 		if(settings.printf_arm){
-			if(fstate.arm_state == ARMED) printf("%s ARMED %s |",KRED,KNRM);
-			else                       printf("%sDISARMED%s|",KGRN,KNRM);
+			if(fstate.arm_state==ARMED) printf("%s ARMED %s |",KRED,KNRM);
+			else                        printf("%sDISARMED%s|",KGRN,KNRM);
 		}
 		if(settings.printf_altitude){
 			printf("%+5.2f |", fstate.altitude_kf);
@@ -140,12 +113,9 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			printf("%+5.2f |", fstate.u[5]);
 		}
 		if(settings.printf_motors){
-			printf("%+5.2f|", fstate.m[0]);
-			printf("%+5.2f|", fstate.m[1]);
-			printf("%+5.2f|", fstate.m[2]);
-			printf("%+5.2f|", fstate.m[3]);
-			//printf("%+5.2f|", fstate.m[4]);
-			//printf("%+5.2f|", fstate.m[5]);
+			for(i=0;i<settings.num_rotors;i++){
+				printf("%+5.2f|", fstate.m[i]);
+			}
 		}
 		if(settings.printf_mode){
 			print_flight_mode(user_input.flight_mode);
@@ -172,7 +142,8 @@ int printf_init()
 }
 
 
-int join_printf_manager_thread(){
+int printf_cleanup()
+{
 	int ret = 0;
 	if(initialized){
 		// wait for the thread to exit
@@ -182,4 +153,31 @@ int join_printf_manager_thread(){
 	}
 	initialized = 0;
 	return ret;
+}
+
+
+int print_flight_mode(flight_mode_t mode){
+	switch(mode){
+	case TEST_BENCH_4DOF:
+		printf("%sTEST_BENCH_4DOF%s",KYEL,KNRM);
+		return 0;
+	case TEST_BENCH_6DOF:
+		printf("%sTEST_BENCH_6DOF%s",KYEL,KNRM);
+		return 0;
+	case DIRECT_THROTTLE_4DOF:
+		printf("%sDIR_THRTLE_4DOF%s",KCYN,KNRM);
+		return 0;
+	case DIRECT_THROTTLE_6DOF:
+		printf("%sDIR_THRTLE_6DOF%s",KCYN,KNRM);
+		return 0;
+	case ALT_HOLD_4DOF:
+		printf("%sALT_HOLD_4DOF  %s",KBLU,KNRM);
+		return 0;
+	case ALT_HOLD_6DOF:
+		printf("%sALT_HOLD_6DOF  %s",KBLU,KNRM);
+		return 0;
+	default:
+		fprintf(stderr,"ERROR in print_flight_mode, unknown flight mode\n");
+		return -1;
+	}
 }

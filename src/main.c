@@ -1,5 +1,5 @@
 /**
-* @file fly.c
+* @file main.c
 *
 * see README.txt for description and use
 **/
@@ -72,8 +72,8 @@ void on_pause_press()
 
 
 /**
- * Initialize the IMU, start all the threads, and wait still something triggers
- * a shut down.
+ * Initialize the IMU, start all the threads, and wait until something triggers
+ * a shut down by setting the RC state to EXITING.
  *
  * @return     0 on success, -1 on failure
  */
@@ -104,78 +104,75 @@ int main()
 	// do initialization not involving threads
 	printf("initializing thrust map\n");
 	if(thrust_map_init(settings.thrust_map)<0){
-		fprintf(stderr,"ERROR: failed to initialize thrust map\n");
-		return -1;
+		FAIL("ERROR: failed to initialize thrust map\n")
 	}
 	printf("initializing mixing matrix\n");
 	if(mix_init(settings.layout)<0){
-		fprintf(stderr,"ERROR: failed to initialize mixing matrix\n");
-		return -1;
+		FAIL("ERROR: failed to initialize mixing matrix\n")
 	}
 	printf("initializing setpoint_manager\n");
 	if(setpoint_manager_init()<0){
-		fprintf(stderr, "ERROR: failed to initialize setpoint_manager\n");
-		return -1;
+		FAIL("ERROR: failed to initialize setpoint_manager\n")
 	}
 
 	// initialize cape hardware, this prints an error itself if unsuccessful
 	printf("initializing servos\n");
-	if(rc_servo_init()==-1) return -1;
+	if(rc_servo_init()==-1){
+		FAIL("ERROR: failed to initialize servos, probably need to run as root\n")
+	}
 	printf("initializing adc\n");
-	if(rc_adc_init()==-1) return -1;
+	if(rc_adc_init()==-1){
+		FAIL("ERROR: failed to initialize ADC")
+	}
 
 	// start signal handler so threads can exit cleanly
 	printf("initializing signal handler\n");
 	if(rc_enable_signal_handler()<0){
-		fprintf(stderr,"ERROR: failed to complete rc_enable_signal_handler\n");
-		return -1;
+		FAIL("ERROR: failed to complete rc_enable_signal_handler\n")
 	}
 
 	// start threads
 	printf("initializing DSM and input_manager\n");
 	if(input_manager_init()<0){
-		printf("ERROR: failed to initialize input_manager\n");
-		return -1;
+		FAIL("ERROR: failed to initialize input_manager\n")
 	}
 
-	// initialize buttons
+	// initialize buttons and Assign functions to be called when button
+	// events occur
 	if(rc_button_init(RC_BTN_PIN_PAUSE, RC_BTN_POLARITY_NORM_HIGH,
 						RC_BTN_DEBOUNCE_DEFAULT_US)){
-		fprintf(stderr,"ERROR: failed to init buttons\n");
-		return -1;
+		FAIL("ERROR: failed to init buttons\n")
 	}
-
-	// Assign functions to be called when button events occur
 	rc_button_set_callbacks(RC_BTN_PIN_PAUSE,on_pause_press,NULL);
 
 	// set up feedback controller
 	printf("initializing feedback controller\n");
-	feedback_init();
-
-
-	/* initalize log_manager
-	if(log_manager_init()<0){
-		printf("ERROR: failed to initialize input_manager\n");
-		return -1;
-	}
-	*/
-
-	if(isatty(fileno(stdout))){
-	 	printf("initializing printf manager\n");
+	if(feedback_init()<0){
+		FAIL("ERROR: failed to init feedback controller")
 	}
 
-	printf("\nTurn your transmitter kill switch to arm.\n");
-	printf("Then move throttle UP then DOWN to arm controller\n\n");
-
-	 // start printf_thread if running from a terminal
-	 // if it was started as a background process then don't bother
-	 if(isatty(fileno(stdout))){
-	 	printf_init();
-	 }
+	// initialize log_manager if enabled in settings
+	if(settings.enable_logging){
+		printf("initializing log manager");
+		if(log_manager_init()<0){
+			FAIL("ERROR: failed to initialize input_manager\n")
+		}
+	}
 
 	// final setup
-	rc_make_pid_file();
-	rc_set_state(RUNNING);
+	if(rc_make_pid_file()!=0){
+		FAIL("ERROR: failed to make a PID file\n")
+	}
+
+	// start printf_thread if running from a terminal
+	// if it was started as a background process then don't bother
+	if(isatty(fileno(stdout))){
+		printf("initializing printf manager\n");
+		if(printf_init()<0){
+			FAIL("ERROR: failed to initialize printf_manager\n")
+		}
+	}
+
 
 	// set state to running and chill until something exits the program
 	rc_set_state(RUNNING);
@@ -183,7 +180,11 @@ int main()
 		usleep(500000);
 	}
 
+	// some of these, like printf_manager and log_manager, have cleanup
+	// functions that can be called even if not being used. So just call all
+	// cleanup functions here.
 	printf("cleaning up\n");
+	printf_cleanup();
 	feedback_cleanup();
 	setpoint_manager_cleanup();
 	input_manager_cleanup();

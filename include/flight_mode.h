@@ -1,5 +1,5 @@
 /**
- * <flight_modes.h>
+ * <flight_mode.h>
  */
 
 #ifndef FLIGHT_MODE_H

@@ -9,14 +9,7 @@
 #ifndef PRINTF_MANAGER_H
 #define PRINTF_MANAGER_H
 
-#define KNRM  "\x1B[0m"
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-#define KBLU  "\x1B[34m"
-#define KMAG  "\x1B[35m"
-#define KCYN  "\x1B[36m"
-#define KWHT  "\x1B[37m"
+#include <flight_mode.h>
 
 /**
  * @brief      Start the printf_manager thread which should be the only thing
@@ -32,6 +25,16 @@ int printf_init();
  * @return     0 on clean exit, -1 on exit time out/force close
  */
 int printf_cleanup();
+
+/**
+ * @brief      Only used by printf_manager right now, but could be useful
+ * elsewhere.
+ *
+ * @param[in]  mode  The mode
+ *
+ * @return     0 on success or -1 on error
+ */
+int print_flight_mode(flight_mode_t mode);
 
 
 
