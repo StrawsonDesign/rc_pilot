@@ -185,10 +185,12 @@ int log_manager_init()
 
 int log_manager_cleanup()
 {
+	// just return if not logging
+	if(logging_enabled==0) return 0;
+
 	// disable logging so the thread can stop and start multiple times
 	// thread also exits on rc_get_state()==EXITING
-	logging_enabled = 0;
-
+	logging_enabled=0;
 	int ret = rc_pthread_timed_join(pthread,NULL,LOG_MANAGER_TOUT);
 	if(ret==1) fprintf(stderr,"WARNING: log_manager_thread exit timeout\n");
 	else if(ret==-1) fprintf(stderr,"ERROR: failed to join log_manager thread\n");

@@ -34,6 +34,7 @@ prefix		?= /usr
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(BINDIR)
 	@$(LINKER) -o $(@) $(OBJECTS) $(LDFLAGS)
+	@echo "made: $(@)"
 
 # rule for all other objects
 $(BUILDDIR)/%.o : $(SRCDIR)/%.c $(INCLUDES)

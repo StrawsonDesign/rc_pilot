@@ -142,9 +142,10 @@ int main(int argc, char *argv[])
 
 	// turn cpu freq to max for most consistent performance and lowest
 	// latency servicing the IMU's interrupt service routine
-	// don't exit if this fails, it's only a nicety.
+	// this also serves as an initial check for root access which is needed
+	// by the PRU later. PRU root acces might get resolved in the future.
 	if(rc_cpu_set_governor(RC_GOV_PERFORMANCE)<0){
-		fprintf(stderr, "WARNING, can't set CPU governor, need to run as root\n");
+		FAIL("WARNING, can't set CPU governor, need to run as root\n")
 	}
 
 	// start with both LEDs off

@@ -33,7 +33,7 @@ static int __print_header(){
 		printf("  arm   |");
 	}
 	if(settings.printf_altitude){
-		printf(" alt(m) |");
+		printf(" alt(m)|");
 	}
 	if(settings.printf_rpy){
 		printf(" roll|pitch| yaw |");
@@ -105,12 +105,12 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			printf("%+5.2f|", setpoint.yaw);
 		}
 		if(settings.printf_u){
-			printf("%+5.2f |", fstate.u[0]);
-			printf("%+5.2f |", fstate.u[1]);
-			printf("%+5.2f |", fstate.u[2]);
-			printf("%+5.2f |", fstate.u[3]);
-			printf("%+5.2f |", fstate.u[4]);
-			printf("%+5.2f |", fstate.u[5]);
+			printf("%+5.2f|", fstate.u[0]);
+			printf("%+5.2f|", fstate.u[1]);
+			printf("%+5.2f|", fstate.u[2]);
+			printf("%+5.2f|", fstate.u[3]);
+			printf("%+5.2f|", fstate.u[4]);
+			printf("%+5.2f|", fstate.u[5]);
 		}
 		if(settings.printf_motors){
 			for(i=0;i<settings.num_rotors;i++){
