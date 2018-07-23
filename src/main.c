@@ -17,6 +17,7 @@
 #include <rc/button.h>
 #include <rc/led.h>
 #include <rc/time.h>
+#include <rc/cpu.h>
 
 #include <settings.h> // contains extern settings variable
 #include <thrust_map.h>
@@ -134,11 +135,17 @@ int main(int argc, char *argv[])
 	printf("Loaded settings\n");
 
 
-
-	// make sure another instance isn't running
+	// before touching hardware, make sure another instance isn't running
 	// return value -3 means a root process is running and we need more
 	// privileges to stop it.
 	if(rc_kill_existing_process(2.0)==-3) return -1;
+
+	// turn cpu freq to max for most consistent performance and lowest
+	// latency servicing the IMU's interrupt service routine
+	// don't exit if this fails, it's only a nicety.
+	if(rc_cpu_set_governor(RC_GOV_PERFORMANCE)<0){
+		fprintf(stderr, "WARNING, can't set CPU governor, need to run as root\n");
+	}
 
 	// start with both LEDs off
 	if(rc_led_set(RC_LED_GREEN, 0)==-1){
