@@ -33,25 +33,32 @@ static int __print_header(){
 		printf("  arm   |");
 	}
 	if(settings.printf_altitude){
-		printf(" alt(m)|");
+		printf(KYEL);
+		printf(" alt(m)|altdot|");
 	}
 	if(settings.printf_rpy){
+		printf(KCYN);
 		printf(" roll|pitch| yaw |");
 	}
 	if(settings.printf_sticks){
-		printf(" thr |roll |pitch| yaw |");
+		printf(KGRN);
+		printf("  kill  | thr |roll |pitch| yaw |");
 	}
 	if(settings.printf_setpoint){
+		printf(KYEL);
 		printf(" sp_a| sp_r| sp_p| sp_y|");
 	}
 	if(settings.printf_u){
+		printf(KCYN);
 		printf(" U0X | U1Y | U2Z | U3r | U4p | U5y |");
 	}
 	if(settings.printf_motors){
+		printf(KGRN);
 		for(i=0;i<settings.num_rotors;i++){
 			printf("  M%d |", i);
 		}
 	}
+	printf(KNRM);
 	if(settings.printf_mode){
 		printf("   MODE ");
 	}
@@ -69,6 +76,11 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 	initialized = 1;
 	printf("\nTurn your transmitter kill switch to arm.\n");
 	printf("Then move throttle UP then DOWN to arm controller\n\n");
+
+	// turn off linewrap to avoid runaway prints
+	printf(WRAP_DISABLE);
+
+	// print the header
 	__print_header();
 
 	prev_arm_state = fstate.arm_state;
@@ -82,29 +94,38 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 		printf("\r");
 		if(settings.printf_arm){
 			if(fstate.arm_state==ARMED) printf("%s ARMED %s |",KRED,KNRM);
-			else                        printf("%sDISARMED%s|",KGRN,KNRM);
+			else			    printf("%sDISARMED%s|",KGRN,KNRM);
 		}
 		if(settings.printf_altitude){
+			printf(KYEL);
 			printf("%+5.2f |", fstate.altitude_kf);
+			printf("%+5.2f |", fstate.alt_kf_vel);
 		}
 		if(settings.printf_rpy){
+			printf(KCYN);
 			printf("%+5.2f|", fstate.roll);
 			printf("%+5.2f|", fstate.pitch);
 			printf("%+5.2f|", fstate.yaw);
 		}
 		if(settings.printf_sticks){
-			printf("%+5.2f|", user_input.thr_stick);
+			if(user_input.requested_arm_mode==ARMED)
+				printf("%s ARMED  ",KRED);
+			else	printf("%sDISARMED",KGRN);
+			printf(KGRN);
+			printf("|%+5.2f|", user_input.thr_stick);
 			printf("%+5.2f|", user_input.roll_stick);
 			printf("%+5.2f|", user_input.pitch_stick);
 			printf("%+5.2f|", user_input.yaw_stick);
 		}
 		if(settings.printf_setpoint){
+			printf(KYEL);
 			printf("%+5.2f|", setpoint.altitude);
 			printf("%+5.2f|", setpoint.roll);
 			printf("%+5.2f|", setpoint.pitch);
 			printf("%+5.2f|", setpoint.yaw);
 		}
 		if(settings.printf_u){
+			printf(KCYN);
 			printf("%+5.2f|", fstate.u[0]);
 			printf("%+5.2f|", fstate.u[1]);
 			printf("%+5.2f|", fstate.u[2]);
@@ -113,10 +134,12 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			printf("%+5.2f|", fstate.u[5]);
 		}
 		if(settings.printf_motors){
+			printf(KGRN);
 			for(i=0;i<settings.num_rotors;i++){
 				printf("%+5.2f|", fstate.m[i]);
 			}
 		}
+		printf(KNRM);
 		if(settings.printf_mode){
 			print_flight_mode(user_input.flight_mode);
 		}
@@ -125,6 +148,10 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 		prev_arm_state = fstate.arm_state;
 		rc_usleep(1000000/PRINTF_MANAGER_HZ);
 	}
+
+	// put linewrap back on
+	printf(WRAP_ENABLE);
+
 	return NULL;
 }
 

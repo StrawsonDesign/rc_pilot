@@ -1,7 +1,6 @@
 /**
  * @file feedback.c
  *
-
  */
 
 #include <stdio.h>
@@ -273,6 +272,7 @@ int feedback_init()
 	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
 	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);
 
+	#ifdef DEBUG
 	printf("ROLL CONTROLLER:\n");
 	rc_filter_print(D_roll);
 	printf("PITCH CONTROLLER:\n");
@@ -281,6 +281,7 @@ int feedback_init()
 	rc_filter_print(D_yaw);
 	printf("ALTITUDE CONTROLLER:\n");
 	rc_filter_print(D_altitude);
+	#endif
 
 	// save original gains as we will scale these by battery voltage later
 	D_roll_gain_orig = D_roll.gain;
@@ -311,6 +312,7 @@ int feedback_init()
 	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
 	mpu_conf.dmp_sample_rate = settings.feedback_hz;
 	mpu_conf.dmp_fetch_accel_gyro = 1;
+	// optionally enbale magnetometer
 	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
 	mpu_conf.orient = ORIENTATION_Z_UP;
 
@@ -349,15 +351,15 @@ static int __feedback_state_estimate()
 
 	// collect new IMU roll/pitch data
 	if(settings.enable_magnetometer){
-		fstate.roll   = mpu_data.fused_TaitBryan[TB_ROLL_Y];
-		fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
-		yaw_reading = mpu_data.fused_TaitBryan[TB_YAW_Z];
+		fstate.roll  = mpu_data.fused_TaitBryan[TB_ROLL_Y];
+		fstate.pitch = mpu_data.fused_TaitBryan[TB_PITCH_X];
+		yaw_reading  = mpu_data.fused_TaitBryan[TB_YAW_Z];
 
 	}
 	else{
-		fstate.roll   = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
-		fstate.pitch  = mpu_data.dmp_TaitBryan[TB_PITCH_X];
-		yaw_reading = mpu_data.dmp_TaitBryan[TB_YAW_Z];
+		fstate.roll  = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
+		fstate.pitch = mpu_data.dmp_TaitBryan[TB_PITCH_X];
+		yaw_reading  = mpu_data.dmp_TaitBryan[TB_YAW_Z];
 	}
 
 	fstate.roll_rate = mpu_data.gyro[0];
@@ -423,23 +425,23 @@ static int __feedback_control()
 	// we need to:
 	//		find hover thrust and correct from there
 	//		this code does not work a.t.m.
-	 if(setpoint.en_alt_ctrl){
-	 	if(last_en_alt_ctrl == 0){
-	 		setpoint.altitude = fstate.altitude_kf; // set altitude setpoint to current altitude
-	 		rc_filter_reset(&D_altitude);
-	 		tmp = -setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
-	 		rc_filter_prefill_outputs(&D_altitude, tmp);
-	 		last_en_alt_ctrl = 1;
-	 	}
-	 	D_altitude.gain = D_altitude_gain_orig * settings.v_nominal/fstate.v_batt;
-	 	tmp = rc_filter_march(&D_altitude, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
-	 	rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-	 	u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch);
-	 	mix_add_input(u[VEC_Z], VEC_Z, mot);
-	 	last_en_alt_ctrl = 1;
-	 }
+	if(setpoint.en_alt_ctrl){
+		if(last_en_alt_ctrl == 0){
+			setpoint.altitude = fstate.altitude_kf; // set altitude setpoint to current altitude
+			rc_filter_reset(&D_altitude);
+			tmp = -setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
+			rc_filter_prefill_outputs(&D_altitude, tmp);
+			last_en_alt_ctrl = 1;
+		}
+		D_altitude.gain = D_altitude_gain_orig * settings.v_nominal/fstate.v_batt;
+		tmp = rc_filter_march(&D_altitude, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
+		rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
+		u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch);
+		mix_add_input(u[VEC_Z], VEC_Z, mot);
+		last_en_alt_ctrl = 1;
+	}
 	// else use direct throttle
-	 else{
+	else{
 
 		// compensate for tilt
 		tmp = setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));

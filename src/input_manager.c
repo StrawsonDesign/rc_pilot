@@ -23,6 +23,7 @@ user_input_t user_input; // extern variable in input_manager.h
 static pthread_t input_manager_thread;
 static arm_state_t kill_switch = DISARMED; // raw kill switch on the radio
 
+
 /**
 * float apply_deadzone(float in, float zone)
 *
@@ -37,6 +38,7 @@ static double __deadzone(double in, double zone)
 	if(in>0.0)	return ((in-zone)/(1.0-zone));
 	else		return ((in+zone)/(1.0-zone));
 }
+
 
 /**
  * @brief      blocking function that returns after arming sequence is complete
@@ -85,6 +87,7 @@ ARM_SEQUENCE_START:
 	return 0;
 }
 
+
 void new_dsm_data_callback()
 {
 	double new_thr, new_roll, new_pitch, new_yaw, new_mode, new_kill;
@@ -113,8 +116,11 @@ void new_dsm_data_callback()
 		break;
 
 	case DSM_KILL_NEGATIVE_THROTTLE:
-		if(new_thr<=-1.1)	kill_switch = DISARMED;
-		else			kill_switch = ARMED;
+		if(new_thr<=-1.1){
+			kill_switch = DISARMED;
+			user_input.requested_arm_mode=DISARMED;
+		}
+		else	kill_switch = ARMED;
 		break;
 
 	default:
@@ -135,12 +141,16 @@ void new_dsm_data_callback()
 		user_input.flight_mode = settings.flight_mode_1;
 		break;
 	case 2:
-		if(new_mode>0.0f) user_input.flight_mode = settings.flight_mode_2;
+		// switch will either range from -1 to 1 or 0 to 1.
+		// in either case it's safe to use +0.5 as the cutoff
+		if(new_mode>0.5) user_input.flight_mode = settings.flight_mode_2;
 		else user_input.flight_mode = settings.flight_mode_1;
 		break;
 	case 3:
-		if(new_mode>0.6f) user_input.flight_mode = settings.flight_mode_3;
-		else if(new_mode<0.1f) user_input.flight_mode = settings.flight_mode_1;
+		// 3-position switch will have the positions -1, 0, 1 when
+		// calibrated correctly. checking +- 0.5 is a safe cutoff
+		if(new_mode>0.5) user_input.flight_mode = settings.flight_mode_3;
+		else if(new_mode<-0.5) user_input.flight_mode = settings.flight_mode_1;
 		else user_input.flight_mode = settings.flight_mode_2;
 		break;
 	default:
@@ -165,6 +175,7 @@ void new_dsm_data_callback()
 		user_input.pitch_stick = 0.0;
 		user_input.yaw_stick   = 0.0;
 	}
+
 	if(user_input.input_active==0){
 		user_input.input_active=1; // flag that connection has come back online
 		printf("DSM CONNECTION ESTABLISHED\n");
@@ -173,6 +184,7 @@ void new_dsm_data_callback()
 
 }
 
+
 void dsm_disconnect_callback(void)
 {
 	user_input.thr_stick = 0.0;
@@ -180,8 +192,11 @@ void dsm_disconnect_callback(void)
 	user_input.pitch_stick = 0.0;
 	user_input.yaw_stick = 0.0;
 	user_input.input_active = 0;
+	kill_switch = DISARMED;
+	user_input.requested_arm_mode=DISARMED;
 	fprintf(stderr, "LOST DSM CONNECTION\n");
 }
+
 
 void* input_manager(void* ptr)
 {

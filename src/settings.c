@@ -245,7 +245,7 @@ int __parse_kill_mode()
 		settings.dsm_kill_mode = DSM_KILL_DEDICATED_SWITCH;
 	}
 	else if(strcmp(tmp_str, "DSM_KILL_NEGATIVE_THROTTLE")==0){
-		settings.dsm_kill_mode = DSM_KILL_DEDICATED_SWITCH;
+		settings.dsm_kill_mode = DSM_KILL_NEGATIVE_THROTTLE;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid dsm_kill_mode string\n");

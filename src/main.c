@@ -32,7 +32,7 @@
 #define FAIL(str) \
 fprintf(stderr, str); \
 rc_led_set(RC_LED_GREEN,0); \
-rc_led_blink(RC_LED_RED,4.0,2.0); \
+rc_led_blink(RC_LED_RED,8.0,2.0); \
 return -1;
 
 
@@ -50,6 +50,15 @@ void print_usage()
 	printf("\n");
 
 
+}
+
+/**
+ * temporary check for dsm calibration until I add this to librobotcontrol
+ */
+int __rc_dsm_is_calibrated()
+{
+	if(!access("/var/lib/robotcontrol/dsm.cal", F_OK)) return 1;
+	else return 0;
 }
 
 /**
@@ -140,14 +149,6 @@ int main(int argc, char *argv[])
 	// privileges to stop it.
 	if(rc_kill_existing_process(2.0)==-3) return -1;
 
-	// turn cpu freq to max for most consistent performance and lowest
-	// latency servicing the IMU's interrupt service routine
-	// this also serves as an initial check for root access which is needed
-	// by the PRU later. PRU root acces might get resolved in the future.
-	if(rc_cpu_set_governor(RC_GOV_PERFORMANCE)<0){
-		FAIL("WARNING, can't set CPU governor, need to run as root\n")
-	}
-
 	// start with both LEDs off
 	if(rc_led_set(RC_LED_GREEN, 0)==-1){
 		fprintf(stderr, "ERROR in main(), failed to set RC_LED_GREEN\n");
@@ -156,6 +157,28 @@ int main(int argc, char *argv[])
 	if(rc_led_set(RC_LED_RED, 0)==-1){
 		fprintf(stderr, "ERROR in main() failed to set RC_LED_RED\n");
 		return -1;
+	}
+
+	// make sure IMU is calibrated
+	if(!rc_mpu_is_gyro_calibrated()){
+		FAIL("ERROR, must calibrate gyroscope with rc_calibrate_gyro first\n")
+	}
+	if(!rc_mpu_is_accel_calibrated()){
+		FAIL("ERROR, must calibrate accelerometer with rc_calibrate_accel first\n")
+	}
+	if(settings.enable_magnetometer && !rc_mpu_is_gyro_calibrated()){
+		FAIL("ERROR, must calibrate magnetometer with rc_calibrate_mag first\n")
+	}
+	if(!__rc_dsm_is_calibrated()){
+		FAIL("ERROR, must calibrate DSM with rc_calibrate_dsm first\n")
+	}
+
+	// turn cpu freq to max for most consistent performance and lowest
+	// latency servicing the IMU's interrupt service routine
+	// this also serves as an initial check for root access which is needed
+	// by the PRU later. PRU root acces might get resolved in the future.
+	if(rc_cpu_set_governor(RC_GOV_PERFORMANCE)<0){
+		FAIL("WARNING, can't set CPU governor, need to run as root\n")
 	}
 
 	// do initialization not involving threads
