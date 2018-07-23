@@ -45,7 +45,7 @@ if(json_object_is_type(tmp, json_type_boolean)==0){\
 }\
 settings.name = json_object_get_boolean(tmp);\
 
-// macro for reading a integer
+// macro for reading an integer
 #define PARSE_INT(name) \
 if(json_object_object_get_ex(jobj, #name, &tmp)==0){ \
 	fprintf(stderr,"ERROR parsing settings file, can't find " #name "\n");\
@@ -99,8 +99,8 @@ if(json_object_is_type(tmp, json_type_double)==0){\
 	fprintf(stderr,"ERROR " #name " should be a double\n");\
 	return -1;\
 }\
-settings.v_nominal = json_object_get_double(tmp);\
-if(settings.v_nominal<min || settings.v_nominal>max){\
+settings.name = json_object_get_double(tmp);\
+if(settings.name<min || settings.name>max){\
 	fprintf(stderr,"ERROR " #name " should be between min and max\n");\
 	return -1;\
 }\
@@ -281,11 +281,10 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 		fprintf(stderr,"ERROR: can't find controller gain in settings file\n");
 		return -1;
 	}
-	// skip check here since "1" is not considered a double during check
-	// if(json_object_is_type(tmp, json_type_double)==0){
-	// 	fprintf(stderr,"ERROR: controller gain should be a double\n");
-	// 	return -1;
-	// }
+	if(json_object_is_type(tmp, json_type_double)==0){
+		fprintf(stderr,"ERROR: controller gain should be a double\n");
+		return -1;
+	}
 	tmp_flt = json_object_get_double(tmp);
 
 	// check if PID gains or transfer function coefficients
@@ -445,237 +444,9 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 }
 
 
-/**
- * @brief      write a settings object to disk
- *
- * @return     0 on success, -1 on failure
- */
-int __write_settings_to_disk(){
-	int out;
-	out = json_object_to_file_ext(SETTINGS_FILE, jobj, \
-		JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY);
-	if(out!=0){
-		fprintf(stderr,"failed to write settings to disk\n");
-		return -1;
-	}
-	//out = json_object_to_file(SETTINGS_FILE, jobj);
-	printf("Successfully wrote settings to file\n");
-	return 0;
-}
 
 
-
-/**
- * @brief fetch default settings
- *
- * @return     0 on success
- */
-
- //Need to modify to be compatible with new pid controller
-int __load_default_settings()
-{
-	struct json_object *array = NULL;	// temp object for new arrays
-	struct json_object *tmp = NULL;		// temp object
-	struct json_object *tmp2 = NULL;	// temp object
-
-	// make new object to return
-	jobj = json_object_new_object();
-
-	// Physical Parameters
-	tmp = json_object_new_string("LAYOUT_6DOF_ROTORBITS");
-	json_object_object_add(jobj, "layout", tmp);
-	tmp = json_object_new_string("RX2206_4S");
-	json_object_object_add(jobj, "thrust_map", tmp);
-	tmp = json_object_new_string("ORIENTATION_X_FORWARD");
-	json_object_object_add(jobj, "orientation", tmp);
-	tmp = json_object_new_double(7.4);
-	json_object_object_add(jobj, "v_nominal", tmp);
-	// feedback loop frequency
-	tmp = json_object_new_int(100);
-	json_object_object_add(jobj, "feedback_hz", tmp);
-
-	// features
-	tmp = json_object_new_boolean(FALSE);
-	json_object_object_add(jobj, "enable_logging", tmp);
-
-	// flight modes
-	tmp = json_object_new_int(3);
-	json_object_object_add(jobj, "num_dsm_modes", tmp);
-	tmp = json_object_new_string("TEST_BENCH_4DOF");
-	json_object_object_add(jobj, "flight_mode_1", tmp);
-	tmp = json_object_new_string("TEST_BENCH_6DOF");
-	json_object_object_add(jobj, "flight_mode_2", tmp);
-	tmp = json_object_new_string("DIRECT_THROTTLE_4DOF");
-	json_object_object_add(jobj, "flight_mode_3", tmp);
-
-	// DSM radio config
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_thr_ch", tmp);
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_thr_pol", tmp);
-	tmp = json_object_new_int(2);
-	json_object_object_add(jobj, "dsm_roll_ch", tmp);
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_roll_pol", tmp);
-	tmp = json_object_new_int(3);
-	json_object_object_add(jobj, "dsm_pitch_ch", tmp);
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_pitch_pol", tmp);
-	tmp = json_object_new_int(4);
-	json_object_object_add(jobj, "dsm_yaw_ch", tmp);
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_yaw_pol", tmp);
-	tmp = json_object_new_int(5);
-	json_object_object_add(jobj, "dsm_mode_ch", tmp);
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_mode_pol", tmp);
-	tmp = json_object_new_string("DSM_KILL_NEGATIVE_THROTTLE");
-	json_object_object_add(jobj, "dsm_kill_mode", tmp);
-	tmp = json_object_new_int(6);
-	json_object_object_add(jobj, "dsm_kill_ch", tmp);
-	tmp = json_object_new_int(1);
-	json_object_object_add(jobj, "dsm_kill_pol", tmp);
-
-	// printf config
-	tmp = json_object_new_boolean(TRUE);
-	json_object_object_add(jobj, "printf_arm", tmp);
-	tmp = json_object_new_boolean(FALSE);
-	json_object_object_add(jobj, "printf_altitude", tmp);
-	tmp = json_object_new_boolean(FALSE);
-	json_object_object_add(jobj, "printf_rpy", tmp);
-	tmp = json_object_new_boolean(FALSE);
-	json_object_object_add(jobj, "printf_sticks", tmp);
-	tmp = json_object_new_boolean(TRUE);
-	json_object_object_add(jobj, "printf_setpoint", tmp);
-	tmp = json_object_new_boolean(FALSE);
-	json_object_object_add(jobj, "printf_u", tmp);
-	tmp = json_object_new_boolean(FALSE);
-	json_object_object_add(jobj, "printf_motors", tmp);
-	tmp = json_object_new_boolean(TRUE);
-	json_object_object_add(jobj, "printf_mode", tmp);
-
-	// roll controller
-	tmp2 = json_object_new_object();
-	tmp = json_object_new_double(1);
-	json_object_object_add(tmp2, "gain", tmp);
-	tmp = json_object_new_string("CT");
-	json_object_object_add(tmp2, "CT_or_DT", tmp);
-	tmp = json_object_new_double(6.283);
-	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "numerator", array);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "denominator", array);
-
-	json_object_object_add(jobj, "roll_controller", tmp2);
-
-	// pitch controller
-	tmp2 = json_object_new_object();
-	tmp = json_object_new_double(1.0);
-	json_object_object_add(tmp2, "gain", tmp);
-	tmp = json_object_new_string("CT");
-	json_object_object_add(tmp2, "CT_or_DT", tmp);
-	tmp = json_object_new_double(6.283);
-	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "numerator", array);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "denominator", array);
-
-	json_object_object_add(jobj, "pitch_controller", tmp2);
-
-	// yaw controller
-	tmp2 = json_object_new_object();
-	tmp = json_object_new_double(1.0);
-	json_object_object_add(tmp2, "gain", tmp);
-	tmp = json_object_new_string("CT");
-	json_object_object_add(tmp2, "CT_or_DT", tmp);
-	tmp = json_object_new_double(3.141);
-	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "numerator", array);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "denominator", array);
-
-	json_object_object_add(jobj, "yaw_controller", tmp2);
-
-	// altitude controller
-	tmp2 = json_object_new_object();
-	tmp = json_object_new_double(1.0);
-	json_object_object_add(tmp2, "gain", tmp);
-	tmp = json_object_new_string("CT");
-	json_object_object_add(tmp2, "CT_or_DT", tmp);
-	tmp = json_object_new_double(0.6283);
-	json_object_object_add(tmp2, "crossover_freq_rad_per_sec", tmp);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "numerator", array);
-
-	array = json_object_new_array();
-	tmp = json_object_new_double(0.1);
-	json_object_array_add(array, tmp);
-	tmp = json_object_new_double(0.2);
-	json_object_array_put_idx(array, 1, tmp);
-	tmp = json_object_new_double(0.3);
-	json_object_array_put_idx(array, 2, tmp);
-	json_object_object_add(tmp2, "denominator", array);
-
-	json_object_object_add(jobj, "altitude_controller", tmp2);
-
-	return 0;
-}
-
-
-
-int settings_load_from_file()
+int settings_load_from_file(char* path)
 {
 	struct json_object *tmp = NULL; // temp object
 	char* tmp_str = NULL; // temp string poitner
@@ -690,17 +461,15 @@ int settings_load_from_file()
 	#endif
 
 	// read in file contents
-	if(access(SETTINGS_FILE, F_OK)!=0){
-		printf("Fly settings file missing, making default\n");
-		__load_default_settings();
-		printf("Writing default settings to file\n");
-		if(__write_settings_to_disk()!=0) -1;
+	if(access(path, F_OK)!=0){
+		fprintf(stderr,"ERROR: settings file missing\n");
+		return -1;
 	}
 	else{
 		#ifdef DEBUG
 		printf("about to read json from file\n");
 		#endif
-		jobj = json_object_from_file(SETTINGS_FILE);
+		jobj = json_object_from_file(path);
 		if(jobj==NULL){
 			fprintf(stderr,"ERROR, failed to read settings from disk\n");
 			return -1;
@@ -711,60 +480,50 @@ int settings_load_from_file()
 	settings_print();
 	#endif
 
-	// start parsing data
+	/*
+	 * PHYSICAL PARAMETERS
+	 * layout populates num_rotors, layout, and dof
+	 * feedback_hz is also here because I don't know where else to put it
+	 */
 	if(__parse_layout()==-1) return -1; // parse_layout also fill in num_rotors and dof
 	if(__parse_thrust_map()==-1) return -1;
 	PARSE_DOUBLE_MIN_MAX(v_nominal,7.0,18.0)
-
-	// parse enable_magnetometer
-	if(json_object_object_get_ex(jobj, "enable_magnetometer", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find enable_magnetometer in settings file\n");
+	PARSE_INT(feedback_hz)
+	if(settings.feedback_hz!=50 && settings.feedback_hz!=100 && settings.feedback_hz!=200){
+		fprintf(stderr,"ERROR: feedback_hz must be 50,100,or 200\n");
 		return -1;
 	}
-	if(json_object_is_type(tmp, json_type_boolean)==0){
-		fprintf(stderr,"ERROR: enable_logging should be a boolean\n");
-		return -1;
-	}
-	settings.enable_magnetometer = json_object_get_boolean(tmp);
 
+	/*
+	 * FEATURES
+	 * not many yet..
+	 */
+	PARSE_BOOL(enable_logging)
+	PARSE_BOOL(enable_magnetometer)
 
-	// parse enable_logging
-	if(json_object_object_get_ex(jobj, "enable_logging", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find enable_logging in settings file\n");
-		return -1;
-	}
-	if(json_object_is_type(tmp, json_type_boolean)==0){
-		fprintf(stderr,"ERROR: enable_logging should be a boolean\n");
-		return -1;
-	}
-	settings.enable_logging = json_object_get_boolean(tmp);
-
-
-
-	// parse flight_mode_1
+	/*
+	 * FLIGHT MODES
+	 */
+	PARSE_INT_MIN_MAX(num_dsm_modes,1,3)
 	if(json_object_object_get_ex(jobj, "flight_mode_1", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_1 in settings file\n");
 		return -1;
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_1)) return -1;
-
-	// parse flight_mode_2
 	if(json_object_object_get_ex(jobj, "flight_mode_2", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_2 in settings file\n");
 		return -1;
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_2)) return -1;
-
-	// parse flight_mode_3
 	if(json_object_object_get_ex(jobj, "flight_mode_3", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_3 in settings file\n");
 		return -1;
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_3)) return -1;
 
-
-	// parse DSM config
-	PARSE_INT_MIN_MAX(num_dsm_modes,1,3)
+	/*
+	 * DSM RADIO CONFIG
+	 */
 	PARSE_INT_MIN_MAX(dsm_thr_ch,1,9)
 	PARSE_POLARITY(dsm_thr_pol)
 	PARSE_INT_MIN_MAX(dsm_roll_ch,1,9)
@@ -780,14 +539,9 @@ int settings_load_from_file()
 	PARSE_POLARITY(dsm_kill_pol)
 
 
-	// parse feedback_hz
-	PARSE_INT(feedback_hz)
-	if(settings.feedback_hz!=50 && settings.feedback_hz!=100 && settings.feedback_hz!=200){
-		fprintf(stderr,"ERROR: feedback_hz must be 50,100,or 200\n");
-		return -1;
-	}
-
-	// parse printf options
+	/*
+	 * PRINTF OPTIONS
+	 */
 	PARSE_BOOL(printf_arm)
 	PARSE_BOOL(printf_altitude)
 	PARSE_BOOL(printf_rpy)
@@ -797,7 +551,9 @@ int settings_load_from_file()
 	PARSE_BOOL(printf_motors)
 	PARSE_BOOL(printf_mode)
 
-
+	/*
+	 * FEEDBACK CONTROLLERS
+	 */
 
 	// parse roll controller
 	if(json_object_object_get_ex(jobj, "roll_controller", &tmp)==0){
@@ -841,16 +597,6 @@ int settings_load_from_file()
 
 	json_object_put(jobj);	// free memory
 	was_load_successful = 1;
-	return 0;
-}
-
-int settings_get(settings_t* set)
-{
-	if(was_load_successful==0){
-		fprintf(stderr, "ERROR in settings_get, settings not loaded from file yet\n");
-		return -1;
-	}
-	*set=settings;
 	return 0;
 }
 

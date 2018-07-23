@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <rc/math/filter.h>
- #include <rc/math/kalman.h>
- #include <rc/math/quaternion.h>
+#include <rc/math/kalman.h>
+#include <rc/math/quaternion.h>
 #include <rc/math/other.h>
 #include <rc/start_stop.h>
 #include <rc/led.h>
@@ -87,17 +87,7 @@ static double __batt_voltage()
 {
 	float tmp;
 
-	if(settings.battery_connection==DC_BARREL_JACK){
-		tmp = rc_adc_dc_jack();
-	}
-	else if(settings.battery_connection==BALANCE_PLUG){
-		tmp = rc_adc_batt();
-	}
-	else{
-		fprintf(stderr,"ERROR: invalid battery_connection_t\n");
-		return settings.v_nominal;
-	}
-
+	tmp = rc_adc_dc_jack();
 	if(tmp<3.0f) tmp = settings.v_nominal;
 	return tmp;
 }
@@ -276,7 +266,7 @@ int feedback_init()
 
 	// initialize a LP on baromter for comparison to KF
 	if(rc_filter_butterworth_lowpass(&altitude_lp, 2, dt, ALT_CUTOFF_FREQ)) return -1;
-	
+
 	// init barometer and read in first data
 	if(rc_bmp_init(BMP_OVERSAMPLE_16, BMP_FILTER_16))	return -1;
 	if(rc_bmp_read(&bmp_data)) return -1;
@@ -363,11 +353,11 @@ static int __feedback_state_estimate()
 		fstate.pitch  = mpu_data.fused_TaitBryan[TB_PITCH_X];
 		yaw_reading = mpu_data.fused_TaitBryan[TB_YAW_Z];
 
-	}	
+	}
 	else{
 		fstate.roll   = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
 		fstate.pitch  = mpu_data.dmp_TaitBryan[TB_PITCH_X];
-		yaw_reading = mpu_data.dmp_TaitBryan[TB_YAW_Z];	
+		yaw_reading = mpu_data.dmp_TaitBryan[TB_YAW_Z];
 	}
 
 	fstate.roll_rate = mpu_data.gyro[0];
@@ -386,7 +376,7 @@ static int __feedback_state_estimate()
 
 	// filter battery voltage.
 	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());
-	
+
 	return 0;
 }
 
@@ -444,7 +434,7 @@ static int __feedback_control()
 	 	D_altitude.gain = D_altitude_gain_orig * settings.v_nominal/fstate.v_batt;
 	 	tmp = rc_filter_march(&D_altitude, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
 	 	rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-	 	u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch); 	
+	 	u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch);
 	 	mix_add_input(u[VEC_Z], VEC_Z, mot);
 	 	last_en_alt_ctrl = 1;
 	 }

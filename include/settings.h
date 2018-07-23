@@ -16,14 +16,7 @@
 #include <input_manager.h>
 #include <rc_pilot_defs.h>
 
-/**
- * The user may elect to power the BBB off the 3-pin JST balance plug or the DC
- * barrel jack. This mode is set in the json config file.
- */
-typedef enum battery_connection_t{
-	BALANCE_PLUG,
-	DC_BARREL_JACK
-} battery_connection_t;
+
 
 /**
  * Configuration settings read from the json settings file and passed to most
@@ -35,20 +28,19 @@ typedef struct settings_t{
 	rotor_layout_t layout;
 	int dof;
 	thrust_map_t thrust_map;
-	float v_nominal;
-	battery_connection_t battery_connection;
+	double v_nominal;
 	int feedback_hz;
 
 	// features
-	int enable_freefall_detect;
 	int enable_logging;
 	int enable_magnetometer;
 
 	// flight modes
+	int num_dsm_modes;
 	flight_mode_t flight_mode_1;
 	flight_mode_t flight_mode_2;
 	flight_mode_t flight_mode_3;
-	int num_dsm_modes;
+
 
 	// dsm radio config
 	int dsm_thr_ch;
@@ -77,27 +69,18 @@ typedef struct settings_t{
 
 }settings_t;
 
+/**
+ * settings are external, so just include this header and read from it
+ */
 extern settings_t settings;
 
 /**
- * @brief      Populates the setting sand controller structs with the json file.
- *
- *             If no settings file exits, it makes a new one filled
- *             with defaults. Used in json_settings.c
+ * @brief      Populates the settings and controller structs with the settings file.
  *
  * @return     0 on success, -1 on failure
  */
-int settings_load_from_file();
+int settings_load_from_file(char* path);
 
-
-/**
- * @brief      populates the caller's settings struct
- *
- * @param      set   pointer to settings struct to be populated
- *
- * @return     0 on success, -1 if settings have not been loaded from file yet
- */
-int settings_get(settings_t* set);
 
 /**
  * @brief      Only used in debug mode. Prints settings to console
@@ -105,6 +88,7 @@ int settings_get(settings_t* set);
  * @return     0 on success, -1 on failure
  */
 int settings_print();
+
 
 /**
  * @brief      gets the roll controllers read from the last json read.
@@ -115,6 +99,7 @@ int settings_print();
  */
 int settings_get_roll_controller(rc_filter_t* ctrl);
 
+
 /**
  * @brief      gets the pitch controllers read from the last json read.
  *
@@ -124,6 +109,7 @@ int settings_get_roll_controller(rc_filter_t* ctrl);
  */
 int settings_get_pitch_controller(rc_filter_t* ctrl);
 
+
 /**
  * @brief      gets the yaw controllers read from the last json read.
  *
@@ -132,6 +118,7 @@ int settings_get_pitch_controller(rc_filter_t* ctrl);
  * @return     0 on success, -1 on failure
  */
 int settings_get_yaw_controller(rc_filter_t* ctrl);
+
 
 /**
  * @brief      gets the altitude controllers read from the last json read.

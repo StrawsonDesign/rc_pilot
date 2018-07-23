@@ -37,8 +37,8 @@ typedef enum arm_state_t{
 #define YAW_DEADZONE		0.02
 #define THROTTLE_DEADZONE	0.02
 #define SOFT_START_SECONDS	1.0	// controller soft start seconds
-#define ALT_CUTOFF_FREQ     2.0
-#define BMP_RATE_DIV        10  // optionally sample bmp less frequently than mpu
+#define ALT_CUTOFF_FREQ		2.0
+#define BMP_RATE_DIV		10	// optionally sample bmp less frequently than mpu
 
 // controller absolute limits
 #define MAX_ROLL_COMPONENT	0.4
@@ -48,13 +48,12 @@ typedef enum arm_state_t{
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
 
-#define MOTOR_IDLE_CMD          0.135
-#define MIN_THRUST_COMPONENT    -0.8
+#define MOTOR_IDLE_CMD		0.135
+#define MIN_THRUST_COMPONENT	-0.8
 #define MAX_THRUST_COMPONENT	0.0
 
 // Files
-#define LOG_DIR			"/home/debian/rc_pilot_logs/"
-#define SETTINGS_FILE	"/home/debian/rc_pilot/settings/rc_pilot_settings.json"
+#define LOG_DIR		"/home/debian/rc_pilot_logs/"
 
 
 // for future modes, not used yet
@@ -62,13 +61,13 @@ typedef enum arm_state_t{
 #define DISARM_TIMEOUT		4.0
 
 // Colours for pretty prints!
-#define KNRM  "\x1B[0m"		// "normal" to return to default after colour
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-#define KBLU  "\x1B[34m"
-#define KMAG  "\x1B[35m"
-#define KCYN  "\x1B[36m"
-#define KWHT  "\x1B[37m"
+#define KNRM	"\x1B[0m"	// "normal" to return to default after colour
+#define KRED	"\x1B[31m"
+#define KGRN	"\x1B[32m"
+#define KYEL	"\x1B[33m"
+#define KBLU	"\x1B[34m"
+#define KMAG	"\x1B[35m"
+#define KCYN	"\x1B[36m"
+#define KWHT	"\x1B[37m"
 
 #endif // RC_PILOT_DEFS_H

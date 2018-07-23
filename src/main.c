@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include <rc/start_stop.h>
 #include <rc/adc.h>
@@ -34,6 +35,21 @@ rc_led_blink(RC_LED_RED,4.0,2.0); \
 return -1;
 
 
+
+void print_usage()
+{
+	printf("\n");
+	printf(" Options\n");
+	printf(" -s {settings file} Specify settings file to use\n");
+	printf(" -h                 Print this help message\n");
+	printf("\n");
+	printf("Some example settings files are included with the\n");
+	printf("source code. You must specify the location of one of these\n");
+	printf("files or ideally the location of your own settings file.\n");
+	printf("\n");
+
+
+}
 
 /**
 * If the user holds the pause button for 2 seconds, set state to exiting which
@@ -77,8 +93,48 @@ void on_pause_press()
  *
  * @return     0 on success, -1 on failure
  */
-int main()
+int main(int argc, char *argv[])
 {
+	int c;
+	char* settings_file_path = NULL;
+
+	// parse arguments
+	opterr = 0;
+	while ((c = getopt(argc, argv, "s:h")) != -1){
+		switch (c){
+		// settings file option
+		case 's':
+			settings_file_path=optarg;
+			printf("User specified settings file:\n%s\n", settings_file_path);
+			break;
+
+		// help mode
+		case 'h':
+			print_usage();
+			return 0;
+
+		default:
+			printf("\nInvalid Argument \n");
+			print_usage();
+			return -1;
+		}
+	}
+
+	// settings file option is mandatory
+	if(settings_file_path==NULL){
+		print_usage();
+		return -1;
+	}
+
+	// first things first, load settings which may be used during startup
+	if(settings_load_from_file(settings_file_path)<0){
+		fprintf(stderr,"ERROR: failed to load settings\n");
+		return -1;
+	}
+	printf("Loaded settings\n");
+
+
+
 	// make sure another instance isn't running
 	// return value -3 means a root process is running and we need more
 	// privileges to stop it.
@@ -93,13 +149,6 @@ int main()
 		fprintf(stderr, "ERROR in main() failed to set RC_LED_RED\n");
 		return -1;
 	}
-
-
-	// first things first, load settings which may be used during startup
-	if(settings_load_from_file()){
-		FAIL("ERROR: failed to load settings file quitting fly\n")
-	}
-	printf("Loaded settings\n");
 
 	// do initialization not involving threads
 	printf("initializing thrust map\n");

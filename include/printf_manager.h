@@ -19,12 +19,14 @@
  */
 int printf_init();
 
+
 /**
  * @brief      Waits for the printf manager thread to exit.
  *
  * @return     0 on clean exit, -1 on exit time out/force close
  */
 int printf_cleanup();
+
 
 /**
  * @brief      Only used by printf_manager right now, but could be useful
