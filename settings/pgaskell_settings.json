@@ -31,6 +31,7 @@
 
 	"printf_arm": true,
 	"printf_altitude": true,
+	"printf_position": true,
 	"printf_rpy": true,
 	"printf_sticks": false,
 	"printf_setpoint": true,

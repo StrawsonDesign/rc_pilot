@@ -22,38 +22,72 @@
 static pthread_t printf_manager_thread;
 static int initialized = 0;
 
+// terminal emulator control sequences
+#define WRAP_DISABLE	"\033[?7l"
+#define WRAP_ENABLE	"\033[?7h"
+#define KNRM		"\x1B[0m"	// "normal" to return to default after colour
+
+#define KRED		"\x1B[31m"
+#define KGRN		"\x1B[32m"
+#define KYEL		"\x1B[33m"
+#define KBLU		"\x1B[34m"
+#define KMAG		"\x1B[35m"
+#define KCYN		"\x1B[36m"
+#define KWHT		"\x1B[37m"
+
+const char* const colours[] = {KYEL, KCYN, KGRN};
+const int num_colours = 3; // length of above array
+int current_colour = 0;
+
+/**
+ * @brief      { function_description }
+ *
+ * @return     string with ascii colour code
+ */
+static const char* __next_colour()
+{
+	// if reached the end of the colour list, loop around
+	if(current_colour>=(num_colours-1)){
+		current_colour=0;
+		return colours[num_colours-1];
+	}
+	// else increment counter and return
+	current_colour++;
+	return colours[current_colour-1];
+}
+
+static void __reset_colour()
+{
+	current_colour = 0;
+}
 
 
-
-static int __print_header(){
+static int __print_header()
+{
 	int i;
 
 	printf("\n");
+	__reset_colour();
 	if(settings.printf_arm){
 		printf("  arm   |");
 	}
 	if(settings.printf_altitude){
-		printf(KYEL);
-		printf(" alt(m)|altdot|");
+		printf("%s alt(m)|altdot|", __next_colour());
 	}
 	if(settings.printf_rpy){
-		printf(KCYN);
-		printf(" roll|pitch| yaw |");
+		printf("%s roll|pitch| yaw |", __next_colour());
 	}
 	if(settings.printf_sticks){
-		printf(KGRN);
-		printf("  kill  | thr |roll |pitch| yaw |");
+		printf("%s  kill  | thr |roll |pitch| yaw |", __next_colour());
 	}
 	if(settings.printf_setpoint){
-		printf(KYEL);
-		printf(" sp_a| sp_r| sp_p| sp_y|");
+		printf("%s sp_a| sp_r| sp_p| sp_y|", __next_colour());
 	}
 	if(settings.printf_u){
-		printf(KCYN);
-		printf(" U0X | U1Y | U2Z | U3r | U4p | U5y |");
+		printf("%s U0X | U1Y | U2Z | U3r | U4p | U5y |", __next_colour());
 	}
 	if(settings.printf_motors){
-		printf(KGRN);
+		printf("%s", __next_colour());
 		for(i=0;i<settings.num_rotors;i++){
 			printf("  M%d |", i+1);
 		}
@@ -97,44 +131,50 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			else			    printf("%sDISARMED%s|",KGRN,KNRM);
 		}
 		if(settings.printf_altitude){
-			printf(KYEL);
-			printf("%+5.2f |", fstate.altitude_kf);
-			printf("%+5.2f |", fstate.alt_kf_vel);
+			printf("%s%+5.2f |%+5.2f |",	__next_colour(),\
+							fstate.altitude_kf,\
+							fstate.alt_kf_vel);
 		}
 		if(settings.printf_rpy){
 			printf(KCYN);
-			printf("%+5.2f|", fstate.roll);
-			printf("%+5.2f|", fstate.pitch);
-			printf("%+5.2f|", fstate.yaw);
+			printf("%s%+5.2f|%+5.2f|%+5.2f|",
+							__next_colour(),\
+							fstate.roll,\
+							fstate.pitch,\
+							fstate.yaw);
 		}
 		if(settings.printf_sticks){
 			if(user_input.requested_arm_mode==ARMED)
 				printf("%s ARMED  ",KRED);
 			else	printf("%sDISARMED",KGRN);
 			printf(KGRN);
-			printf("|%+5.2f|", user_input.thr_stick);
-			printf("%+5.2f|", user_input.roll_stick);
-			printf("%+5.2f|", user_input.pitch_stick);
-			printf("%+5.2f|", user_input.yaw_stick);
+			printf("%s|%+5.2f|%+5.2f|%+5.2f|%+5.2f|",\
+							__next_colour(),\
+							user_input.thr_stick,\
+							user_input.roll_stick,\
+							user_input.pitch_stick,\
+							user_input.yaw_stick);
 		}
 		if(settings.printf_setpoint){
-			printf(KYEL);
-			printf("%+5.2f|", setpoint.altitude);
-			printf("%+5.2f|", setpoint.roll);
-			printf("%+5.2f|", setpoint.pitch);
-			printf("%+5.2f|", setpoint.yaw);
+			printf("%s%+5.2f|%+5.2f|%+5.2f|%+5.2f|",\
+							__next_colour(),\
+							setpoint.altitude,\
+							setpoint.roll,\
+							setpoint.pitch,\
+							setpoint.yaw);
 		}
 		if(settings.printf_u){
-			printf(KCYN);
-			printf("%+5.2f|", fstate.u[0]);
-			printf("%+5.2f|", fstate.u[1]);
-			printf("%+5.2f|", fstate.u[2]);
-			printf("%+5.2f|", fstate.u[3]);
-			printf("%+5.2f|", fstate.u[4]);
-			printf("%+5.2f|", fstate.u[5]);
+			printf("%s%+5.2f|%+5.2f|%+5.2f|%+5.2f|%+5.2f|%+5.2f|",\
+							__next_colour(),\
+							fstate.u[0],\
+							fstate.u[1],\
+							fstate.u[2],\
+							fstate.u[3],\
+							fstate.u[4],\
+							fstate.u[5]);
 		}
 		if(settings.printf_motors){
-			printf(KGRN);
+			printf("%s",__next_colour());
 			for(i=0;i<settings.num_rotors;i++){
 				printf("%+5.2f|", fstate.m[i]);
 			}
