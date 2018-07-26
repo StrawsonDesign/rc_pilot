@@ -56,6 +56,7 @@ install:
 clean:
 	@$(RM) $(BINDIR)
 	@$(RM) $(BUILDDIR)
+	@$(RM) docs/html
 	@echo "Library Clean Complete"
 
 uninstall:
