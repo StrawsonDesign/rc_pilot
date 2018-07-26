@@ -23,6 +23,8 @@
  * threads as they initialize.
  */
 typedef struct settings_t{
+	char name[128]; ///< string declaring the name of the settings file
+
 	// physical parameters
 	int num_rotors;
 	rotor_layout_t layout;
@@ -66,6 +68,11 @@ typedef struct settings_t{
 	int printf_u;
 	int printf_motors;
 	int printf_mode;
+
+	// mavlink stuff
+	char dest_ip[24];
+	uint8_t my_sys_id;
+	uint16_t mav_port;
 
 }settings_t;
 

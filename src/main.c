@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr,"ERROR: failed to load settings\n");
 		return -1;
 	}
-	printf("Loaded settings\n");
+	printf("Loaded settings: %s\n", settings.name);
 
 
 	// before touching hardware, make sure another instance isn't running

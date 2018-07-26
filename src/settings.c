@@ -105,6 +105,18 @@ if(settings.name<min || settings.name>max){\
 	return -1;\
 }\
 
+// macro for reading a string
+#define PARSE_STRING(name) \
+if(json_object_object_get_ex(jobj, #name, &tmp)==0){ \
+	fprintf(stderr,"ERROR parsing settings file, can't find " #name "\n");\
+	return -1;\
+}\
+if(json_object_is_type(tmp, json_type_string)==0){\
+	fprintf(stderr,"ERROR parsing settings file, " #name " should be a string\n");\
+	return -1;\
+}\
+strcpy(settings.name, json_object_get_string(tmp));
+
 
 
 /**
@@ -481,6 +493,11 @@ int settings_load_from_file(char* path)
 	#endif
 
 	/*
+	 * START PARSING
+	 */
+	PARSE_STRING(name)
+
+	/*
 	 * PHYSICAL PARAMETERS
 	 * layout populates num_rotors, layout, and dof
 	 * feedback_hz is also here because I don't know where else to put it
@@ -550,6 +567,13 @@ int settings_load_from_file(char* path)
 	PARSE_BOOL(printf_u)
 	PARSE_BOOL(printf_motors)
 	PARSE_BOOL(printf_mode)
+
+	/*
+	 * MAVLINK
+	 */
+	PARSE_STRING(dest_ip)
+	PARSE_INT(my_sys_id)
+	PARSE_INT(mav_port)
 
 	/*
 	 * FEEDBACK CONTROLLERS
