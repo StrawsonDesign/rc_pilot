@@ -37,17 +37,23 @@ static double last_yaw;
 static double tmp;
 static int last_en_alt_ctrl;
 
-static rc_filter_t D_roll, D_pitch, D_yaw, D_batt, D_altitude, altitude_lp;
+
 static rc_mpu_data_t mpu_data;
 static rc_bmp_data_t bmp_data;
 
-// altitude kalman filer elements
+// filters
 static rc_matrix_t F, G, H, Q, R, Pi;
 static rc_kalman_t kf;
 static rc_vector_t u,y;
 static rc_filter_t acc_lp;
+static rc_filter_t D_roll;
+static rc_filter_t D_pitch;
+static rc_filter_t D_yaw;
+static rc_filter_t D_batt;
+static rc_filter_t D_altitude;
+static rc_filter_t altitude_lp;
 
-log_entry_t new_log;
+
 
 // local functions
 static void __feedback_isr(void);
@@ -392,6 +398,7 @@ static int __feedback_control()
 	int i;
 	double tmp, min, max;
 	double u[6], mot[8];
+	log_entry_t new_log;
 
 	// Disarm if rc_state is somehow paused without disarming the controller.
 	// This shouldn't happen if other threads are working properly.
@@ -567,34 +574,50 @@ static int __feedback_control()
 
 
 	/***************************************************************************
-	* Add new log entry
+	 * populate log entry. populate all values since this is fast. log_manager
+	 * will only write the enabled sections to disk.
 	***************************************************************************/
 	if(settings.enable_logging){
 		new_log.loop_index	= fstate.loop_index;
 		new_log.last_step_ns	= fstate.last_step_ns;
+
+		new_log.v_batt		= fstate.v_batt;
+		new_log.altitude_bmp	=
+		new_log.gyro_roll	=
+		new_log.gyro_pitch	=
+		new_log.gyro_yaw	=
+		new_log.accel_X		=
+		new_log.accel_Y		=
+		new_log.accel_Z		=
+
 		new_log.altitude_kf	= fstate.altitude_kf;
-		new_log.altitude_bmp	= fstate.altitude_bmp;
 		new_log.roll		= fstate.roll;
 		new_log.pitch		= fstate.pitch;
 		new_log.yaw		= fstate.yaw;
-		new_log.Z_throttle_sp	= setpoint.Z_throttle;
+		new_log.pos_X		= fstate.pos_X;
+		new_log.pos_Y		= fstate.pos_Y;
+		new_log.pos_Z		= fstate.pos_Z;
+
 		new_log.altitude_sp	= setpoint.altitude;
 		new_log.roll_sp		= setpoint.roll;
 		new_log.pitch_sp	= setpoint.pitch;
 		new_log.yaw_sp		= setpoint.yaw;
-		new_log.v_batt		= fstate.v_batt;
+
 		new_log.u_X		= u[VEC_Y];
 		new_log.u_Y		= u[VEC_X];
 		new_log.u_Z		= u[VEC_Z];
 		new_log.u_roll		= u[VEC_ROLL];
 		new_log.u_pitch		= u[VEC_PITCH];
 		new_log.u_yaw		= u[VEC_YAW];
+
 		new_log.mot_1		= fstate.m[0];
 		new_log.mot_2		= fstate.m[1];
 		new_log.mot_3		= fstate.m[2];
 		new_log.mot_4		= fstate.m[3];
 		new_log.mot_5		= fstate.m[4];
 		new_log.mot_6		= fstate.m[5];
+		new_log.mot_7		= fstate.m[6];
+		new_log.mot_8		= fstate.m[7];
 		add_log_entry(new_log);
 	}
 

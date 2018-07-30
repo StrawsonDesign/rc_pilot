@@ -1,61 +1,84 @@
 /**
- * @file log_manager.h
+ * <log_manager.h>
  *
  * @brief      Functions to start, stop, and interact with the log manager
  *             thread.
+ *
  */
 
 #ifndef LOG_MANAGER_H
 #define LOG_MANAGER_H
 
 
-// to allow printf macros for multi-architecture portability
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
-
 /**
- * table of values to go into each log entry. It is structured this way so that
- * it can be transformed into a struct or fprintf statement with macros.
+ * Struct containing all possible values that could be writen to the log. For
+ * each log entry you wish to create, fill in an instance of this and pass to
+ * add_log_entry(). You do not need to populate all parts of the struct.
+ * Currently feedback.c populates all values and log_manager.c only writes the
+ * values enabled in the settings file.
  */
-#define LOG_TABLE \
-	X(uint64_t,	"%" PRIu64,	loop_index	) \
-	X(uint64_t,	"%" PRIu64,	last_step_ns	) \
-							  \
-	X(double,	"%f",		altitude_kf	) \
-	X(double,	"%f",		altitude_bmp)	  \
-	X(double,	"%f",		roll		) \
-	X(double,	"%f",		pitch		) \
-	X(double,	"%f",		yaw		) \
-							  \
-	X(double,	"%f",		Z_throttle_sp	) \
-	X(double,	"%f",		altitude_sp	) \
-	X(double,	"%f",		roll_sp		) \
-	X(double,	"%f",		pitch_sp	) \
-	X(double,	"%f",		yaw_sp		) \
-							\
-	X(double,	"%f",		u_X		) \
-	X(double,	"%f",		u_Y		) \
-	X(double,	"%f",		u_Z		) \
-	X(double,	"%f",		u_roll		) \
-	X(double,	"%f",		u_pitch		) \
-	X(double,	"%f",		u_yaw		) \
-							  \
-	X(double,	"%f",		mot_1		) \
-	X(double,	"%f",		mot_2		) \
-	X(double,	"%f",		mot_3		) \
-	X(double,	"%f",		mot_4		) \
-	X(double,	"%f",		mot_5		) \
-	X(double,	"%f",		mot_6		) \
-	X(double,	"%f",		v_batt		)
+typedef struct log_entry_t{
+	/** @name index, always printed */
+	///@{
+	uint64_t loop_index, // timing
+	uint64_t last_step_ns,
+	///@}
 
+	/** @name sensors */
+	///@{
+	double	v_batt
+	double	altitude_bmp,
+	double	gyro_roll,
+	double	gyro_pitch,
+	double	gyro_yaw,
+	double	accel_X,
+	double	accel_Y,
+	double	accel_Z,
+	///@}
 
-#define X(type, fmt, name) type name ;
-/**
- * Struct definition to contain a single line of the log. For each log entry you
- * wish to create. Fill in an instance of this and pass to add_log_entry()
- */
-typedef struct log_entry_t { LOG_TABLE } log_entry_t;
-#undef X
+	/** @name state estimate */
+	///@{
+	double	altitude_kf,
+	double	roll,
+	double	pitch,
+	double	yaw,
+	double	pos_X,
+	double	pos_Y,
+	double	pos_Z,
+	///@}
+
+	/** @name setpoint */
+	///@{
+	double	altitude_sp,
+	double	roll_sp,
+	double	pitch_sp,
+	double	yaw_sp,
+	///@}
+
+	/** @name orthogonal control outputs */
+	///@{
+	double	u_X,
+	double	u_Y,
+	double	u_Z,
+	double	u_roll,
+	double	u_pitch,
+	double	u_yaw,
+	///@}
+
+	/** @name motor signals */
+	///@{
+	double	mot_1,
+	double	mot_2,
+	double	mot_3,
+	double	mot_4,
+	double	mot_5,
+	double	mot_6,
+	double	mot_7
+	double	mot_8
+	///@}
+
+} log_entry_t;
+
 
 
 /**

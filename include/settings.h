@@ -32,10 +32,7 @@ typedef struct settings_t{
 	thrust_map_t thrust_map;
 	double v_nominal;
 	int feedback_hz;
-
-	// features
-	int enable_logging;
-	int enable_magnetometer;
+	int enable_magnetometer; // we suggest leaving as 0 (mag OFF)
 
 	// flight modes
 	int num_dsm_modes;
@@ -69,10 +66,25 @@ typedef struct settings_t{
 	int printf_motors;
 	int printf_mode;
 
+
+	// log settings
+	int enable_logging;
+	int log_sensors;
+	int log_state;
+	int log_setpoint;
+	int log_control_u;
+	int log_motor_signals;
+
 	// mavlink stuff
 	char dest_ip[24];
 	uint8_t my_sys_id;
 	uint16_t mav_port;
+
+	// feedback controllers
+	rc_filter_t roll_controller;
+	rc_filter_t pitch_controller;
+	rc_filter_t yaw_controller;
+	rc_filter_t altitude_controller;
 
 }settings_t;
 
@@ -97,43 +109,5 @@ int settings_load_from_file(char* path);
 int settings_print();
 
 
-/**
- * @brief      gets the roll controllers read from the last json read.
- *
- * @param      ctrl  pointer to the roll controllers to retrieve
- *
- * @return     0 on success, -1 on failure
- */
-int settings_get_roll_controller(rc_filter_t* ctrl);
-
-
-/**
- * @brief      gets the pitch controllers read from the last json read.
- *
- * @param      ctrl  pointer to the pitch controllers to retrieve
- *
- * @return     0 on success, -1 on failure
- */
-int settings_get_pitch_controller(rc_filter_t* ctrl);
-
-
-/**
- * @brief      gets the yaw controllers read from the last json read.
- *
- * @param      ctrl  pointer to the yaw controllers to retrieve
- *
- * @return     0 on success, -1 on failure
- */
-int settings_get_yaw_controller(rc_filter_t* ctrl);
-
-
-/**
- * @brief      gets the altitude controllers read from the last json read.
- *
- * @param      ctrl  pointer to the altitude controllers to retrieve
- *
- * @return     0 on success, -1 on failure
- */
-int settings_get_altitude_controller(rc_filter_t* ctrl);
 
 #endif // SETTINGS_H

@@ -23,15 +23,12 @@ static json_object* jobj;
 // primary settings struct declared as extern in header is defined ONCE here
 settings_t settings;
 
-// filters pulled from settings file
-static rc_filter_t roll_controller;
-static rc_filter_t pitch_controller;
-static rc_filter_t yaw_controller;
-static rc_filter_t altitude_controller;
-
 // if anything goes wrong set this flag back to 0
 static int was_load_successful = 0;
 
+////////////////////////////////////////////////////////////////////////////////
+/// MACROS FOR PARSING JSON TYPES
+////////////////////////////////////////////////////////////////////////////////
 
 // macro for reading a boolean
 #define PARSE_BOOL(name) \
@@ -45,6 +42,7 @@ if(json_object_is_type(tmp, json_type_boolean)==0){\
 }\
 settings.name = json_object_get_boolean(tmp);\
 
+
 // macro for reading an integer
 #define PARSE_INT(name) \
 if(json_object_object_get_ex(jobj, #name, &tmp)==0){ \
@@ -56,6 +54,7 @@ if(json_object_is_type(tmp, json_type_int)==0){\
 	return -1;\
 }\
 settings.name = json_object_get_int(tmp);\
+
 
 // macro for reading a bound integer
 #define PARSE_INT_MIN_MAX(name,min,max) \
@@ -73,6 +72,7 @@ if(settings.name<min || settings.name>max){\
 	return -1;\
 }\
 
+
 // macro for reading a polarity which should be +-1
 #define PARSE_POLARITY(name) \
 if(json_object_object_get_ex(jobj, #name, &tmp)==0){ \
@@ -88,6 +88,7 @@ if(settings.name!=-1 && settings.name!=1){\
 	fprintf(stderr,"ERROR parsing settings file, " #name " should be -1 or 1\n");\
 	return -1;\
 }\
+
 
 // macro for reading a floating point number
 #define PARSE_DOUBLE_MIN_MAX(name,min,max)\
@@ -105,6 +106,7 @@ if(settings.name<min || settings.name>max){\
 	return -1;\
 }\
 
+
 // macro for reading a string
 #define PARSE_STRING(name) \
 if(json_object_object_get_ex(jobj, #name, &tmp)==0){ \
@@ -118,6 +120,9 @@ if(json_object_is_type(tmp, json_type_string)==0){\
 strcpy(settings.name, json_object_get_string(tmp));
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// functions for parsing enums
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief      pulls rotor layout out of json object into settings struct
@@ -448,8 +453,6 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 				fprintf(stderr,"ERROR: failed to alloc pid filter in __parse_controller()");
 				return -1;
 			}
-
-
 	}
 
 	return 0;
@@ -510,13 +513,8 @@ int settings_load_from_file(char* path)
 		fprintf(stderr,"ERROR: feedback_hz must be 50,100,or 200\n");
 		return -1;
 	}
-
-	/*
-	 * FEATURES
-	 * not many yet..
-	 */
-	PARSE_BOOL(enable_logging)
 	PARSE_BOOL(enable_magnetometer)
+
 
 	/*
 	 * FLIGHT MODES
@@ -569,6 +567,16 @@ int settings_load_from_file(char* path)
 	PARSE_BOOL(printf_mode)
 
 	/*
+	 * LOGGING
+	 */
+	PARSE_BOOL(enable_logging)
+	PARSE_BOOL(log_sensors)
+	PARSE_BOOL(log_state)
+	PARSE_BOOL(log_setpoint)
+	PARSE_BOOL(log_control_u)
+	PARSE_BOOL(log_motor_signals)
+
+	/*
 	 * MAVLINK
 	 */
 	PARSE_STRING(dest_ip)
@@ -584,7 +592,7 @@ int settings_load_from_file(char* path)
 		fprintf(stderr,"ERROR: can't find roll_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &roll_controller, settings.feedback_hz)){
+	if(__parse_controller(tmp, &settings.roll_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse roll_controller\n");
 		return -1;
 	}
@@ -594,7 +602,7 @@ int settings_load_from_file(char* path)
 		fprintf(stderr,"ERROR: can't find pitch_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &pitch_controller, settings.feedback_hz)){
+	if(__parse_controller(tmp, &settings.pitch_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse pitch_controller\n");
 		return -1;
 	}
@@ -604,7 +612,7 @@ int settings_load_from_file(char* path)
 		fprintf(stderr,"ERROR: can't find yaw_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &yaw_controller, settings.feedback_hz)){
+	if(__parse_controller(tmp, &settings.yaw_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse yaw_controller\n");
 		return -1;
 	}
@@ -614,7 +622,7 @@ int settings_load_from_file(char* path)
 		fprintf(stderr,"ERROR: can't find altitude_controller in settings file\n");
 		return -1;
 	}
-	if(__parse_controller(tmp, &altitude_controller, settings.feedback_hz)){
+	if(__parse_controller(tmp, &settings.altitude_controller, settings.feedback_hz)){
 		fprintf(stderr,"ERROR: could not parse altitude_controller\n");
 		return -1;
 	}
@@ -637,51 +645,6 @@ int settings_print()
 	printf("%s", json_object_to_json_string_ext(jobj, \
 			JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
 	printf("\n");
-	return 0;
-}
-
-
-
-int settings_get_roll_controller(rc_filter_t* ctrl)
-{
-	if(was_load_successful == 0){
-		fprintf(stderr,"ERROR: can't get json controller, last read failed\n");
-		return -1;
-	}
-	*ctrl = roll_controller;
-	return 0;
-}
-
-
-int settings_get_pitch_controller(rc_filter_t* ctrl)
-{
-	if(was_load_successful == 0){
-		fprintf(stderr,"ERROR: can't get json controller, last read failed\n");
-		return -1;
-	}
-	*ctrl = pitch_controller;
-	return 0;
-}
-
-
-int settings_get_yaw_controller(rc_filter_t* ctrl)
-{
-	if(was_load_successful == 0){
-		fprintf(stderr,"ERROR: can't get json controller, last read failed\n");
-		return -1;
-	}
-	*ctrl = yaw_controller;
-	return 0;
-}
-
-
-int settings_get_altitude_controller(rc_filter_t* ctrl)
-{
-	if(was_load_successful == 0){
-		fprintf(stderr,"ERROR: can't get json controller, last read failed\n");
-		return -1;
-	}
-	*ctrl = altitude_controller;
 	return 0;
 }
 

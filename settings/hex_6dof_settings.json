@@ -6,8 +6,6 @@
 	"orientation": "ORIENTATION_X_FORWARD",
 	"v_nominal": 14.8,
 	"feedback_hz": 100,
-
-	"enable_logging": false,
 	"enable_magnetometer": false,
 
 	"num_dsm_modes": 3,
@@ -38,6 +36,13 @@
 	"printf_u": true,
 	"printf_motors": true,
 	"printf_mode": true,
+
+	"enable_logging": false,
+	"log_sensors": true,
+	"log_state": true,
+	"log_setpoint": true,
+	"log_control_u": true,
+	"log_motor_signals": true,
 
 	"dest_ip": "192.168.8.1",
 	"my_sys_id": 1,

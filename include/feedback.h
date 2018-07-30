@@ -3,17 +3,17 @@
  *
  * @brief      Functions to start and stop the feedback controller ISR
  *
- *             Here lies the heart and soul of the operation. I wish the whole
- *             flight controller could be just this file, woe is me.
- *             initialize_controllers() pulls in the control constants from
- *             json_settings and sets up the discrete controllers. From then on
- *             out, feedback_controller() should be called by the IMU interrupt
- *             at feedback_hz until the program is shut down.
- *             feedback_controller() will monitor the setpoint which is
- *             constantly being changed by setpoint_manager(). It also does
- *             state estimation to update core_state() even when the controller
- *             is disarmed. When controllers are enabled or disabled mid-flight
- *             by mode switches then the controllers are started smoothly.
+ * Here lies the heart and soul of the operation. I wish the whole flight
+ * controller could be just this file, woe is me. initialize_controllers() pulls
+ * in the control constants from json_settings and sets up the discrete
+ * controllers. From then on out, feedback_controller() should be called by the
+ * IMU interrupt at feedback_hz until the program is shut down.
+ * feedback_controller() will monitor the setpoint which is constantly being
+ * changed by setpoint_manager(). It also does state estimation to update
+ * core_state() even when the controller is disarmed. When controllers are
+ * enabled or disabled mid-flight by mode switches then the controllers are
+ * started smoothly.
+ *
  */
 
 #ifndef FEEDBACK_H
@@ -33,6 +33,7 @@ typedef struct feedback_state_t{
 	uint64_t arm_time_ns;	///< time since boot when controller was armed
 	uint64_t loop_index;	///< increases every time feedback loop runs
 	uint64_t last_step_ns;	///< last time controller has finished a step
+
 
 	double altitude_bmp;	///< altitude estimate using bmp from sea level (m)
 	double altitude_kf;	///< altitude estimate using kalman filter

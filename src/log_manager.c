@@ -11,6 +11,12 @@
 #include <dirent.h>
 #include <string.h>
 
+
+// to allow printf macros for multi-architecture portability
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
+
 #include <rc/start_stop.h>
 #include <rc/time.h>
 #include <rc/pthread.h>
@@ -37,11 +43,10 @@ log_entry_t buffer[2][BUF_LEN];
 pthread_t pthread;
 int logging_enabled; // set to 0 to exit the write_thread
 
-int print_entry(log_entry_t entry)
+
+int print_entry(log_entry_t e)
 {
-	#define X(type, fmt, name) printf("%s " fmt "\n", #name, entry.name);
-	LOG_TABLE
-	#undef X
+	__write_log_entry(stdout, e)
 	printf("\n");
 	return 0;
 }
@@ -73,11 +78,111 @@ int add_log_entry(log_entry_t new)
 }
 
 
-int __write_log_entry(log_entry_t entry)
+int __write_header(int fd)
 {
-	#define X(type, fmt, name) fprintf(fd, fmt "," , entry.name);
-	LOG_TABLE
-	#undef X
+	// always print loop index
+	fprintf(fd, "loop_index,last_step_ns");
+
+	if(settings.log_sensors){
+		fprintf(fd, ",v_batt,altitude_bmp,gyro_roll,gyro_pitch,gyro_yaw,accel_X,accel_Y,accel_Z");
+	}
+
+	if(settings.log_state){
+		fprintf(fd, ",altitude_kf,roll,pitch,yaw,pos_X,pos_Y,pos_Z");
+	}
+
+	if(settings.log_setpoint){
+		fprintf(fd, ",altitude_sp,roll_sp,pitch_sp,yaw_sp");
+	}
+
+	if(settings.log_control_u){
+		fprintf(fd, ",u_X,u_Y,u_Z,u_roll,u_pitch,u_yaw");
+	}
+
+	if(settings.log_motor_signals && settings.num_rotors==8){
+		fprintf(fd, ",mot_1,mot_2,mot_3,mot_4,mot_5,mot_6,mot_7,mot_8");
+	}
+	if(settings.log_motor_signals && settings.num_rotors==6){
+		fprintf(fd, ",mot_1,mot_2,mot_3,mot_4,mot_5,mot_6");
+	}
+	if(settings.log_motor_signals && settings.num_rotors==4){
+		fprintf(fd, ",mot_1,mot_2,mot_3,mot_4");
+	}
+
+	fprintf(fd, "\n");
+	return 0;
+
+
+}
+
+
+int __write_log_entry(int fd, log_entry_t e)
+{
+	// always print loop index
+	fprintf(fd, "%" PRIu64 ",%" PRIu64, e.loop_index, e.last_step_ns);
+
+	if(settings.log_sensors){
+		fprintf(fd, ",%f,%f,%f,%f,%f,%f,%f,%f",	e.v_batt\
+							e.altitude_bmp,\
+							e.gyro_roll,\
+							e.gyro_pitch,\
+							e.gyro_yaw,\
+							e.accel_X,\
+							e.accel_Y,\
+							e.accel_Z);
+	}
+
+	if(settings.log_state){
+		fprintf(fd, ",%f,%f,%f,%f,%f,%f,%f",	e.altitude_kf\
+							e.roll,\
+							e.pitch,\
+							e.yaw,\
+							e.pos_X,\
+							e.pos_Y,\
+							e.pos_Z);
+	}
+
+	if(settings.log_setpoint){
+		fprintf(fd, ",%f,%f,%f,%f",		e.altitude_kf\
+							e.roll_sp,\
+							e.pitch_sp,\
+							e.yaw_sp);
+	}
+
+	if(settings.log_control_u){
+		fprintf(fd, ",%f,%f,%f,%f,%f,%f",	e.u_roll,\
+							e.u_pitch,\
+							e.u_yaw,\
+							e.u_X,\
+							e.u_Y,\
+							e.u_Z);
+	}
+
+	if(settings.log_motor_signals && settings.num_rotors==8){
+		fprintf(fd, ",%f,%f,%f,%f,%f,%f,%f,%f",	e.mot_1,\
+							e.mot_2,\
+							e.mot_3,\
+							e.mot_4,\
+							e.mot_5,\
+							e.mot_6,\
+							e.mot_7,\
+							e.mot_8);
+	}
+	if(settings.log_motor_signals && settings.num_rotors==6){
+		fprintf(fd, ",%f,%f,%f,%f,%f,%f",	e.mot_1,\
+							e.mot_2,\
+							e.mot_3,\
+							e.mot_4,\
+							e.mot_5,\
+							e.mot_6);
+	}
+	if(settings.log_motor_signals && settings.num_rotors==4){
+		fprintf(fd, ",%f,%f,%f,%f",		e.mot_1,\
+							e.mot_2,\
+							e.mot_3,\
+							e.mot_4);
+	}
+
 	fprintf(fd, "\n");
 	return 0;
 }
@@ -110,7 +215,7 @@ void* __log_manager_func(__attribute__ ((unused)) void* ptr)
 	}
 	fflush(fd);
 	fclose(fd);
-	//printf("log file closed\n");
+
 	// zero out state
 	logging_enabled = 0;
 	num_entries = 0;
@@ -135,7 +240,7 @@ int log_manager_init()
 	}
 
 	// first make sure the directory exists, make it if not
-	if (stat(LOG_DIR, &st) == -1) {
+	if(stat(LOG_DIR, &st) == -1) {
 		mkdir(LOG_DIR, 0755);
 	}
 
@@ -149,8 +254,8 @@ int log_manager_init()
 	}
 	// limit number of log files
 	if(i==MAX_LOG_FILES+1){
-		printf("ERROR: log file limit exceeded\n");
-		printf("delete old log files before continuing\n");
+		fprintf(stderr,"ERROR: log file limit exceeded\n");
+		fprintf(stderr,"delete old log files before continuing\n");
 		return -1;
 	}
 	// create and open new file for writing
@@ -159,12 +264,9 @@ int log_manager_init()
 		printf("ERROR: can't open log file for writing\n");
 		return -1;
 	}
+
 	// write header
-	#define X(type, fmt, name) fprintf(fd, "%s," , #name);
-	LOG_TABLE
-	#undef X
-	fprintf(fd, "\n");
-	fflush(fd);
+	__write_header(int fd);
 
 	// start thread
 	logging_enabled = 1;
