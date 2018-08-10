@@ -13,11 +13,10 @@
 #include <rc/led.h>
 #include <rc/mpu.h>
 #include <rc/servo.h>
-#include <rc/adc.h>
 #include <rc/time.h>
-#include <rc/bmp.h>
 
 #include <feedback.h>
+#include <state_estimator.h>
 #include <rc_pilot_defs.h>
 #include <setpoint_manager.h>
 #include <log_manager.h>
@@ -32,20 +31,11 @@ feedback_state_t fstate; // extern variable in feedback.h
 // keep original controller gains for scaling later
 static double D_roll_gain_orig, D_pitch_gain_orig, D_yaw_gain_orig, D_altitude_gain_orig;
 static double dt; // controller timestep
-static int num_yaw_spins;
-static double last_yaw;
 static double tmp;
 static int last_en_alt_ctrl;
 
-
-static rc_mpu_data_t mpu_data;
-static rc_bmp_data_t bmp_data;
-
 // filters
-static rc_matrix_t F, G, H, Q, R, Pi;
-static rc_kalman_t kf;
 static rc_vector_t u,y;
-static rc_filter_t acc_lp;
 static rc_filter_t D_roll;
 static rc_filter_t D_pitch;
 static rc_filter_t D_yaw;
@@ -53,25 +43,9 @@ static rc_filter_t D_batt;
 static rc_filter_t D_altitude;
 static rc_filter_t altitude_lp;
 
-
-
 // local functions
-static void __feedback_isr(void);
 static int __send_motor_stop_pulse();
-static double __batt_voltage();
-static int __estimate_altitude();
-static int __feedback_control();
-static int __feedback_state_estimate();
 
-
-
-static void __feedback_isr(void)
-{
-	setpoint_manager_update();
-	__feedback_state_estimate();
-	__estimate_altitude();
-	__feedback_control();
-}
 
 
 static int __send_motor_stop_pulse()
@@ -261,8 +235,7 @@ int __init_altitude_kf()
 	// initialize a LP on baromter for comparison to KF
 	if(rc_filter_butterworth_lowpass(&altitude_lp, 2, dt, ALT_CUTOFF_FREQ)) return -1;
 
-	// init barometer and read in first data
-	if(rc_bmp_init(BMP_OVERSAMPLE_16, BMP_FILTER_16))	return -1;
+	// init read in first barometer data
 	if(rc_bmp_read(&bmp_data)) return -1;
 	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
 	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);

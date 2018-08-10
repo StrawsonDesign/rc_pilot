@@ -1,18 +1,14 @@
 /**
  * @file feedback.h
  *
- * @brief      Functions to start and stop the feedback controller ISR
+ * @brief      Functions to run the feedback controller
  *
- * Here lies the heart and soul of the operation. I wish the whole flight
- * controller could be just this file, woe is me. initialize_controllers() pulls
- * in the control constants from json_settings and sets up the discrete
- * controllers. From then on out, feedback_controller() should be called by the
+ * Here lies the heart and soul of the operation. feedback_init() pulls
+ * in the control constants from settings module and sets up the discrete
+ * controllers. From then on out, feedback_march() should be called by the
  * IMU interrupt at feedback_hz until the program is shut down.
- * feedback_controller() will monitor the setpoint which is constantly being
- * changed by setpoint_manager(). It also does state estimation to update
- * core_state() even when the controller is disarmed. When controllers are
- * enabled or disabled mid-flight by mode switches then the controllers are
- * started smoothly.
+ * feedback_march() will monitor the setpoint which is constantly being
+ * changed by setpoint_manager().
  *
  */
 
@@ -34,19 +30,6 @@ typedef struct feedback_state_t{
 	uint64_t loop_index;	///< increases every time feedback loop runs
 	uint64_t last_step_ns;	///< last time controller has finished a step
 
-
-	double altitude_bmp;	///< altitude estimate using bmp from sea level (m)
-	double altitude_kf;	///< altitude estimate using kalman filter
-	double alt_kf_vel;	///< z velocity estimate using kalman filter
-	double alt_kf_accel;	///< z accel estimate using kalman filter
-	double roll;		///< current roll angle (rad)
-	double roll_rate;	///< current roll anglular velocity (rad/s)
-	double pitch;		///< current pitch angle (rad)
-	double pitch_rate;	///< current pitch anglular velocity (rad/s)
-	double yaw;		///< current yaw angle (rad)
-	double yaw_rate;	///< current yaw anglular velocity (rad/s)
-	double v_batt;		///< main battery pack voltage (v)
-
 	double u[6];		///< siso controller outputs
 	double m[8];		///< signals sent to motors after mapping
 } feedback_state_t;
@@ -63,6 +46,17 @@ extern feedback_state_t fstate;
  * @return     0 on success, -1 on failure
  */
 int feedback_init();
+
+
+/**
+ * @brief      marches feedback controller forward one step
+ *
+ * This is called AFTER state_estimator_march and actually sends signals to the
+ * motors. This can as is still safely called when Disarmed.
+ *
+ * @return     0 on success, -1 on failure
+ */
+int feedback_march();
 
 /**
  * @brief      This is how outside functions should stop the flight controller.
@@ -84,6 +78,12 @@ int feedback_disarm();
  */
 int feedback_arm();
 
+
+/**
+ * @brief      Cleanup the feedback controller, freeing memory
+ *
+ * @return     0 on success, -1 on failure
+ */
 int feedback_cleanup();
 
 

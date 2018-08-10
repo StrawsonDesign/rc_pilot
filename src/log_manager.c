@@ -44,15 +44,8 @@ pthread_t pthread;
 int logging_enabled; // set to 0 to exit the write_thread
 
 
-int print_entry(log_entry_t e)
-{
-	__write_log_entry(stdout, e)
-	printf("\n");
-	return 0;
-}
 
-
-int add_log_entry(log_entry_t new)
+int log_entry_add(log_entry_t new)
 {
 	if(!logging_enabled){
 		fprintf(stderr,"ERROR: trying to log entry while logger isn't running\n");

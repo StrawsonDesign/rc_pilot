@@ -94,7 +94,18 @@ void on_pause_press()
 	return;
 }
 
-
+/**
+ * @brief      Interrupt service routine for IMU
+ *
+ * This is called every time the Invensense IMU has new data
+ */
+static void __imu_isr(void)
+{
+	setpoint_manager_update();
+	state_estimator_march();
+	feedback_march();
+	log_manager_new_entry();
+}
 
 
 /**
@@ -225,24 +236,56 @@ int main(int argc, char *argv[])
 	}
 	rc_button_set_callbacks(RC_BTN_PIN_PAUSE,on_pause_press,NULL);
 
+	// initialize log_manager if enabled in settings
+	if(settings.enable_logging){
+		printf("initializing log manager");
+		if(log_manager_init()<0){
+			FAIL("ERROR: failed to initialize log manager\n")
+		}
+	}
+
+	// start barometer, must do before starting state estimator
+	printf("initializing Barometer\n");
+	if(rc_bmp_init(BMP_OVERSAMPLE_16, BMP_FILTER_16)){
+		FAIL("ERROR: failed to initialize barometer\n")
+	}
+
+	// start the IMU
+	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
+	mpu_conf.dmp_sample_rate = settings.feedback_hz;
+	mpu_conf.dmp_fetch_accel_gyro = 1;
+
+	// optionally enbale magnetometer
+	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
+	mpu_conf.orient = ORIENTATION_Z_UP;
+
+	// now set up the imu for dmp interrupt operation
+	printf("initializing MPU\n");
+	if(rc_mpu_initialize_dmp(&mpu_data, mpu_conf)){
+		fprintf(stderr,"ERROR: failed to start MPU DMP\n");
+		return -1;
+	}
+
+	// set up state estimator
+	printf("initializing state_estimator\n");
+	if(state_estimator_init()<0){
+		FAIL("ERROR: failed to init state_estimator")
+	}
+
 	// set up feedback controller
 	printf("initializing feedback controller\n");
 	if(feedback_init()<0){
 		FAIL("ERROR: failed to init feedback controller")
 	}
 
-	// initialize log_manager if enabled in settings
-	if(settings.enable_logging){
-		printf("initializing log manager");
-		if(log_manager_init()<0){
-			FAIL("ERROR: failed to initialize input_manager\n")
-		}
-	}
-
 	// final setup
 	if(rc_make_pid_file()!=0){
 		FAIL("ERROR: failed to make a PID file\n")
 	}
+
+	// make sure everything is disarmed them start the ISR
+	feedback_disarm();
+	rc_mpu_set_dmp_callback(__feedback_isr);
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother

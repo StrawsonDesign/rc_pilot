@@ -84,33 +84,22 @@ typedef struct log_entry_t{
 /**
  * @brief      creates a new csv log file and starts the background thread.
  *
- *             Used in log_manager.c
- *
  * @return     0 on success, -1 on failure
  */
 int log_manager_init();
 
-/**
- * @brief      Write the contents of one entry to the console.
- *
- *             Used in log_manager.c
- *
- * @param[in]  entry  The log_entry_t holding the LOG_TABLE to be printed.
- *
- * @return     0 on success, -1 on failure
- */
-int print_entry(log_entry_t entry);
 
 /**
  * @brief      quickly add new data to local buffer
  *
- *             Used in log_manager.c
+ * This is called at the end of feedback_march() after signals have been sent to
+ * the motors.
  *
  * @param[in]  new_entry  the log_entry_t to be written to the buffer
  *
  * @return     0 on success, -1 on failure
  */
-int add_log_entry(log_entry_t new_entry);
+int log_entry_add(log_entry_t new)
 
 /**
  * @brief      Finish writing remaining data to log and close thread.
