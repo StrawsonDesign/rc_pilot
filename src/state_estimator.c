@@ -226,7 +226,45 @@ int state_estimator_march()
 		return -1;
 	}
 
-	// collect new IMU roll/pitch data
+	// populate state_estimate struct from top to bottom.
+
+	/**
+	 * IMU (ACCEL GYRO DMP)
+	 */
+	// gyro and accel require converting to NED coordinates
+	state_estimate.gyro[0] =  mpu_data.gyro[1];
+	state_estimate.gyro[1] =  mpu_data.gyro[0];
+	state_estimate.gyro[2] = -mpu_data.gyro[2];
+	state_estimate.accel[0] =  mpu_data.accel[1];
+	state_estimate.accel[1] =  mpu_data.accel[0];
+	state_estimate.accel[2] = -mpu_data.accel[2];
+
+	// quaternion also needs coordinate transform
+	state_estimate.quat_imu[0] =  mpu_data.dmp_quat[0]; // W
+	state_estimate.quat_imu[1] =  mpu_data.dmp_quat[2]; // X (i)
+	state_estimate.quat_imu[2] =  mpu_data.dmp_quat[1]; // Y (j)
+	state_estimate.quat_imu[3] = -mpu_data.dmp_quat[3]; // Z (k)
+	// normalize it just in case
+	rc_quaternion_norm_array(state_estimate.quat_imu);
+	// generate tait bryan angles
+	rc_quaternion_to_tb_array(state_estimate.quat_imu, state_estimate.tb_imu);
+
+	// yaw is more annoying since we have to detect spins
+	// also make sign negative since NED coordinates has Z point down
+	tmp = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
+	//detect the crossover point at +-PI and write new value to core state
+	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
+	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
+	// finally num_yaw_spins is updated and the new value can be written
+	state_estimate.continuous_yaw = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
+	last_yaw = state_estimate.continuous_yaw;
+
+
+	/**
+	 * MAGNETOMETER
+	 */
+
+
 	if(settings.enable_magnetometer){
 		state_estimate.roll  = mpu_data.fused_TaitBryan[TB_ROLL_Y];
 		state_estimate.pitch = mpu_data.fused_TaitBryan[TB_PITCH_X];
@@ -243,15 +281,7 @@ int state_estimator_march()
 	state_estimate.pitch_rate = mpu_data.gyro[1];
 	state_estimate.yaw_rate = -mpu_data.gyro[2];
 
-	// yaw is more annoying since we have to detect spins
-	// also make sign negative since NED coordinates has Z point down
-	tmp = -yaw_reading + (num_yaw_spins * TWO_PI);
-	//detect the crossover point at +-PI and write new value to core state
-	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
-	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
-	// finally num_yaw_spins is updated and the new value can be written
-	state_estimate.yaw = -yaw_reading + (num_yaw_spins * TWO_PI);
-	last_yaw = state_estimate.yaw;
+
 
 	// filter battery voltage.
 	state_estimate.v_batt = rc_filter_march(&batt_lp,__batt_voltage());

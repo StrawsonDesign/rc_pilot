@@ -15,34 +15,102 @@
 #include <rc_pilot_defs.h>
 
 /**
- * This is the state of the feedback loop. contains most recent values
- * reported by the feedback controller. Should only be written to by the
- * feedback controller after initialization.
+ * This is the output from the state estimator. It contains raw sensor values
+ * and the outputs of filters. Everything is in NED coordinates defined as:
+ *
+ * - X pointing Rorward
+ * - Y pointing Right
+ * - Z pointing Down
+ *
+ * right hand rule applies for angular values such as tait bryan angles and gyro
+ * - Positive Roll to the right about X
+ * - Positive Pitch back about Y
+ * - Positive Yaw right about Z
  */
 typedef struct state_estimate_t{
-	/** @name unfiltered basic sensor data */
+
+	/** @name IMU (accel gyro)
+	 * Normalized Quaternion is straight from the DMP but converted to NED
+	 * coordinates. Tait-Bryan angles roll pitch and yaw angles are then
+	 * converted from the quaternion.
+	 * the roll_pitch_yaw values in the taid bryan angles tb_imu are bounded
+	 * by +-pi since they come straight from the quaternion. the state estimator
+	 * keeps track of these rotations and generates continuous_yaw which is
+	 * unbounded and keeps track of multiple rotations. This provides a continuously
+	 * differentiable variable with no jumps between +-pi
+	 */
+	///@{
+	double gyro[3];		///< gyro roll pitch yaw (rad/s)
+	double accel[3];	///< accel XYZ NED coordinates (m/s^2)
+	double quat_imu[4];	///< DMP normalized quaternion
+	double tb_imu[3];	///< tait bryan roll pitch yaw angle (rad)
+	double continuous_yaw;	///< tb_imu[2] but keeps increasing/decreasing aboce +-2pi
+	///@}
+
+	/** @name IMU (magnetometer)
+	 * these values are only set when magnetometer is enabled in settings.
+	 * right now these aren't used and we don't suggest turning the magnetometer on
+	 */
+	///@{
+	double mag[3];		///< magnetometer XYZ NED coordinates ()
+	double mag_heading_raw;	///< raw compass heading
+	double mag_heading;	///< filtered compass heading
+	double quat_mag[4];	///< quaterion filtered
+	double tb_mag[3];	///< roll pitch yaw with magetometer heading fixed (rad)
+	///@}
+
+	/** @name filtered data from IMU & barometer
+	 * Altitude estimates from kalman filter fusing IMU and BMP data.
+	 * Alttitude, velocity, and acceleration are in units of m, m/s, m/s^2
+	 * Note this is altitude so positive is upwards unlike the NED
+	 * coordinate frame that has Z pointing down.
+	 */
+	///@{
+	double bmp_pressure_raw;///< raw barometer pressure in Pascals
+	double alt_bmp_raw;	///< altitude estimate using only bmp from sea level (m)
+	double alt_bmp;		///< altitude estimate using kalman filter (IMU & bmp)
+	double alt_bmp_vel;	///< z velocity estimate using kalman filter (IMU & bmp)
+	double alt_bmp_accel;	///< z accel estimate using kalman filter (IMU & bmp)
+	///@}
+
+	/** @name Motion Capture data
+	 * As mocap drop in and out the mocap_running flag will turn on and off.
+	 * Old values will remain readable after mocap drops out.
+	 */
+	///@{
+	int mocap_running;	///< 1 if motion capture data is recent and valid
+	double pos_mocap[3];	///< position in mocap frame, converted to NED if necessary
+	double quat_mocap[4];	///< UAV orientation according to mocap
+	double tb_mocap[3];	///< Tait-Bryan angles according to mocap
+	///@}
+
+	/** @name Global Position Estimate
+	 * This is the global estimated position, velocity, and acceleration
+	 * output of a kalman filter which filters accelerometer, DMP attitude,
+	 * and mocap data. If mocap is not available, barometer will be used.
+	 *
+	 * global values are in the mocap's frame for position control.
+	 * relative values are in a frame who's origin is at the position where
+	 * the feedback controller is armed. Without mocap data the filter will
+	 * assume altitude from the barometer and accelerometer, and position
+	 * estimate will have steady state gain of zero to prevent runaway.
+	 */
+	///@{
+	double pos_global_kf[3];
+	double vel_global_kf[3];
+	double accel_global_kf[3];
+	double pos_relative_kf[3];
+	double vel_relative_kf[3];
+	double accel_relative_kf[3];
+	///@}
+
+	/** @name Other */
 	///@{
 	double v_batt;		///< main battery pack voltage (v)
-	double gyro[3];		///< gyro roll pitch yaw NED coordinates (rad/s)
-	double accel[3];	///< accel XYZ NED coordinates (m/s^2)
-	double altitude_bmp;	///< altitude estimate using only bmp from sea level (m)
-	int mocap_running;	///< 1 if motion capture data is recent and valid
-	double mocap_pos[3];	///< motion capture position in it's own frame, NED coordinates (m)
-	double mocap_quat[4];	///< motion capture quaternion rotation of UAV
-	double mocap_tb[3];	///< Tait-Bryan angles from mocap_quat for convenience.
+	double bmp_temp;	///< temperature of barometer
 	///@}
 
-	/** @name filtered data */
-	///@{
-	double altitude_kf;	///< altitude estimate using kalman filter
-	double alt_kf_vel;	///< z velocity estimate using kalman filter
-	double alt_kf_accel;	///< z accel estimate using kalman filter
-	double roll;		///< current roll angle (rad)
-	double pitch;		///< current pitch angle (rad)
-	double yaw;		///< current yaw angle (rad)
-	///@}
-
-} state_estimate_t;
+}state_estimate_t;
 
 extern state_estimate_t state_estimate;
 
