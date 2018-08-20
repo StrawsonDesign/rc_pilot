@@ -24,72 +24,48 @@
 #include <rc_pilot_defs.h>
 #include <thread_defs.h>
 #include <log_manager.h>
+#include <feedback.h>
+#include <state_estimate.h>
 
 
 #define MAX_LOG_FILES	500
 #define BUF_LEN		50
+#define FF		%.4f	// format for printing floats to file
 
 
-uint64_t num_entries;	// number of entries logged so far
-int buffer_pos;		// position in current buffer
-int current_buf;	// 0 or 1 to indicate which buffer is being filled
-int needs_writing;	// flag set to 1 if a buffer is full
-FILE* fd;		// file descriptor for the log file
+static uint64_t num_entries;	// number of entries logged so far
+static int buffer_pos;		// position in current buffer
+static int current_buf;	// 0 or 1 to indicate which buffer is being filled
+static int needs_writing;	// flag set to 1 if a buffer is full
+static FILE* fd;		// file descriptor for the log file
 
 // array of two buffers so one can fill while writing the other to file
-log_entry_t buffer[2][BUF_LEN];
+static log_entry_t buffer[2][BUF_LEN];
 
 // background thread and running flag
-pthread_t pthread;
-int logging_enabled; // set to 0 to exit the write_thread
+static pthread_t pthread;
+static int logging_enabled; // set to 0 to exit the write_thread
 
 
-
-int log_entry_add(log_entry_t new)
-{
-	if(!logging_enabled){
-		fprintf(stderr,"ERROR: trying to log entry while logger isn't running\n");
-		return -1;
-	}
-	if(needs_writing && buffer_pos >= BUF_LEN){
-		fprintf(stderr,"WARNING: logging buffer full, skipping log entry\n");
-		return -1;
-	}
-	// add to buffer and increment counters
-	buffer[current_buf][buffer_pos] = new;
-	buffer_pos++;
-	num_entries++;
-	// check if we've filled a buffer
-	if(buffer_pos >= BUF_LEN){
-		buffer_pos = 0;		// reset buffer position to 0
-		needs_writing = 1;	// flag the writer to dump to disk
-		// swap buffers
-		if(current_buf==0) current_buf=1;
-		else current_buf=0;
-	}
-	return 0;
-}
-
-
-int __write_header(int fd)
+static int __write_header(int fd)
 {
 	// always print loop index
 	fprintf(fd, "loop_index,last_step_ns");
 
 	if(settings.log_sensors){
-		fprintf(fd, ",v_batt,altitude_bmp,gyro_roll,gyro_pitch,gyro_yaw,accel_X,accel_Y,accel_Z");
+		fprintf(fd, ",v_batt,alt_bmp_raw,gyro_roll,gyro_pitch,gyro_yaw,accel_X,accel_Y,accel_Z");
 	}
 
 	if(settings.log_state){
-		fprintf(fd, ",altitude_kf,roll,pitch,yaw,pos_X,pos_Y,pos_Z");
+		fprintf(fd, ",roll,pitch,yaw,X,Y,Z,Xdot,Ydot,Zdot");
 	}
 
 	if(settings.log_setpoint){
-		fprintf(fd, ",altitude_sp,roll_sp,pitch_sp,yaw_sp");
+		fprintf(fd, ",sp_roll,sp_pitch,sp_yaw,sp_X,sp_Y,sp_Z,sp_Xdot,sp_Ydot,sp_Zdot");
 	}
 
 	if(settings.log_control_u){
-		fprintf(fd, ",u_X,u_Y,u_Z,u_roll,u_pitch,u_yaw");
+		fprintf(fd, ",u_roll,u_pitch,u_yaw,u_X,u_Y,u_Z");
 	}
 
 	if(settings.log_motor_signals && settings.num_rotors==8){
@@ -109,14 +85,14 @@ int __write_header(int fd)
 }
 
 
-int __write_log_entry(int fd, log_entry_t e)
+static int __write_log_entry(int fd, log_entry_t e)
 {
 	// always print loop index
 	fprintf(fd, "%" PRIu64 ",%" PRIu64, e.loop_index, e.last_step_ns);
 
 	if(settings.log_sensors){
-		fprintf(fd, ",%f,%f,%f,%f,%f,%f,%f,%f",	e.v_batt\
-							e.altitude_bmp,\
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF",	e.v_batt\
+							e.alt_bmp_raw,\
 							e.gyro_roll,\
 							e.gyro_pitch,\
 							e.gyro_yaw,\
@@ -126,24 +102,34 @@ int __write_log_entry(int fd, log_entry_t e)
 	}
 
 	if(settings.log_state){
-		fprintf(fd, ",%f,%f,%f,%f,%f,%f,%f",	e.altitude_kf\
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF,FF",\
 							e.roll,\
 							e.pitch,\
 							e.yaw,\
-							e.pos_X,\
-							e.pos_Y,\
-							e.pos_Z);
+							e.X,\
+							e.Y,\
+							e.Z,\
+							e.Xdot,\
+							e.Ydot,\
+							e.Zdot);
 	}
 
 	if(settings.log_setpoint){
-		fprintf(fd, ",%f,%f,%f,%f",		e.altitude_kf\
-							e.roll_sp,\
-							e.pitch_sp,\
-							e.yaw_sp);
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF,FF",\
+							e.sp_roll,\
+							e.sp_pitch,\
+							e.sp_yaw,\
+							e.sp_X,\
+							e.sp_Y,\
+							e.sp_Z,\
+							e.sp_Xdot,\
+							e.sp_Ydot,\
+							e.sp_Zdot);
 	}
 
 	if(settings.log_control_u){
-		fprintf(fd, ",%f,%f,%f,%f,%f,%f",	e.u_roll,\
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF,FF",\
+							e.u_roll,\
 							e.u_pitch,\
 							e.u_yaw,\
 							e.u_X,\
@@ -152,7 +138,7 @@ int __write_log_entry(int fd, log_entry_t e)
 	}
 
 	if(settings.log_motor_signals && settings.num_rotors==8){
-		fprintf(fd, ",%f,%f,%f,%f,%f,%f,%f,%f",	e.mot_1,\
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF",	e.mot_1,\
 							e.mot_2,\
 							e.mot_3,\
 							e.mot_4,\
@@ -162,7 +148,7 @@ int __write_log_entry(int fd, log_entry_t e)
 							e.mot_8);
 	}
 	if(settings.log_motor_signals && settings.num_rotors==6){
-		fprintf(fd, ",%f,%f,%f,%f,%f,%f",	e.mot_1,\
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF",	e.mot_1,\
 							e.mot_2,\
 							e.mot_3,\
 							e.mot_4,\
@@ -170,7 +156,7 @@ int __write_log_entry(int fd, log_entry_t e)
 							e.mot_6);
 	}
 	if(settings.log_motor_signals && settings.num_rotors==4){
-		fprintf(fd, ",%f,%f,%f,%f",		e.mot_1,\
+		fprintf(fd, ",FF,FF,FF,FF",		e.mot_1,\
 							e.mot_2,\
 							e.mot_3,\
 							e.mot_4);
@@ -181,7 +167,7 @@ int __write_log_entry(int fd, log_entry_t e)
 }
 
 
-void* __log_manager_func(__attribute__ ((unused)) void* ptr)
+static void* __log_manager_func(__attribute__ ((unused)) void* ptr)
 {
 	int i, buf_to_write;
 	// while logging enabled and not exiting, write full buffers to disk
@@ -277,6 +263,84 @@ int log_manager_init()
 	return 0;
 }
 
+static log_entry_t __construct_new_entry()
+{
+	log_entry_t l;
+	l.loop_index	= fstate.loop_index;
+	l.last_step_ns	= fstate.last_step_ns;
+
+	l.v_batt	= state_estimate.v_batt_lp;
+	l.alt_bmp_raw	= state_estimate.alt_bmp_raw;
+	l.gyro_roll	= state_estimate.gyro[0];
+	l.gyro_pitch	= state_estimate.gyro[1];
+	l.gyro_yaw	= state_estimate.gyro[2];
+	l.accel_X	= state_estimate.accel[0];
+	l.accel_Y	= state_estimate.accel[1];
+	l.accel_Z	= state_estimate.accel[2];
+
+	l.roll		= state_estimate.tb_imu[0];
+	l.pitch		= state_estimate.tb_imu[1];
+	l.yaw		= state_estimate.tb_imu[2];
+	l.X		= state_estimate.pos_global[0];
+	l.Y		= state_estimate.pos_global[1];
+	l.Z		= state_estimate.pos_global[2];
+	l.Xdot		= state_estimate.vel_global[0];
+	l.Ydot		= state_estimate.vel_global[1];
+	l.Zdot		= state_estimate.vel_global[2];
+
+	l.sp_roll	= setpoint.roll;
+	l.sp_pitch	= setpoint.pitch;
+	l.sp_yaw	= setpoint.yaw;
+	l.sp_X		= setpoint.X;
+	l.sp_Y		= setpoint.Y;
+	l.sp_Z		= setpoint.Z;
+	l.sp_Xdot	= setpoint.Xdot;
+	l.sp_Ydot	= setpoint.Ydot;
+	l.sp_Zdot	= setpoint.Zdot;
+
+	l.u_roll	= fstate.u[VEC_ROLL];
+	l.u_pitch	= fstate.u[VEC_PITCH];
+	l.u_yaw		= fstate.u[VEC_YAW];
+	l.u_X		= fstate.u[VEC_Y];
+	l.u_Y		= fstate.u[VEC_X];
+	l.u_Z		= fstate.u[VEC_Z];
+
+	l.mot_1		= fstate.m[0];
+	l.mot_2		= fstate.m[1];
+	l.mot_3		= fstate.m[2];
+	l.mot_4		= fstate.m[3];
+	l.mot_5		= fstate.m[4];
+	l.mot_6		= fstate.m[5];
+	l.mot_7		= fstate.m[6];
+	l.mot_8		= fstate.m[7];
+
+	return new;
+}
+
+int log_manager_add_new();
+{
+	if(!logging_enabled){
+		fprintf(stderr,"ERROR: trying to log entry while logger isn't running\n");
+		return -1;
+	}
+	if(needs_writing && buffer_pos >= BUF_LEN){
+		fprintf(stderr,"WARNING: logging buffer full, skipping log entry\n");
+		return -1;
+	}
+	// add to buffer and increment counters
+	buffer[current_buf][buffer_pos] = __construct_new_entry();
+	buffer_pos++;
+	num_entries++;
+	// check if we've filled a buffer
+	if(buffer_pos >= BUF_LEN){
+		buffer_pos = 0;		// reset buffer position to 0
+		needs_writing = 1;	// flag the writer to dump to disk
+		// swap buffers
+		if(current_buf==0) current_buf=1;
+		else current_buf=0;
+	}
+	return 0;
+}
 
 int log_manager_cleanup()
 {

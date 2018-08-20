@@ -119,6 +119,17 @@ if(json_object_is_type(tmp, json_type_string)==0){\
 }\
 strcpy(settings.name, json_object_get_string(tmp));
 
+// macro for reading feedback controller
+#define PARSE_CONTROLLER(name) \
+if(json_object_object_get_ex(jobj, #name, &tmp)==0){\
+	fprintf(stderr,"ERROR: can't find " #name " in settings file\n");\
+	return -1;\
+}\
+if(__parse_controller(tmp, &settings.#name)){\
+	fprintf(stderr,"ERROR: could not parse " #name "\n");\
+	return -1;\
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// functions for parsing enums
@@ -129,7 +140,7 @@ strcpy(settings.name, json_object_get_string(tmp));
  *
  * @return     0 on success, -1 on failure
  */
-int __parse_layout()
+static int __parse_layout(void)
 {
 	struct json_object *tmp = NULL;
 	char* tmp_str = NULL;
@@ -169,7 +180,7 @@ int __parse_layout()
 }
 
 
-int __parse_thrust_map()
+static int __parse_thrust_map(void)
 {
 	struct json_object *tmp = NULL;
 	char* tmp_str = NULL;
@@ -209,7 +220,7 @@ int __parse_thrust_map()
  *
  * @return     returns 0 on success or -1 on failure
  */
-int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
+static int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 {
 	char* tmp_str = NULL;
 	struct json_object *tmp = NULL;
@@ -236,6 +247,12 @@ int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 	else if(strcmp(tmp_str, "ALT_HOLD_6DOF")==0){
 		*mode = ALT_HOLD_6DOF;
 	}
+	else if(strcmp(tmp_str, "VELOCITY_CONTOL_4DOF")==0){
+		*mode = VELOCITY_CONTOL_4DOF;
+	}
+	else if(strcmp(tmp_str, "VELOCITY_CONTOL_6DOF")==0){
+		*mode = VELOCITY_CONTOL_6DOF;
+	}
 	else{
 		fprintf(stderr,"ERROR: invalid flight mode\n");
 		return -1;
@@ -245,7 +262,7 @@ int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 
 
 
-int __parse_kill_mode()
+static int __parse_kill_mode(void)
 {
 	struct json_object *tmp = NULL;
 	char* tmp_str = NULL;
@@ -276,19 +293,18 @@ int __parse_kill_mode()
  *
  * @param      jobj         The jobj to parse
  * @param      filter       pointer to write the new filter to
- * @param[in]  feedback_hz  frequency of the dt controller
  *
  * @return     0 on success, -1 on failure
  */
-int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_hz){
+static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
+{
 	struct json_object *array = NULL;	// to hold num & den arrays
 	struct json_object *tmp = NULL;		// temp object
 	char* tmp_str = NULL;
 	double tmp_flt, tmp_kp, tmp_ki, tmp_kd;
 	int i, num_len, den_len;
-	rc_vector_t num_vec = rc_vector_empty();
-	rc_vector_t den_vec = rc_vector_empty();
-	double dt = 1.0/feedback_hz;
+	rc_vector_t num_vec = RC_VECTOR_INITIALIZER;
+	rc_vector_t den_vec = RC_VECTOR_INITIALIZER;
 
 	// destroy old memory in case the order changes
 	rc_filter_free(filter);
@@ -408,7 +424,7 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 
 		// if DT, much easier, just construct filter
 		else if(strcmp(tmp_str, "DT")==0){
-			if(rc_filter_alloc(filter,num_vec, den_vec, dt)){
+			if(rc_filter_alloc(filter,num_vec, den_vec, DT)){
 				fprintf(stderr,"ERROR: failed to alloc filter in __parse_controller()");
 				return -1;
 			}
@@ -449,11 +465,14 @@ int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter, int feedback_
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt,dt)){
+		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt,DT)){
 				fprintf(stderr,"ERROR: failed to alloc pid filter in __parse_controller()");
 				return -1;
 			}
 	}
+
+	rc_vector_free(&num_vec);
+	rc_vector_free(&den_vec);
 
 	return 0;
 }
@@ -495,30 +514,20 @@ int settings_load_from_file(char* path)
 	settings_print();
 	#endif
 
-	/*
-	 * START PARSING
-	 */
+	// START PARSING
 	PARSE_STRING(name)
+	PARSE_BOOL(warnings_en)
 
-	/*
-	 * PHYSICAL PARAMETERS
-	 * layout populates num_rotors, layout, and dof
-	 * feedback_hz is also here because I don't know where else to put it
-	 */
+
+	// PHYSICAL PARAMETERS
+	// layout populates num_rotors, layout, and dof
 	if(__parse_layout()==-1) return -1; // parse_layout also fill in num_rotors and dof
 	if(__parse_thrust_map()==-1) return -1;
 	PARSE_DOUBLE_MIN_MAX(v_nominal,7.0,18.0)
-	PARSE_INT(feedback_hz)
-	if(settings.feedback_hz!=50 && settings.feedback_hz!=100 && settings.feedback_hz!=200){
-		fprintf(stderr,"ERROR: feedback_hz must be 50,100,or 200\n");
-		return -1;
-	}
 	PARSE_BOOL(enable_magnetometer)
 
 
-	/*
-	 * FLIGHT MODES
-	 */
+	// FLIGHT MODES
 	PARSE_INT_MIN_MAX(num_dsm_modes,1,3)
 	if(json_object_object_get_ex(jobj, "flight_mode_1", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_1 in settings file\n");
@@ -536,9 +545,7 @@ int settings_load_from_file(char* path)
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_3)) return -1;
 
-	/*
-	 * DSM RADIO CONFIG
-	 */
+	// DSM RADIO CONFIG
 	PARSE_INT_MIN_MAX(dsm_thr_ch,1,9)
 	PARSE_POLARITY(dsm_thr_pol)
 	PARSE_INT_MIN_MAX(dsm_roll_ch,1,9)
@@ -553,10 +560,7 @@ int settings_load_from_file(char* path)
 	PARSE_INT_MIN_MAX(dsm_kill_ch,1,9)
 	PARSE_POLARITY(dsm_kill_pol)
 
-
-	/*
-	 * PRINTF OPTIONS
-	 */
+	// PRINTF OPTIONS
 	PARSE_BOOL(printf_arm)
 	PARSE_BOOL(printf_altitude)
 	PARSE_BOOL(printf_rpy)
@@ -566,9 +570,7 @@ int settings_load_from_file(char* path)
 	PARSE_BOOL(printf_motors)
 	PARSE_BOOL(printf_mode)
 
-	/*
-	 * LOGGING
-	 */
+	// LOGGING
 	PARSE_BOOL(enable_logging)
 	PARSE_BOOL(log_sensors)
 	PARSE_BOOL(log_state)
@@ -576,56 +578,22 @@ int settings_load_from_file(char* path)
 	PARSE_BOOL(log_control_u)
 	PARSE_BOOL(log_motor_signals)
 
-	/*
-	 * MAVLINK
-	 */
+	// MAVLINK
 	PARSE_STRING(dest_ip)
 	PARSE_INT(my_sys_id)
 	PARSE_INT(mav_port)
 
-	/*
-	 * FEEDBACK CONTROLLERS
-	 */
-
-	// parse roll controller
-	if(json_object_object_get_ex(jobj, "roll_controller", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find roll_controller in settings file\n");
-		return -1;
-	}
-	if(__parse_controller(tmp, &settings.roll_controller, settings.feedback_hz)){
-		fprintf(stderr,"ERROR: could not parse roll_controller\n");
-		return -1;
-	}
-
-	// parse pitch controller
-	if(json_object_object_get_ex(jobj, "pitch_controller", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find pitch_controller in settings file\n");
-		return -1;
-	}
-	if(__parse_controller(tmp, &settings.pitch_controller, settings.feedback_hz)){
-		fprintf(stderr,"ERROR: could not parse pitch_controller\n");
-		return -1;
-	}
-
-	// parse yaw controller
-	if(json_object_object_get_ex(jobj, "yaw_controller", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find yaw_controller in settings file\n");
-		return -1;
-	}
-	if(__parse_controller(tmp, &settings.yaw_controller, settings.feedback_hz)){
-		fprintf(stderr,"ERROR: could not parse yaw_controller\n");
-		return -1;
-	}
-
-	// parse altitude controller
-	if(json_object_object_get_ex(jobj, "altitude_controller", &tmp)==0){
-		fprintf(stderr,"ERROR: can't find altitude_controller in settings file\n");
-		return -1;
-	}
-	if(__parse_controller(tmp, &settings.altitude_controller, settings.feedback_hz)){
-		fprintf(stderr,"ERROR: could not parse altitude_controller\n");
-		return -1;
-	}
+	// FEEDBACK CONTROLLERS
+	PARSE_CONTOLLER(roll_controller)
+	PARSE_CONTOLLER(pitch_controller)
+	PARSE_CONTOLLER(yaw_controller)
+	PARSE_CONTOLLER(altitude_controller)
+	PARSE_CONTOLLER(horiz_vel_ctrl_4dof)
+	PARSE_CONTOLLER(horiz_vel_ctrl_6dof)
+	PARSE_CONTOLLER(horiz_pos_ctrl_4dof)
+	PARSE_CONTOLLER(horiz_pos_ctrl_6dof)
+	PARSE_DOUBLE_MIN_MAX(max_XY_velocity, .1, 10)
+	PARSE_DOUBLE_MIN_MAX(max_Z_velocity, .1, 10)
 
 	json_object_put(jobj);	// free memory
 	was_load_successful = 1;
@@ -635,7 +603,7 @@ int settings_load_from_file(char* path)
 
 
 
-int settings_print()
+int settings_print(void)
 {
 	if(jobj == NULL){
 		fprintf(stderr,"ERROR: NULL object passed to settings_print\n");

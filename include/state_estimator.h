@@ -54,7 +54,8 @@ typedef struct state_estimate_t{
 	///@{
 	double mag[3];		///< magnetometer XYZ NED coordinates ()
 	double mag_heading_raw;	///< raw compass heading
-	double mag_heading;	///< filtered compass heading
+	double mag_heading;	///< compass heading filtered with IMU
+	double mag_heading_continuous;
 	double quat_mag[4];	///< quaterion filtered
 	double tb_mag[3];	///< roll pitch yaw with magetometer heading fixed (rad)
 	///@}
@@ -79,6 +80,7 @@ typedef struct state_estimate_t{
 	 */
 	///@{
 	int mocap_running;	///< 1 if motion capture data is recent and valid
+	uint64_t mocap_timestamp_ns; ///< timestamp of last received packet in nanoseconds since boot
 	double pos_mocap[3];	///< position in mocap frame, converted to NED if necessary
 	double quat_mocap[4];	///< UAV orientation according to mocap
 	double tb_mocap[3];	///< Tait-Bryan angles according to mocap
@@ -96,17 +98,18 @@ typedef struct state_estimate_t{
 	 * estimate will have steady state gain of zero to prevent runaway.
 	 */
 	///@{
-	double pos_global_kf[3];
-	double vel_global_kf[3];
-	double accel_global_kf[3];
-	double pos_relative_kf[3];
-	double vel_relative_kf[3];
-	double accel_relative_kf[3];
+	double pos_global[3];
+	double vel_global[3];
+	double accel_global[3];
+	double pos_relative[3];
+	double vel_relative[3];
+	double accel_relative[3];
 	///@}
 
 	/** @name Other */
 	///@{
-	double v_batt;		///< main battery pack voltage (v)
+	double v_batt_raw;	///< main battery pack voltage (v)
+	double v_batt_lp;	///< main battery pack voltage with low pass filter (v)
 	double bmp_temp;	///< temperature of barometer
 	///@}
 
@@ -123,7 +126,7 @@ extern state_estimate_t state_estimate;
  *
  * @return     0 on success, -1 on failure
  */
-int state_estimator_init();
+int state_estimator_init(void);
 
 
 /**
@@ -133,17 +136,17 @@ int state_estimator_init();
  *
  * @return     0 on success, -1 on failure
  */
-int state_estimator_march();
+int state_estimator_march(void);
 
 
 /**
  * @brief      jobs the state estimator must do after feedback_controller
  *
- * Called immediately after feedback_march in the ISR. Currently this
+ * Called immediately after feedback_march in the ISR. Currently this reads
  *
  * @return     0 on success, -1 on failure
  */
-int state_estimator_jobs_after_feedback();
+int state_estimator_jobs_after_feedback(void);
 
 
 /**
@@ -151,7 +154,7 @@ int state_estimator_jobs_after_feedback();
  *
  * @return     0 on success, -1 on failure
  */
-int state_estimator_cleanup();
+int state_estimator_cleanup(void);
 
 
 

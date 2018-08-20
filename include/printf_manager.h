@@ -17,7 +17,7 @@
  *
  * @return     0 on success, -1 on failure
  */
-int printf_init();
+int printf_init(void);
 
 
 /**
@@ -25,7 +25,7 @@ int printf_init();
  *
  * @return     0 on clean exit, -1 on exit time out/force close
  */
-int printf_cleanup();
+int printf_cleanup(void);
 
 
 /**

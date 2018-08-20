@@ -45,7 +45,19 @@ typedef enum flight_mode_t{
 	 * hold altitude setpoint which is them moved up and down steadily based
 	 * on user input.
 	 */
-	ALT_HOLD_6DOF
+	ALT_HOLD_6DOF,
+	/**
+	 * Control sticks translate to velocity setpoints in horizontal
+	 * translation X and Y. Yaw and Altitude are still position setpoints
+	 * like alt_hold
+	 */
+	VELOCITY_CONTROL_4DOF,
+	/**
+	 * Control sticks translate to velocity setpoints in horizontal
+	 * translation X and Y. Yaw and Altitude are still position setpoints
+	 * like alt_hold
+	 */
+	VELOCITY_CONTROL_6DOF
 
 } flight_mode_t;
 

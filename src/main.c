@@ -104,7 +104,8 @@ static void __imu_isr(void)
 	setpoint_manager_update();
 	state_estimator_march();
 	feedback_march();
-	log_manager_new_entry();
+	if(settings.enable_logging) log_manager_new_entry();
+	state_estimator_jobs_after_feedback();
 }
 
 

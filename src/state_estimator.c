@@ -17,105 +17,154 @@
 #include <rc/bmp.h>
 
 #include <rc_pilot_defs.h>
+#include <state_estimator.h>
 #include <settings.h>
-
 
 #define TWO_PI (M_PI*2.0)
 
 state_estimate_t state_estimate; // extern variable in state_estimator.h
 
-
-static double dt; // controller timestep
-static int num_yaw_spins;
-static double last_yaw;
-static double tmp;
-
+// sensor data structs
 static rc_mpu_data_t mpu_data;
 static rc_bmp_data_t bmp_data;
 
-// filters
-static rc_kalman_t alt_kf;
-static rc_vector_t u,y;
-static rc_filter_t acc_lp;
-static rc_filter_t altitude_lp;
+// battery filter
+static rc_filter_t batt_lp = RC_FILTER_INITIALIZER;
+
+// altitude filter components
+static rc_kalman_t alt_kf = RC_KALMAN_INITIALIZER;
+static rc_filter_t acc_lp = RC_FILTER_INITIALIZER;
 
 
-// local functions
-static double __batt_voltage();
-static int __init_altitude_kf()
-static int __alt_kf_march();
-
-
-static double __batt_voltage()
+static void __batt_init(void)
 {
-	float tmp;
-
-	tmp = rc_adc_dc_jack();
-	if(tmp<3.0f) tmp = settings.v_nominal;
-	return tmp;
+	// init the battery low pass filter
+	rc_filter_moving_average(&batt_lp, 20, DT);
+	double tmp = rc_adc_dc_jack();
+	if(tmp<3.0){
+		tmp = settings.v_nominal;
+		if(settings.warnings_en){
+			fprintf(stderr, "WARNING: ADC read %0.1fV on the barrel jack. Please connect\n");
+			fprintf(stderr, "battery to barrel jack, assuming nominal voltage for now.\n");
+		}
+	rc_filter_prefill_inputs(&batt_lp, tmp);
+	rc_filter_prefill_outputs(&batt_lp, tmp);
+	return;
 }
 
-static int __alt_kf_march()
+
+static void __batt_march(void)
 {
-	int i;
-	double accel_vec[3];
-	static int bmp_sample_counter = 0;
+	double tmp = rc_adc_dc_jack();
+	if(tmp<3.0) tmp = settings.v_nominal;
+	state_estimate.v_batt_raw = tmp;
+	state_estimate.v_batt_lp = rc_filter_march(&batt_lp, tmp);
+	return;
+}
 
-	// check if we need to sample BMP this loop
-	if(bmp_sample_counter>=BMP_RATE_DIV){
-		// perform the i2c reads to the sensor, on bad read just try later
-		if(rc_bmp_read(&bmp_data)) return -1;
-		bmp_sample_counter=0;
-	}
-	bmp_sample_counter++;
-
-	// make copy of acceleration reading before rotating
-	for(i=0;i<3;i++) accel_vec[i]=mpu_data.accel[i];
-	// rotate accel vector
-	rc_quaternion_rotate_vector_array(accel_vec,mpu_data.dmp_quat);
-
-	// do first-run filter setup
-	if(alt_kf.step==0){
-		alt_kf.x_est.d[0] = bmp_data.alt_m;
-		rc_filter_prefill_inputs(&acc_lp, accel_vec[2]-9.80665);
-		rc_filter_prefill_outputs(&acc_lp, accel_vec[2]-9.80665);
-	}
-
-	// calculate acceleration and smooth it just a tad
-	rc_filter_march(&acc_lp, accel_vec[2]-9.80665);
-	u.d[0] = acc_lp.newest_output;
-
-	// don't bother filtering Barometer, kalman will deal with that
-	y.d[0] = bmp_data.alt_m;
-	rc_kalman_update_lin(&alt_kf, u, y);
-
-	// altitude estimate
-	state_estimate.altitude_bmp = rc_filter_march(&altitude_lp,bmp_data.alt_m);
-	state_estimate.altitude_kf = alt_kf.x_est.d[0];
-	state_estimate.alt_kf_vel = alt_kf.x_est.d[1];
-	state_estimate.alt_kf_accel = alt_kf.x_est.d[2];
-
-	return 0;
+static void __batt_cleanup(void)
+{
+	rc_filter_free(&batt_lp);
+	return
 }
 
 
 
+static void __imu_march(void)
+{
+	static double last_yaw = 0.0;
+	static int num_yaw_spins = 0;
+	double diff;
 
-static int __init_altitude_kf()
+	// gyro and accel require converting to NED coordinates
+	state_estimate.gyro[0] =  mpu_data.gyro[1];
+	state_estimate.gyro[1] =  mpu_data.gyro[0];
+	state_estimate.gyro[2] = -mpu_data.gyro[2];
+	state_estimate.accel[0] =  mpu_data.accel[1];
+	state_estimate.accel[1] =  mpu_data.accel[0];
+	state_estimate.accel[2] = -mpu_data.accel[2];
+
+	// quaternion also needs coordinate transform
+	state_estimate.quat_imu[0] =  mpu_data.dmp_quat[0]; // W
+	state_estimate.quat_imu[1] =  mpu_data.dmp_quat[2]; // X (i)
+	state_estimate.quat_imu[2] =  mpu_data.dmp_quat[1]; // Y (j)
+	state_estimate.quat_imu[3] = -mpu_data.dmp_quat[3]; // Z (k)
+
+	// normalize it just in case
+	rc_quaternion_norm_array(state_estimate.quat_imu);
+	// generate tait bryan angles
+	rc_quaternion_to_tb_array(state_estimate.quat_imu, state_estimate.tb_imu);
+
+	// yaw is more annoying since we have to detect spins
+	// also make sign negative since NED coordinates has Z point down
+	diff = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI) - last_yaw;
+	//detect the crossover point at +-PI and update num yaw spins
+	if(diff < -M_PI) num_yaw_spins++;
+	else if(diff > M_PI) num_yaw_spins--;
+
+	// finally the new value can be written
+	state_estimate.continuous_yaw = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
+	last_yaw = state_estimate.continuous_yaw;
+	return;
+}
+
+
+static void __mag_march(void)
+{
+	static double last_yaw = 0.0;
+	static int num_yaw_spins = 0;
+
+	// don't do anything if mag isn't enabled
+	if(!settings.enable_magnetometer) return;
+
+	// mag require converting to NED coordinates
+	state_estimate.mag[0] =  mpu_data.mag[1];
+	state_estimate.mag[1] =  mpu_data.mag[0];
+	state_estimate.mag[2] = -mpu_data.mag[2];
+
+	// quaternion also needs coordinate transform
+	state_estimate.quat_mag[0] =  mpu_data.fused_quat[0]; // W
+	state_estimate.quat_mag[1] =  mpu_data.fused_quat[2]; // X (i)
+	state_estimate.quat_mag[2] =  mpu_data.fused_quat[1]; // Y (j)
+	state_estimate.quat_mag[3] = -mpu_data.fused_quat[3]; // Z (k)
+
+	// normalize it just in case
+	rc_quaternion_norm_array(state_estimate.quat_mag);
+	// generate tait bryan angles
+	rc_quaternion_to_tb_array(state_estimate.quat_mag, state_estimate.tb_mag);
+
+	// heading
+	state_estimate.mag_heading_raw = mpu_data.compass_heading_raw;
+	state_estimate.mag_heading = state_estimate.tb_mag[2];
+
+	// yaw is more annoying since we have to detect spins
+	// also make sign negative since NED coordinates has Z point down
+	double diff = state_estimate.tb_mag[2] + (num_yaw_spins * TWO_PI) - last_yaw;
+	//detect the crossover point at +-PI and update num yaw spins
+	if(diff < -M_PI) num_yaw_spins++;
+	else if(diff > M_PI) num_yaw_spins--;
+
+	// finally the new value can be written
+	state_estimate.mag_heading_continuous = state_estimate.tb_mag[2] + (num_yaw_spins * TWO_PI);
+	last_yaw = state_estimate.continuous_yaw;
+	return;
+}
+
+
+/**
+ * @brief      initialize the altitude kalman filter
+ *
+ * @return     0 on success, -1 on failure
+ */
+static int __altitude_init(void)
 {
 	//initialize altitude kalman filter and bmp sensor
-	rc_matrix_t F = rc_matrix_empty();
-	rc_matrix_t G = rc_matrix_empty();
-	rc_matrix_t H = rc_matrix_empty();
-	rc_matrix_t Q = rc_matrix_empty();
-	rc_matrix_t R = rc_matrix_empty();
-	rc_matrix_t Pi = rc_matrix_empty();
-
-	u = rc_vector_empty();
-	y = rc_vector_empty();
-	kf = rc_kalman_empty();
-	acc_lp = rc_filter_empty();
-	altitude_lp = rc_filter_empty();
+	rc_matrix_t F	= RC_MATIX_INITIALIZER;
+	rc_matrix_t G	= RC_MATIX_INITIALIZER;
+	rc_matrix_t H	= RC_MATIX_INITIALIZER;
+	rc_matrix_t Q	= RC_MATIX_INITIALIZER;
+	rc_matrix_t R	= RC_MATIX_INITIALIZER;
+	rc_matrix_t Pi	= RC_MATIX_INITIALIZER;
 
 	int Nx = 3;
 	int Ny = 1;
@@ -128,8 +177,6 @@ static int __init_altitude_kf()
 	rc_matrix_zeros(&Q, Nx, Nx);
 	rc_matrix_zeros(&R, Ny, Ny);
 	rc_matrix_zeros(&Pi, Nx, Nx);
-	rc_vector_zeros(&u, Nu);
-	rc_vector_zeros(&y, Ny);
 
 	// define system -DT; // accel bias
 	F.d[0][0] = 1.0;
@@ -169,123 +216,135 @@ static int __init_altitude_kf()
 
 	// initialize the kalman filter
 	if(rc_kalman_alloc_lin(&alt_kf,F,G,H,Q,R,Pi)==-1) return -1;
-	rc_kalman_free(&F);
-	rc_kalman_free(&G);
-	rc_kalman_free(&H);
-	rc_kalman_free(&Q);
-	rc_kalman_free(&R);
-	rc_kalman_free(&Pi);
+	rc_matrix_free(&F);
+	rc_matrix_free(&G);
+	rc_matrix_free(&H);
+	rc_matrix_free(&Q);
+	rc_matrix_free(&R);
+	rc_matrix_free(&Pi);
 
 	// initialize the little LP filter to take out accel noise
 	if(rc_filter_first_order_lowpass(&acc_lp, dt, 20*dt)) return -1;
 
-	// initialize a LP on baromter for comparison to KF
-	if(rc_filter_butterworth_lowpass(&altitude_lp, 2, dt, ALT_CUTOFF_FREQ)) return -1;
-
 	// init barometer and read in first data
 	if(rc_bmp_read(&bmp_data)) return -1;
-	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
-	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);
 
 	return 0;
 }
 
-int state_estimator_init()
+static void __altitude_march(void)
 {
-	// make local dt variable since it's used so frequently.
-	dt = 1.0/settings.feedback_hz;
+	int i;
+	double accel_vec[3];
+	static rc_vector_t u = RC_VECTOR_INITIALIZER;
+	static rc_vector_t y = RC_VECTOR_INITIALIZER;
 
-	// init altitude kalman filter
-	if(__init_altitude_kf()) return -1;
+	// grab raw data
+	state_estimate.bmp_pressure_raw = bmp_data.pressure_pa;
+	state_estimate.alt_bmp_raw = bmp_data.alt_m;
+	state_estimate.bmp_temp = bmp_data.temp_c;
 
-	// init the battery filter low pass filter
-	rc_filter_moving_average(&batt_lp, 20, 0.01);
-	tmp = __batt_voltage();
-	rc_filter_prefill_inputs(&batt_lp, tmp);
-	rc_filter_prefill_outputs(&batt_lp, tmp);
+	// make copy of acceleration reading before rotating
+	for(i=0;i<3;i++) accel_vec[i]=settings.accel[i];
 
-	return 0;
+	// rotate accel vector
+	rc_quaternion_rotate_vector_array(accel_vec, settings.quat_imu);
+
+	// do first-run filter setup
+	if(alt_kf.step==0){
+		rc_vector_alloc(&u,1);
+		rc_vector_alloc(&y,1);
+		alt_kf.x_est.d[0] = bmp_data.alt_m;
+		rc_filter_prefill_inputs(&acc_lp, accel_vec[2]+GRAVITY);
+		rc_filter_prefill_outputs(&acc_lp, accel_vec[2]+GRAVITY);
+	}
+
+	// calculate acceleration and smooth it just a tad
+	// put result in u for kalman and flip sign since with altitude, positive
+	// is up whereas acceleration in Z points down.
+	u.d[0] = -rc_filter_march(&acc_lp, accel_vec[2]+GRAVITY);
+
+	// don't bother filtering Barometer, kalman will deal with that
+	y.d[0] = bmp_data.alt_m;
+
+	rc_kalman_update_lin(&alt_kf, u, y);
+
+	// altitude estimate
+	state_estimate.alt_bmp		= alt_kf.x_est.d[0];
+	state_estimate.alt_bmp_vel	= alt_kf.x_est.d[1];
+	state_estimate.alt_bmp_accel	= alt_kf.x_est.d[2];
+
+	return;
 }
 
 
-int state_estimator_cleanup()
+static void __altitude_cleanup(void)
 {
-	rc_filter_free(&batt_lp);
-	rc_filter_free(&altitude_lp);
-	rc_kalman_free(&alt_kf)
-	return 0;
+	rc_kalman_free(&alt_kf);
+	rc_filter_free(&acc_lp);
+	return;
 }
 
 
-int state_estimator_march()
-{
-	double tmp, yaw_reading;
 
+static void __mocap_check_timeout(void)
+{
+	if(settings.mocap_running){
+		uint64_t current_time = rc_nanos_since_boot();
+		// check if mocap data is > 3 steps old
+		if((current_time-mocap_timestamp_ns) > (3*1000000000*DT)){
+			state_estimate.mocap_running = 0;
+			if(settings.warnings_en){
+				fprintf(stderr,"WARNING, MOCAP LOST VISUAL\n");
+			}
+		}
+	}
+	return;
+}
+
+
+int state_estimator_init(void)
+{
+	__batt_init();
+	if(__altitude_init()) return -1;
+	return 0;
+}
+
+int state_estimator_march(void)
+{
 	if(state_estimate.initialized==0){
-		fprintf(stderr, "ERROR in feedback_state_estimate, feedback controller not initialized\n");
+		fprintf(stderr, "ERROR in state_estimator_march, estimator not initialized\n");
 		return -1;
 	}
 
-	// populate state_estimate struct from top to bottom.
-
-	/**
-	 * IMU (ACCEL GYRO DMP)
-	 */
-	// gyro and accel require converting to NED coordinates
-	state_estimate.gyro[0] =  mpu_data.gyro[1];
-	state_estimate.gyro[1] =  mpu_data.gyro[0];
-	state_estimate.gyro[2] = -mpu_data.gyro[2];
-	state_estimate.accel[0] =  mpu_data.accel[1];
-	state_estimate.accel[1] =  mpu_data.accel[0];
-	state_estimate.accel[2] = -mpu_data.accel[2];
-
-	// quaternion also needs coordinate transform
-	state_estimate.quat_imu[0] =  mpu_data.dmp_quat[0]; // W
-	state_estimate.quat_imu[1] =  mpu_data.dmp_quat[2]; // X (i)
-	state_estimate.quat_imu[2] =  mpu_data.dmp_quat[1]; // Y (j)
-	state_estimate.quat_imu[3] = -mpu_data.dmp_quat[3]; // Z (k)
-	// normalize it just in case
-	rc_quaternion_norm_array(state_estimate.quat_imu);
-	// generate tait bryan angles
-	rc_quaternion_to_tb_array(state_estimate.quat_imu, state_estimate.tb_imu);
-
-	// yaw is more annoying since we have to detect spins
-	// also make sign negative since NED coordinates has Z point down
-	tmp = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
-	//detect the crossover point at +-PI and write new value to core state
-	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
-	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
-	// finally num_yaw_spins is updated and the new value can be written
-	state_estimate.continuous_yaw = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
-	last_yaw = state_estimate.continuous_yaw;
-
-
-	/**
-	 * MAGNETOMETER
-	 */
-
-
-	if(settings.enable_magnetometer){
-		state_estimate.roll  = mpu_data.fused_TaitBryan[TB_ROLL_Y];
-		state_estimate.pitch = mpu_data.fused_TaitBryan[TB_PITCH_X];
-		yaw_reading  = mpu_data.fused_TaitBryan[TB_YAW_Z];
-
-	}
-	else{
-		state_estimate.roll  = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
-		state_estimate.pitch = mpu_data.dmp_TaitBryan[TB_PITCH_X];
-		yaw_reading  = mpu_data.dmp_TaitBryan[TB_YAW_Z];
-	}
-
-	state_estimate.roll_rate = mpu_data.gyro[0];
-	state_estimate.pitch_rate = mpu_data.gyro[1];
-	state_estimate.yaw_rate = -mpu_data.gyro[2];
-
-
-
-	// filter battery voltage.
-	state_estimate.v_batt = rc_filter_march(&batt_lp,__batt_voltage());
-
+	// populate state_estimate struct one setion at a time, top to bottom
+	__batt_march();
+	__imu_march();
+	__mag_march();
+	__altitude_march();
+	__mocap_check_timeout();
 	return 0;
 }
 
+
+void state_estimator_jobs_after_feedback(void)
+{
+	static int bmp_sample_counter = 0;
+
+	// check if we need to sample BMP this loop
+	if(bmp_sample_counter>=BMP_RATE_DIV){
+		// perform the i2c reads to the sensor, on bad read just try later
+		if(rc_bmp_read(&bmp_data)) return -1;
+		bmp_sample_counter=0;
+	}
+	bmp_sample_counter++;
+	return;
+}
+
+
+void state_estimator_cleanup(void)
+{
+	__batt_cleanup();
+	__altitude_cleanup();
+	return;
+}

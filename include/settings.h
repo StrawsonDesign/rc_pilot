@@ -23,25 +23,36 @@
  * threads as they initialize.
  */
 typedef struct settings_t{
+	/** @name File details */
 	char name[128]; ///< string declaring the name of the settings file
+	///@}
 
-	// physical parameters
+	/**@name warings */
+	///@{
+	int warnings_en;
+	///@}
+
+	/** @name physical parameters */
+	///@{
 	int num_rotors;
 	rotor_layout_t layout;
 	int dof;
 	thrust_map_t thrust_map;
 	double v_nominal;
-	int feedback_hz;
 	int enable_magnetometer; // we suggest leaving as 0 (mag OFF)
+	///@}
 
-	// flight modes
+	/** @name flight modes */
+	///@{
 	int num_dsm_modes;
 	flight_mode_t flight_mode_1;
 	flight_mode_t flight_mode_2;
 	flight_mode_t flight_mode_3;
+	///@}
 
 
-	// dsm radio config
+	/** @name dsm radio config */
+	///@{
 	int dsm_thr_ch;
 	int dsm_thr_pol;
 	int dsm_roll_ch;
@@ -55,8 +66,10 @@ typedef struct settings_t{
 	dsm_kill_mode_t dsm_kill_mode;
 	int dsm_kill_ch;
 	int dsm_kill_pol;
+	///@}
 
-	// printf settings
+	/** @name printf settings */
+	///@{
 	int printf_arm;
 	int printf_altitude;
 	int printf_rpy;
@@ -65,26 +78,37 @@ typedef struct settings_t{
 	int printf_u;
 	int printf_motors;
 	int printf_mode;
+	///@}
 
-
-	// log settings
+	/** @name log settings */
+	///@{
 	int enable_logging;
 	int log_sensors;
 	int log_state;
 	int log_setpoint;
 	int log_control_u;
 	int log_motor_signals;
+	///@}
 
-	// mavlink stuff
+	/** @name mavlink stuff */
+	///@{
 	char dest_ip[24];
 	uint8_t my_sys_id;
 	uint16_t mav_port;
 
-	// feedback controllers
+	/** @name feedback controllers */
+	///@{
 	rc_filter_t roll_controller;
 	rc_filter_t pitch_controller;
 	rc_filter_t yaw_controller;
 	rc_filter_t altitude_controller;
+	rc_filter_t horiz_vel_ctrl_4dof;
+	rc_filter_t horiz_vel_ctrl_6dof;
+	rc_filter_t horiz_pos_ctrl_4dof;
+	rc_filter_t horiz_pos_ctrl_6dof;
+	max_XY_velocity;
+	max_Z_velocity;
+	///@}
 
 }settings_t;
 
@@ -106,7 +130,7 @@ int settings_load_from_file(char* path);
  *
  * @return     0 on success, -1 on failure
  */
-int settings_print();
+int settings_print(void);
 
 
 

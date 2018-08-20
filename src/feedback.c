@@ -29,26 +29,25 @@
 feedback_state_t fstate; // extern variable in feedback.h
 
 // keep original controller gains for scaling later
-static double D_roll_gain_orig, D_pitch_gain_orig, D_yaw_gain_orig, D_altitude_gain_orig;
-static double dt; // controller timestep
-static double tmp;
-static int last_en_alt_ctrl;
+static double D_roll_gain_orig, D_pitch_gain_orig, D_yaw_gain_orig, D_Z_gain_orig;
+
 
 // filters
-static rc_vector_t u,y;
-static rc_filter_t D_roll;
-static rc_filter_t D_pitch;
-static rc_filter_t D_yaw;
-static rc_filter_t D_batt;
-static rc_filter_t D_altitude;
-static rc_filter_t altitude_lp;
+static rc_filter_t D_roll	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_pitch	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_yaw	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Z		= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Xdot_4	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Xdot_6	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_X_4	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_X_6	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Ydot_4	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Ydot_6	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Y_4	= RC_FILTER_INITIALIZER;
+static rc_filter_t D_Y_6	= RC_FILTER_INITIALIZER;
 
-// local functions
-static int __send_motor_stop_pulse();
 
-
-
-static int __send_motor_stop_pulse()
+static int __send_motor_stop_pulse(void)
 {
 	int i;
 	if(settings.num_rotors>8){
@@ -62,60 +61,40 @@ static int __send_motor_stop_pulse()
 	return 0;
 }
 
-static double __batt_voltage()
+static void __rpy_init(void)
 {
-	float tmp;
+	// get controllers from settings
+	rc_filter_duplicate(&D_roll,	settings.roll_controller);
+	rc_filter_duplicate(&D_pitch,	settings.pitch_controller);
+	rc_filter_duplicate(&D_yaw,	settings.yaw_controller);
 
-	tmp = rc_adc_dc_jack();
-	if(tmp<3.0f) tmp = settings.v_nominal;
-	return tmp;
-}
+	#ifdef DEBUG
+	printf("ROLL CONTROLLER:\n");
+	rc_filter_print(D_roll);
+	printf("PITCH CONTROLLER:\n");
+	rc_filter_print(D_pitch);
+	printf("YAW CONTROLLER:\n");
+	rc_filter_print(D_yaw);
+	#endif
 
-static int __estimate_altitude()
-{
-	int i;
-	double accel_vec[3];
-	static int bmp_sample_counter = 0;
+	// save original gains as we will scale these by battery voltage later
+	D_roll_gain_orig = D_roll.gain;
+	D_pitch_gain_orig = D_pitch.gain;
+	D_yaw_gain_orig = D_yaw.gain;
 
-	// check if we need to sample BMP this loop
-	if(bmp_sample_counter>=BMP_RATE_DIV){
-		// perform the i2c reads to the sensor, on bad read just try later
-		if(rc_bmp_read(&bmp_data)) return -1;
-		bmp_sample_counter=0;
-	}
-	bmp_sample_counter++;
-
-	// make copy of acceleration reading before rotating
-	for(i=0;i<3;i++) accel_vec[i]=mpu_data.accel[i];
-	// rotate accel vector
-	rc_quaternion_rotate_vector_array(accel_vec,mpu_data.dmp_quat);
-
-	// do first-run filter setup
-	if(kf.step==0){
-		kf.x_est.d[0] = bmp_data.alt_m;
-		rc_filter_prefill_inputs(&acc_lp, accel_vec[2]-9.80665);
-		rc_filter_prefill_outputs(&acc_lp, accel_vec[2]-9.80665);
-	}
-
-	// calculate acceleration and smooth it just a tad
-	rc_filter_march(&acc_lp, accel_vec[2]-9.80665);
-	u.d[0] = acc_lp.newest_output;
-
-	// don't bother filtering Barometer, kalman will deal with that
-	y.d[0] = bmp_data.alt_m;
-	rc_kalman_update_lin(&kf, u, y);
-
-	// altitude estimate
-	fstate.altitude_bmp = rc_filter_march(&altitude_lp,bmp_data.alt_m);
-	fstate.altitude_kf = kf.x_est.d[0];
-	fstate.alt_kf_vel = kf.x_est.d[1];
-	fstate.alt_kf_accel = kf.x_est.d[2];
-
-	return 0;
+	// enable saturation. these limits will be changed late but we need to
+	// enable now so that soft start can also be enabled
+	rc_filter_enable_saturation(&D_roll,	-MAX_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
+	rc_filter_enable_saturation(&D_pitch,	-MAX_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
+	rc_filter_enable_saturation(&D_yaw,	-MAX_YAW_COMPONENT, MAX_YAW_COMPONENT);
+	// enable soft start
+	rc_filter_enable_soft_start(&D_roll, SOFT_START_SECONDS);
+	rc_filter_enable_soft_start(&D_pitch, SOFT_START_SECONDS);
+	rc_filter_enable_soft_start(&D_yaw, SOFT_START_SECONDS);
 }
 
 
-int feedback_disarm()
+int feedback_disarm(void)
 {
 	fstate.arm_state = DISARMED;
 	// set LEDs
@@ -125,7 +104,7 @@ int feedback_disarm()
 }
 
 
-int feedback_arm()
+int feedback_arm(void)
 {
 	if(fstate.arm_state==ARMED){
 		printf("WARNING: trying to arm when controller is already armed\n");
@@ -149,7 +128,7 @@ int feedback_arm()
 	rc_filter_reset(&D_roll);
 	rc_filter_reset(&D_pitch);
 	rc_filter_reset(&D_yaw);
-	rc_filter_reset(&D_altitude);
+	rc_filter_reset(&D_Z);
 
 	// prefill filters with current error
 	rc_filter_prefill_inputs(&D_roll, -fstate.roll);
@@ -163,210 +142,53 @@ int feedback_arm()
 }
 
 
-int __init_altitude_kf()
-{
-//initialize altitude kalman filter and bmp sensor
-	F = rc_matrix_empty();
-	G = rc_matrix_empty();
-	H = rc_matrix_empty();
-	Q = rc_matrix_empty();
-	R = rc_matrix_empty();
-	Pi = rc_matrix_empty();
-	u = rc_vector_empty();
-	y = rc_vector_empty();
-	kf = rc_kalman_empty();
-	acc_lp = rc_filter_empty();
-	altitude_lp = rc_filter_empty();
 
-	int Nx = 3;
-	int Ny = 1;
-	int Nu = 1;
-	// allocate appropirate memory for system
-	rc_matrix_zeros(&F, Nx, Nx);
-	rc_matrix_zeros(&G, Nx, Nu);
-	rc_matrix_zeros(&H, Ny, Nx);
-	rc_matrix_zeros(&Q, Nx, Nx);
-	rc_matrix_zeros(&R, Ny, Ny);
-	rc_matrix_zeros(&Pi, Nx, Nx);
-	rc_vector_zeros(&u, Nu);
-	rc_vector_zeros(&y, Ny);
-
-// define system -DT; // accel bias
-	F.d[0][0] = 1.0;
-	F.d[0][1] = dt;
-	F.d[0][2] = 0.0;
-	F.d[1][0] = 0.0;
-	F.d[1][1] = 1.0;
-	F.d[1][2] = -dt; // subtract accel bias
-	F.d[2][0] = 0.0;
-	F.d[2][1] = 0.0;
-	F.d[2][2] = 1.0; // accel bias state
-
-	G.d[0][0] = 0.5*dt*dt;
-	G.d[0][1] = dt;
-	G.d[0][2] = 0.0;
-
-	H.d[0][0] = 1.0;
-	H.d[0][1] = 0.0;
-	H.d[0][2] = 0.0;
-
-	// covariance matrices
-	Q.d[0][0] = 0.000000001;
-	Q.d[1][1] = 0.000000001;
-	Q.d[2][2] = 0.0001; // don't want bias to change too quickly
-	R.d[0][0] = 1000000.0;
-
-	// initial P, cloned from converged P while running
-	Pi.d[0][0] = 1258.69;
-	Pi.d[0][1] = 158.6114;
-	Pi.d[0][2] = -9.9937;
-	Pi.d[1][0] = 158.6114;
-	Pi.d[1][1] = 29.9870;
-	Pi.d[1][2] = -2.5191;
-	Pi.d[2][0] = -9.9937;
-	Pi.d[2][1] = -2.5191;
-	Pi.d[2][2] = 0.3174;
-
-	// initialize the kalman filter
-	if(rc_kalman_alloc_lin(&kf,F,G,H,Q,R,Pi)==-1) return -1;
-	// initialize the little LP filter to take out accel noise
-	if(rc_filter_first_order_lowpass(&acc_lp, dt, 20*dt)) return -1;
-
-	// initialize a LP on baromter for comparison to KF
-	if(rc_filter_butterworth_lowpass(&altitude_lp, 2, dt, ALT_CUTOFF_FREQ)) return -1;
-
-	// init read in first barometer data
-	if(rc_bmp_read(&bmp_data)) return -1;
-	rc_filter_prefill_inputs(&altitude_lp, bmp_data.alt_m);
-	rc_filter_prefill_outputs(&altitude_lp, bmp_data.alt_m);
-
-	return 0;
-}
-
-int feedback_init()
+int feedback_init(void)
 {
 	double tmp;
 
-	// get controllers from settings
-	if(settings_get_roll_controller(&D_roll)) return -1;
-	if(settings_get_pitch_controller(&D_pitch)) return -1;
-	if(settings_get_yaw_controller(&D_yaw)) return -1;
-	if(settings_get_altitude_controller(&D_altitude)) return -1;
-	dt = 1.0/settings.feedback_hz;
 
-	if(__init_altitude_kf()) return -1;
+	rc_filter_duplicate(&D_Z,	settings.altitude_controller);
+	rc_filter_duplicate(&D_Xdot_4,	settings.horiz_vel_ctrl_4dof);
+	rc_filter_duplicate(&D_Xdot_6,	settings.horiz_vel_ctrl_6dof);
+	rc_filter_duplicate(&D_X_4,	settings.horiz_pos_ctrl_4dof);
+	rc_filter_duplicate(&D_X_6,	settings.horiz_pos_ctrl_6dof);
+	rc_filter_duplicate(&D_Ydot_4,	settings.horiz_vel_ctrl_4dof);
+	rc_filter_duplicate(&D_Ydot_6,	settings.horiz_vel_ctrl_6dof);
+	rc_filter_duplicate(&D_Y_4,	settings.horiz_pos_ctrl_4dof);
+	rc_filter_duplicate(&D_Y_6,	settings.horiz_pos_ctrl_6dof);
+
 
 	#ifdef DEBUG
-	printf("ROLL CONTROLLER:\n");
-	rc_filter_print(D_roll);
-	printf("PITCH CONTROLLER:\n");
-	rc_filter_print(D_pitch);
-	printf("YAW CONTROLLER:\n");
-	rc_filter_print(D_yaw);
 	printf("ALTITUDE CONTROLLER:\n");
-	rc_filter_print(D_altitude);
+	rc_filter_print(D_Z);
 	#endif
 
-	// save original gains as we will scale these by battery voltage later
-	D_roll_gain_orig = D_roll.gain;
-	D_pitch_gain_orig = D_pitch.gain;
-	D_yaw_gain_orig = D_yaw.gain;
-	D_altitude_gain_orig = D_altitude.gain;
+
+	D_Z_gain_orig = D_Z.gain;
 
 
-	//enable saturation
-	rc_filter_enable_saturation(&D_roll,     -1.0, 1.0);
-	rc_filter_enable_saturation(&D_pitch,    -1.0, 1.0);
-	rc_filter_enable_saturation(&D_yaw,      -1.0, 1.0);
-	rc_filter_enable_saturation(&D_altitude, -1.0, 1.0);
 
-	// enable soft start
-	rc_filter_enable_soft_start(&D_roll, SOFT_START_SECONDS);
-	rc_filter_enable_soft_start(&D_pitch, SOFT_START_SECONDS);
-	rc_filter_enable_soft_start(&D_yaw, SOFT_START_SECONDS);
-	rc_filter_enable_soft_start(&D_altitude, SOFT_START_SECONDS);
+	rc_filter_enable_saturation(&D_Z, -1.0, 1.0);
 
-	// make battery filter
-	rc_filter_moving_average(&D_batt, 20, 0.01);
-	tmp = __batt_voltage();
-	rc_filter_prefill_inputs(&D_batt, tmp);
-	rc_filter_prefill_outputs(&D_batt, tmp);
 
-	// start the IMU
-	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
-	mpu_conf.dmp_sample_rate = settings.feedback_hz;
-	mpu_conf.dmp_fetch_accel_gyro = 1;
-	// optionally enbale magnetometer
-	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
-	mpu_conf.orient = ORIENTATION_Z_UP;
+	rc_filter_enable_soft_start(&D_Z, SOFT_START_SECONDS);
 
-	// now set up the imu for dmp interrupt operation
-	printf("initializing MPU\n");
-	if(rc_mpu_initialize_dmp(&mpu_data, mpu_conf)){
-		fprintf(stderr,"ERROR: in feedback_init, failed to start MPU DMP\n");
-		return -1;
-	}
+
 
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
 	fstate.initialized=1;
-	rc_mpu_set_dmp_callback(__feedback_isr);
 
 	return 0;
 }
 
 
-int feedback_cleanup()
-{
-	__send_motor_stop_pulse();
-	rc_mpu_power_off();
-	return 0;
-}
 
 
-static int __feedback_state_estimate()
-{
-	double tmp, yaw_reading;
 
-	if(fstate.initialized==0){
-		fprintf(stderr, "ERROR in feedback_state_estimate, feedback controller not initialized\n");
-		return -1;
-	}
 
-	// collect new IMU roll/pitch data
-	if(settings.enable_magnetometer){
-		fstate.roll  = mpu_data.fused_TaitBryan[TB_ROLL_Y];
-		fstate.pitch = mpu_data.fused_TaitBryan[TB_PITCH_X];
-		yaw_reading  = mpu_data.fused_TaitBryan[TB_YAW_Z];
-
-	}
-	else{
-		fstate.roll  = mpu_data.dmp_TaitBryan[TB_ROLL_Y];
-		fstate.pitch = mpu_data.dmp_TaitBryan[TB_PITCH_X];
-		yaw_reading  = mpu_data.dmp_TaitBryan[TB_YAW_Z];
-	}
-
-	fstate.roll_rate = mpu_data.gyro[0];
-	fstate.pitch_rate = mpu_data.gyro[1];
-	fstate.yaw_rate = -mpu_data.gyro[2];
-
-	// yaw is more annoying since we have to detect spins
-	// also make sign negative since NED coordinates has Z point down
-	tmp = -yaw_reading + (num_yaw_spins * TWO_PI);
-	//detect the crossover point at +-PI and write new value to core state
-	if(tmp-last_yaw < -M_PI) num_yaw_spins++;
-	else if (tmp-last_yaw > M_PI) num_yaw_spins--;
-	// finally num_yaw_spins is updated and the new value can be written
-	fstate.yaw = -yaw_reading + (num_yaw_spins * TWO_PI);
-	last_yaw = fstate.yaw;
-
-	// filter battery voltage.
-	fstate.v_batt = rc_filter_march(&D_batt,__batt_voltage());
-
-	return 0;
-}
-
-static int __feedback_control()
+int feedback_march(void)
 {
 	int i;
 	double tmp, min, max;
@@ -413,13 +235,13 @@ static int __feedback_control()
 	if(setpoint.en_alt_ctrl){
 		if(last_en_alt_ctrl == 0){
 			setpoint.altitude = fstate.altitude_kf; // set altitude setpoint to current altitude
-			rc_filter_reset(&D_altitude);
+			rc_filter_reset(&D_Z);
 			tmp = -setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
-			rc_filter_prefill_outputs(&D_altitude, tmp);
+			rc_filter_prefill_outputs(&D_Z, tmp);
 			last_en_alt_ctrl = 1;
 		}
-		D_altitude.gain = D_altitude_gain_orig * settings.v_nominal/fstate.v_batt;
-		tmp = rc_filter_march(&D_altitude, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
+		D_Z.gain = D_Z_gain_orig * settings.v_nominal/fstate.v_batt;
+		tmp = rc_filter_march(&D_Z, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
 		rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 		u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch);
 		mix_add_input(u[VEC_Z], VEC_Z, mot);
@@ -545,56 +367,12 @@ static int __feedback_control()
 	// log us since arming, mostly for the log
 	fstate.last_step_ns = rc_nanos_since_boot();
 
-
-	/***************************************************************************
-	 * populate log entry. populate all values since this is fast. log_manager
-	 * will only write the enabled sections to disk.
-	***************************************************************************/
-	if(settings.enable_logging){
-		new_log.loop_index	= fstate.loop_index;
-		new_log.last_step_ns	= fstate.last_step_ns;
-
-		new_log.v_batt		= fstate.v_batt;
-		new_log.altitude_bmp	=
-		new_log.gyro_roll	=
-		new_log.gyro_pitch	=
-		new_log.gyro_yaw	=
-		new_log.accel_X		=
-		new_log.accel_Y		=
-		new_log.accel_Z		=
-
-		new_log.altitude_kf	= fstate.altitude_kf;
-		new_log.roll		= fstate.roll;
-		new_log.pitch		= fstate.pitch;
-		new_log.yaw		= fstate.yaw;
-		new_log.pos_X		= fstate.pos_X;
-		new_log.pos_Y		= fstate.pos_Y;
-		new_log.pos_Z		= fstate.pos_Z;
-
-		new_log.altitude_sp	= setpoint.altitude;
-		new_log.roll_sp		= setpoint.roll;
-		new_log.pitch_sp	= setpoint.pitch;
-		new_log.yaw_sp		= setpoint.yaw;
-
-		new_log.u_X		= u[VEC_Y];
-		new_log.u_Y		= u[VEC_X];
-		new_log.u_Z		= u[VEC_Z];
-		new_log.u_roll		= u[VEC_ROLL];
-		new_log.u_pitch		= u[VEC_PITCH];
-		new_log.u_yaw		= u[VEC_YAW];
-
-		new_log.mot_1		= fstate.m[0];
-		new_log.mot_2		= fstate.m[1];
-		new_log.mot_3		= fstate.m[2];
-		new_log.mot_4		= fstate.m[3];
-		new_log.mot_5		= fstate.m[4];
-		new_log.mot_6		= fstate.m[5];
-		new_log.mot_7		= fstate.m[6];
-		new_log.mot_8		= fstate.m[7];
-		add_log_entry(new_log);
-	}
-
 	return 0;
 }
 
 
+int feedback_cleanup(void)
+{
+	__send_motor_stop_pulse();
+	return 0;
+}

@@ -27,7 +27,7 @@ typedef enum thrust_map_t{
  *
  * @return     0 on success, -1 on failure
  */
-int thrust_map_init();
+int thrust_map_init(void);
 
 
 /**

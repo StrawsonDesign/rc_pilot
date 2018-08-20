@@ -11,20 +11,17 @@
 #include <rc/time.h>
 #include <mavlink_manager.h>
 #include <settings.h>
+#include <state_estimator.h>
 
 #define LOCALHOST_IP	"127.0.0.1"
 #define DEFAULT_SYS_ID	1
 
 
-// primary mocap_state struct declared as extern in header is defined ONCE here
-mocap_state_t mocap_state;
 
-
-void callback_func_mocap()
+static void __callback_func_mocap(void)
 {
 	int i;
 	mavlink_att_pos_mocap_t data;
-
 
 	if(rc_mav_get_att_pos_mocap(&data)<0){
 		fprintf(stderr, "ERROR in mavlink manager, problem fetching att_pos_mocal packet\n");
@@ -33,37 +30,39 @@ void callback_func_mocap()
 
 	// check if position is 0 0 0 which indicates mocap system is alive but
 	// has lost visual contact on the object
-	if(fabs(data.x)<0.001 && fabs(data.y)<0.001 && fabs(data.z)<0.001){
-		if(mocap_state.is_active==1){
-			mocap_state.is_active=0;
-			fprintf(stderr,"WARNING, MOCAP LOST VISUAL\n");
+	if(fabs(data.x)<0.0001 && fabs(data.y)<0.0001 && fabs(data.z)<0.0001){
+		if(state_estimate.mocap_running==1){
+			state_estimate.mocap_running=0;
+			if(settings.warnings_en){
+				fprintf(stderr,"WARNING, MOCAP LOST VISUAL\n");
+			}
 		}
 		else{
-			mocap_state.is_active=0;
+			state_estimate.is_active=0;
 		}
 		return;
 	}
 
 	// copy data
-	for(i=0;i<4;i++) mocap_state.q[i]=(double)data.q[i];
+	for(i=0;i<4;i++) state_estimate.quat_mocap[i]=(double)data.q[i];
 	// normalize quaternion because we don't trust the mocap system
-	rc_quaternion_norm_array(mocap_state.q);
+	rc_quaternion_norm_array(state_estimate.quat_mocap);
 	// calculate tait bryan angles too
-	rc_quaternion_to_tb_array(mocap_state.q, mocap_state.tait_bryan);
+	rc_quaternion_to_tb_array(state_estimate.quat_mocap, state_estimate.tb_mocap);
 	// position
-	mocap_state.position[0]=(double)data.x;
-	mocap_state.position[1]=(double)data.y;
-	mocap_state.position[2]=(double)data.z;
+	state_estimate.pos_mocap[0]=(double)data.x;
+	state_estimate.pos_mocap[1]=(double)data.y;
+	state_estimate.pos_mocap[2]=(double)data.z;
 	// mark timestamp
-	mocap_state.timestamp_ns=rc_nanos_since_boot();
-	mocap_state.is_active=1;
+	state_estimate.mocap_timestamp_ns=rc_nanos_since_boot();
+	state_estimate.mocap_running=1;
 
 	return;
 }
 
 
 
-int mavlink_manager_init()
+int mavlink_manager_init(void)
 {
 	// set default options before checking options
 	const char* dest_ip=LOCALHOST_IP;
@@ -75,11 +74,11 @@ int mavlink_manager_init()
 		settings.mav_port, RC_MAV_DEFAULT_CONNECTION_TIMEOUT_US) < 0) return -1;
 
 	// set the mocap callback to record position
-	rc_mav_set_callback(MAVLINK_MSG_ID_ATT_POS_MOCAP, callback_func_mocap);
+	rc_mav_set_callback(MAVLINK_MSG_ID_ATT_POS_MOCAP, __callback_func_mocap);
 	return 0;
 }
 
-int cleanup_mavlink_manager()
+int cleanup_mavlink_manager(void)
 {
 	return rc_mav_cleanup();
 }

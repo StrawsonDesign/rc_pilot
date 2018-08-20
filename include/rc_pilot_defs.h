@@ -16,9 +16,16 @@ typedef enum arm_state_t{
 	ARMED
 } arm_state_t;
 
-// Flight Core Constants
+// Speed of feedback loop
+#define FEEDBACK_HZ		100
+#define DT			0.01
+
+// top safety
 #define ARM_TIP_THRESHOLD	0.2	///< radians from level to allow arming sequence
 #define TIP_ANGLE		1.5	///< radiands of roll or pitch to consider tipped over
+
+// math constants
+#define GRAVITY			9.80665	///< one G m/s^2
 
 // order of control inputs
 // throttle(Z), roll, pitch, YAW, sideways (X),forward(Y)
@@ -41,9 +48,9 @@ typedef enum arm_state_t{
 #define BMP_RATE_DIV		10	// optionally sample bmp less frequently than mpu
 
 // controller absolute limits
-#define MAX_ROLL_COMPONENT	.8
-#define MAX_PITCH_COMPONENT	.8
-#define MAX_YAW_COMPONENT	.8
+#define MAX_ROLL_COMPONENT	.4
+#define MAX_PITCH_COMPONENT	.4
+#define MAX_YAW_COMPONENT	.4
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
 /**

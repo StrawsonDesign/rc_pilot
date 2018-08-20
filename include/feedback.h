@@ -3,12 +3,12 @@
  *
  * @brief      Functions to run the feedback controller
  *
- * Here lies the heart and soul of the operation. feedback_init() pulls
+ * Here lies the heart and soul of the operation. feedback_init(void) pulls
  * in the control constants from settings module and sets up the discrete
- * controllers. From then on out, feedback_march() should be called by the
+ * controllers. From then on out, feedback_march(void) should be called by the
  * IMU interrupt at feedback_hz until the program is shut down.
- * feedback_march() will monitor the setpoint which is constantly being
- * changed by setpoint_manager().
+ * feedback_march(void) will monitor the setpoint which is constantly being
+ * changed by setpoint_manager(void).
  *
  */
 
@@ -24,7 +24,7 @@
  * feedback controller after initialization.
  */
 typedef struct feedback_state_t{
-	int initialized;	///< set to 1 after feedback_init()
+	int initialized;	///< set to 1 after feedback_init(void)
 	arm_state_t arm_state;	///< actual arm state as reported by feedback controller
 	uint64_t arm_time_ns;	///< time since boot when controller was armed
 	uint64_t loop_index;	///< increases every time feedback loop runs
@@ -45,7 +45,7 @@ extern feedback_state_t fstate;
  *
  * @return     0 on success, -1 on failure
  */
-int feedback_init();
+int feedback_init(void);
 
 
 /**
@@ -56,7 +56,7 @@ int feedback_init();
  *
  * @return     0 on success, -1 on failure
  */
-int feedback_march();
+int feedback_march(void);
 
 /**
  * @brief      This is how outside functions should stop the flight controller.
@@ -69,14 +69,14 @@ int feedback_march();
  *
  * @return     0 on success, -1 on failure
  */
-int feedback_disarm();
+int feedback_disarm(void);
 
 /**
  * @brief      This is how outside functions should start the flight controller.
  *
  * @return     0 on success, -1 on failure
  */
-int feedback_arm();
+int feedback_arm(void);
 
 
 /**
@@ -84,7 +84,7 @@ int feedback_arm();
  *
  * @return     0 on success, -1 on failure
  */
-int feedback_cleanup();
+int feedback_cleanup(void);
 
 
 

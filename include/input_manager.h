@@ -38,7 +38,7 @@ typedef enum dsm_kill_mode_t{
  * what it is receiving.
  */
 typedef struct user_input_t{
-	int initialized;		///< set to 1 after input_manager_init()
+	int initialized;		///< set to 1 after input_manager_init(void)
 	flight_mode_t flight_mode;	///< this is the user commanded flight_mode.
 	int input_active;		///< nonzero indicates some user control is coming in
 	arm_state_t requested_arm_mode;	///< set to ARMED after arming sequence is entered.
@@ -60,7 +60,7 @@ extern user_input_t user_input;
  *
  * @return     0 on success, -1 on failure
  */
-int input_manager_init();
+int input_manager_init(void);
 
 /**
  * @brief      Waits for the input manager thread to exit
@@ -71,6 +71,6 @@ int input_manager_init();
  *
  * @return     0 on clean exit, -1 if exit timed out.
  */
-int input_manager_cleanup();
+int input_manager_cleanup(void);
 
 #endif // INPUT_MANAGER_H

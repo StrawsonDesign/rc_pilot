@@ -26,26 +26,53 @@
  * and log_manager for telemetry
  */
 typedef struct setpoint_t{
-	int initialized;	///< set to 1 once setpoint manager has initialized
-	int en_alt_ctrl;	///< enable altitude feedback.
-	int en_rpy_ctrl;	///< enable the roll pitch yaw controllers
-	int en_6dof;		///< enable direct XY control via 6DOF model
 
-	// direct passthrough user inputs to mixing matrix
+	/** @name general */
+	///< @{
+	int initialized;	///< set to 1 once setpoint manager has initialized
+	int en_6dof;		///< enable 6DOF control features
+	///< @}
+
+	/** @name direct passthrough
+	 * user inputs tranlate directly to mixing matrix
+	 */
+	///< @{
 	double Z_throttle;	///< used only when altitude controller disabled
 	double X_throttle;	///< only used when 6dof is enabled, positive forward
 	double Y_throttle;	///< only used when 6dof is enabled, positive right
 	double roll_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
 	double pitch_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
 	double yaw_throttle;	///< only used when roll_pitch_yaw controllers are disbaled
+	///< @}
 
-	// attitude setpoint
-	double altitude;	///< altitude from sea level, positive up (m)
-	double altitude_rate;	///< desired rate of change in altitude (m/s)
+	/** @name attitude setpoint */
+	///< @{
+	int en_rpy_ctrl;	///< enable the roll pitch yaw controllers
 	double roll;		///< roll angle (positive tip right) (rad)
 	double pitch;		///< pitch angle (positive tip back) (rad)
 	double yaw;		///< glabal yaw angle, positive left
-	double yaw_rate;	///< desired rate of change in yaw rad/s
+	double yaw_dot;		///< desired rate of change in yaw rad/s
+	///< @}
+
+	/** @name altitude */
+	///< @{
+	int en_Z_ctrl;		///< enable altitude feedback.
+	double Z;		///< vertical distance from where controller was armed
+	double Z_dot;		///< vertical velocity m/s^2, remember Z points down
+	///< @}
+
+	/** @name horizontal velocity setpoint */
+	///< @{
+	int en_XY_vel_ctrl;
+	double X_dot;
+	double Y_dot;
+	///< @}
+
+	/** @name horizontal velocity setpoint */
+	///< @{
+	int en_XY_pos_ctrl;
+	double X;
+	double Y;
 } setpoint_t;
 
 extern setpoint_t setpoint;
@@ -55,14 +82,14 @@ extern setpoint_t setpoint;
  *
  * @return     0 on success, -1 on failure
  */
-int setpoint_manager_init();
+int setpoint_manager_init(void);
 
 /**
  * @brief      updates the setpoint manager, call this before feedback loop
  *
  * @return     0 on success, -1 on failure
  */
-int setpoint_manager_update();
+int setpoint_manager_update(void);
 
 /**
  * @brief      cleans up the setpoint manager, not really necessary but here for
@@ -70,7 +97,7 @@ int setpoint_manager_update();
  *
  * @return     0 on clean exit, -1 if exit timed out
  */
-int setpoint_manager_cleanup();
+int setpoint_manager_cleanup(void);
 
 
 #endif // SETPOINT_MANAGER_H
