@@ -84,6 +84,7 @@ typedef struct state_estimate_t{
 	double pos_mocap[3];	///< position in mocap frame, converted to NED if necessary
 	double quat_mocap[4];	///< UAV orientation according to mocap
 	double tb_mocap[3];	///< Tait-Bryan angles according to mocap
+	int is_active;  ///< TODO used by mavlink manager, purpose unclear...
 	///@}
 
 	/** @name Global Position Estimate

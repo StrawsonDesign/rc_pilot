@@ -24,8 +24,10 @@
 #include <rc_pilot_defs.h>
 #include <thread_defs.h>
 #include <log_manager.h>
+#include <settings.h>
+#include <setpoint_manager.h>
 #include <feedback.h>
-#include <state_estimate.h>
+#include <state_estimator.h>
 
 
 #define MAX_LOG_FILES	500
@@ -47,7 +49,7 @@ static pthread_t pthread;
 static int logging_enabled; // set to 0 to exit the write_thread
 
 
-static int __write_header(int fd)
+static int __write_header(FILE* fd)
 {
 	// always print loop index
 	fprintf(fd, "loop_index,last_step_ns");
@@ -85,13 +87,14 @@ static int __write_header(int fd)
 }
 
 
-static int __write_log_entry(int fd, log_entry_t e)
+static int __write_log_entry(FILE* fd, log_entry_t e)
 {
 	// always print loop index
 	fprintf(fd, "%" PRIu64 ",%" PRIu64, e.loop_index, e.last_step_ns);
 
 	if(settings.log_sensors){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF",	e.v_batt\
+		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF",\
+							e.v_batt,\
 							e.alt_bmp_raw,\
 							e.gyro_roll,\
 							e.gyro_pitch,\
@@ -178,7 +181,7 @@ static void* __log_manager_func(__attribute__ ((unused)) void* ptr)
 			else buf_to_write=0;
 			// write the full buffer to disk;
 			for(i=0;i<BUF_LEN;i++){
-				__write_log_entry(buffer[buf_to_write][i]);
+				__write_log_entry(fd, buffer[buf_to_write][i]);
 			}
 			fflush(fd);
 			needs_writing = 0;
@@ -190,7 +193,7 @@ static void* __log_manager_func(__attribute__ ((unused)) void* ptr)
 	// the logs that are in the buffer current being filled
 	//printf("writing out remaining log file\n");
 	for(i=0;i<buffer_pos;i++){
-		__write_log_entry(buffer[current_buf][i]);
+		__write_log_entry(fd, buffer[current_buf][i]);
 	}
 	fflush(fd);
 	fclose(fd);
@@ -245,7 +248,7 @@ int log_manager_init()
 	}
 
 	// write header
-	__write_header(int fd);
+	__write_header(fd);
 
 	// start thread
 	logging_enabled = 1;
@@ -294,9 +297,9 @@ static log_entry_t __construct_new_entry()
 	l.sp_X		= setpoint.X;
 	l.sp_Y		= setpoint.Y;
 	l.sp_Z		= setpoint.Z;
-	l.sp_Xdot	= setpoint.Xdot;
-	l.sp_Ydot	= setpoint.Ydot;
-	l.sp_Zdot	= setpoint.Zdot;
+	l.sp_Xdot	= setpoint.X_dot;
+	l.sp_Ydot	= setpoint.Y_dot;
+	l.sp_Zdot	= setpoint.Z_dot;
 
 	l.u_roll	= fstate.u[VEC_ROLL];
 	l.u_pitch	= fstate.u[VEC_PITCH];
@@ -314,10 +317,10 @@ static log_entry_t __construct_new_entry()
 	l.mot_7		= fstate.m[6];
 	l.mot_8		= fstate.m[7];
 
-	return new;
+	return l;
 }
 
-int log_manager_add_new();
+int log_manager_add_new()
 {
 	if(!logging_enabled){
 		fprintf(stderr,"ERROR: trying to log entry while logger isn't running\n");

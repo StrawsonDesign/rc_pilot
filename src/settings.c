@@ -125,7 +125,7 @@ if(json_object_object_get_ex(jobj, #name, &tmp)==0){\
 	fprintf(stderr,"ERROR: can't find " #name " in settings file\n");\
 	return -1;\
 }\
-if(__parse_controller(tmp, &settings.#name)){\
+if(__parse_controller(tmp, &settings.name)){\
 	fprintf(stderr,"ERROR: could not parse " #name "\n");\
 	return -1;\
 }
@@ -247,12 +247,12 @@ static int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 	else if(strcmp(tmp_str, "ALT_HOLD_6DOF")==0){
 		*mode = ALT_HOLD_6DOF;
 	}
-	else if(strcmp(tmp_str, "VELOCITY_CONTOL_4DOF")==0){
+	/*else if(strcmp(tmp_str, "VELOCITY_CONTOL_4DOF")==0){
 		*mode = VELOCITY_CONTOL_4DOF;
 	}
 	else if(strcmp(tmp_str, "VELOCITY_CONTOL_6DOF")==0){
 		*mode = VELOCITY_CONTOL_6DOF;
-	}
+	}*/
 	else{
 		fprintf(stderr,"ERROR: invalid flight mode\n");
 		return -1;
@@ -416,7 +416,7 @@ static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
 				return -1;
 			}
 			tmp_flt = json_object_get_double(tmp);
-			if(rc_filter_c2d_tustin(filter,dt, num_vec, den_vec, tmp_flt)){
+			if(rc_filter_c2d_tustin(filter, DT, num_vec, den_vec, tmp_flt)){
 				fprintf(stderr,"ERROR: failed to c2dtustin while parsing json\n");
 				return -1;
 			}
@@ -465,7 +465,7 @@ static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt,DT)){
+		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt, DT)){
 				fprintf(stderr,"ERROR: failed to alloc pid filter in __parse_controller()");
 				return -1;
 			}
@@ -584,14 +584,13 @@ int settings_load_from_file(char* path)
 	PARSE_INT(mav_port)
 
 	// FEEDBACK CONTROLLERS
-	PARSE_CONTOLLER(roll_controller)
-	PARSE_CONTOLLER(pitch_controller)
-	PARSE_CONTOLLER(yaw_controller)
-	PARSE_CONTOLLER(altitude_controller)
-	PARSE_CONTOLLER(horiz_vel_ctrl_4dof)
-	PARSE_CONTOLLER(horiz_vel_ctrl_6dof)
-	PARSE_CONTOLLER(horiz_pos_ctrl_4dof)
-	PARSE_CONTOLLER(horiz_pos_ctrl_6dof)
+	PARSE_CONTROLLER(roll_controller)
+	PARSE_CONTROLLER(yaw_controller)
+	PARSE_CONTROLLER(altitude_controller)
+	PARSE_CONTROLLER(horiz_vel_ctrl_4dof)
+	PARSE_CONTROLLER(horiz_vel_ctrl_6dof)
+	PARSE_CONTROLLER(horiz_pos_ctrl_4dof)
+	PARSE_CONTROLLER(horiz_pos_ctrl_6dof)
 	PARSE_DOUBLE_MIN_MAX(max_XY_velocity, .1, 10)
 	PARSE_DOUBLE_MIN_MAX(max_Z_velocity, .1, 10)
 

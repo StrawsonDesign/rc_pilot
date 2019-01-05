@@ -14,6 +14,7 @@
 #include <input_manager.h>
 #include <setpoint_manager.h>
 #include <feedback.h>
+#include <state_estimator.h>
 #include <thread_defs.h>
 #include <settings.h>
 
@@ -132,16 +133,16 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 		}
 		if(settings.printf_altitude){
 			printf("%s%+5.2f |%+5.2f |",	__next_colour(),\
-							fstate.altitude_kf,\
-							fstate.alt_kf_vel);
+							state_estimate.alt_bmp,\
+							state_estimate.alt_bmp_vel);
 		}
 		if(settings.printf_rpy){
 			printf(KCYN);
 			printf("%s%+5.2f|%+5.2f|%+5.2f|",
 							__next_colour(),\
-							fstate.roll,\
-							fstate.pitch,\
-							fstate.yaw);
+							state_estimate.tb_imu[0],\
+							state_estimate.tb_imu[1],\
+							state_estimate.tb_imu[2]);
 		}
 		if(settings.printf_sticks){
 			if(user_input.requested_arm_mode==ARMED)
@@ -158,7 +159,7 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 		if(settings.printf_setpoint){
 			printf("%s%+5.2f|%+5.2f|%+5.2f|%+5.2f|",\
 							__next_colour(),\
-							setpoint.altitude,\
+							setpoint.Z,\
 							setpoint.roll,\
 							setpoint.pitch,\
 							setpoint.yaw);
