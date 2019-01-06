@@ -24,8 +24,8 @@
 static pthread_t printf_manager_thread;
 static int initialized = 0;
 
-const char* const colours[] = {KYEL, KCYN, KGRN};
-const int num_colours = 3; // length of above array
+const char* const colours[] = {KYEL, KCYN, KGRN, KMAG};
+const int num_colours = 4; // length of above array
 int current_colour = 0;
 
 /**
@@ -61,7 +61,7 @@ static int __print_header()
 		printf("  arm   |");
 	}
 	if(settings.printf_altitude){
-		printf("%s alt(m)|altdot|", __next_colour());
+		printf("%salt(m)|altdot|", __next_colour());
 	}
 	if(settings.printf_rpy){
 		printf("%s roll|pitch| yaw |", __next_colour());
@@ -119,6 +119,7 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			if(fstate.arm_state==ARMED) printf("%s ARMED %s |",KRED,KNRM);
 			else			    printf("%sDISARMED%s|",KGRN,KNRM);
 		}
+		__reset_colour();
 		if(settings.printf_altitude){
 			printf("%s%+5.2f |%+5.2f |",	__next_colour(),\
 							state_estimate.alt_bmp,\

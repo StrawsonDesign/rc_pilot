@@ -20,6 +20,8 @@ typedef enum arm_state_t{
 #define FEEDBACK_HZ		100
 #define DT			0.01
 
+#define IMU_PRIORITY    51
+
 // top safety
 #define ARM_TIP_THRESHOLD	0.2	///< radians from level to allow arming sequence
 #define TIP_ANGLE		1.5	///< radiands of roll or pitch to consider tipped over

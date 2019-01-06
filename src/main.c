@@ -36,9 +36,6 @@ rc_led_set(RC_LED_GREEN,0); \
 rc_led_blink(RC_LED_RED,8.0,2.0); \
 return -1;
 
-// Global mpu_data struct
-static rc_mpu_data_t mpu_data;
-
 void print_usage()
 {
 	printf("\n");
@@ -103,11 +100,12 @@ void on_pause_press()
  */
 static void __imu_isr(void)
 {
-	setpoint_manager_update();
-	state_estimator_march();
-	feedback_march();
-	if(settings.enable_logging) log_manager_add_new();
-	state_estimator_jobs_after_feedback();
+	fprintf(stderr,"imu interupt...\n");
+	//setpoint_manager_update();
+	//state_estimator_march();
+	//feedback_march();
+	//if(settings.enable_logging) log_manager_add_new();
+	//state_estimator_jobs_after_feedback();
 }
 
 
@@ -261,6 +259,8 @@ int main(int argc, char *argv[])
 	// optionally enbale magnetometer
 	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
 	mpu_conf.orient = ORIENTATION_Z_UP;
+	mpu_conf.dmp_interrupt_sched_policy = SCHED_FIFO;
+	mpu_conf.dmp_interrupt_priority = IMU_PRIORITY;
 
 	// now set up the imu for dmp interrupt operation
 	printf("initializing MPU\n");
@@ -288,7 +288,8 @@ int main(int argc, char *argv[])
 
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
-	rc_mpu_set_dmp_callback(__imu_isr);
+	printf("setting callback function\n");
+	rc_mpu_set_dmp_callback(&__imu_isr);
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother

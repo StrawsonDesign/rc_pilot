@@ -8,7 +8,6 @@
 	"orientation": "ORIENTATION_X_FORWARD",
 	"v_nominal": 11.1,
 
-	"enable_logging": true,
 	"enable_magnetometer": false,
 
 	"num_dsm_modes": 3,
@@ -17,7 +16,7 @@
 	"flight_mode_3": "ALT_HOLD_4DOF",
 
 	"dsm_thr_ch": 1,
-	"dsm_thr_pol": 1,
+	"dsm_thr_pol": -1,
 	"dsm_roll_ch": 2,
 	"dsm_roll_pol": -1,
 	"dsm_pitch_ch": 3,
@@ -34,9 +33,9 @@
 	"printf_altitude": true,
 	"printf_position": true,
 	"printf_rpy": true,
-	"printf_sticks": false,
+	"printf_sticks": true,
 	"printf_setpoint": true,
-	"printf_u": false,
+	"printf_u": true,
 	"printf_motors": true,
 	"printf_mode": true,
 

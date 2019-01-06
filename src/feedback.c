@@ -64,9 +64,10 @@ static int __send_motor_stop_pulse(void)
 static void __rpy_init(void)
 {
 	// get controllers from settings
+
 	rc_filter_duplicate(&D_roll,	settings.roll_controller);
 	rc_filter_duplicate(&D_pitch,	settings.pitch_controller);
-	rc_filter_duplicate(&D_yaw,	settings.yaw_controller);
+	rc_filter_duplicate(&D_yaw,	    settings.yaw_controller);
 
 	#ifdef DEBUG
 	printf("ROLL CONTROLLER:\n");
@@ -149,6 +150,7 @@ int feedback_init(void)
 {
 	double tmp;
 
+	__rpy_init();
 
 	rc_filter_duplicate(&D_Z,	settings.altitude_controller);
 	rc_filter_duplicate(&D_Xdot_4,	settings.horiz_vel_ctrl_4dof);

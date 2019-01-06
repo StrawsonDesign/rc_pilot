@@ -128,7 +128,7 @@ if(json_object_object_get_ex(jobj, #name, &tmp)==0){\
 if(__parse_controller(tmp, &settings.name)){\
 	fprintf(stderr,"ERROR: could not parse " #name "\n");\
 	return -1;\
-}
+}\
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,6 +480,10 @@ static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
 			}
 	}
 
+	#ifdef DEBUG
+	rc_filter_print(*filter);
+	#endif
+
 	rc_vector_free(&num_vec);
 	rc_vector_free(&den_vec);
 
@@ -622,6 +626,7 @@ int settings_load_from_file(char* path)
 
 	// FEEDBACK CONTROLLERS
 	PARSE_CONTROLLER(roll_controller)
+	PARSE_CONTROLLER(pitch_controller)
 	PARSE_CONTROLLER(yaw_controller)
 	PARSE_CONTROLLER(altitude_controller)
 	PARSE_CONTROLLER(horiz_vel_ctrl_4dof)

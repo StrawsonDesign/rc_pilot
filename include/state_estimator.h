@@ -13,6 +13,7 @@
 
 #include <stdint.h> // for uint64_t
 #include <rc_pilot_defs.h>
+ #include <rc/mpu.h>
 
 /**
  * This is the output from the state estimator. It contains raw sensor values
@@ -134,6 +135,7 @@ typedef struct state_estimate_t{
 }state_estimate_t;
 
 extern state_estimate_t state_estimate;
+extern rc_mpu_data_t mpu_data;
 
 
 

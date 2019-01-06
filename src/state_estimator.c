@@ -26,7 +26,7 @@
 state_estimate_t state_estimate; // extern variable in state_estimator.h
 
 // sensor data structs
-static rc_mpu_data_t mpu_data;
+rc_mpu_data_t mpu_data;
 static rc_bmp_data_t bmp_data;
 
 // battery filter
@@ -97,6 +97,7 @@ static void __imu_march(void)
 	// generate tait bryan angles
 	rc_quaternion_to_tb_array(state_estimate.quat_imu, state_estimate.tb_imu);
 
+	fprintf(stderr,"roll: %f\n",state_estimate.tb_imu[0]);
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
 	diff = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI) - last_yaw;
@@ -338,7 +339,7 @@ int state_estimator_march(void)
 	__mag_march();
 	__altitude_march();
 	__feedback_select();
-	__mocap_check_timeout();
+	//__mocap_check_timeout();
 	return 0;
 }
 
