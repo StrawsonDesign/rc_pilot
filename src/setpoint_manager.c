@@ -13,6 +13,7 @@
 #include <settings.h>
 #include <input_manager.h>
 #include <feedback.h>
+#include <state_estimator.h>
 #include <rc_pilot_defs.h>
 #include <flight_mode.h>
 
@@ -26,14 +27,14 @@ void __update_yaw(void)
 	// if throttle stick is down all the way, probably landed, so
 	// keep the yaw setpoint at current yaw so it takes off straight
 	if(user_input.thr_stick < -0.95){
-		setpoint.yaw = fstate.yaw;
-		setpoint.yaw_rate = 0.0;
-		return
+		setpoint.yaw = state_estimate.yaw;
+		setpoint.yaw_dot = 0.0;
+		return;
 	}
 	// otherwise, scale yaw_rate by max yaw rate in rad/s
 	// and move yaw setpoint
-	setpoint.yaw_rate = user_input.yaw_stick * MAX_YAW_RATE;
-	setpoint.yaw += setpoint.yaw_rate*DT;
+	setpoint.yaw_dot = user_input.yaw_stick * MAX_YAW_RATE;
+	setpoint.yaw += setpoint.yaw_dot*DT;
 	return;
 }
 
@@ -61,7 +62,7 @@ void __update_XY_pos(void)
 	else if(setpoint.X < (state_estimate.X - XYZ_MAX_ERROR)){
 		setpoint.X = state_estimate.X - XYZ_MAX_ERROR;
 		setpoint.X_dot = 0.0;
-		return
+		return;
 	}
 	else{
 		setpoint.X += setpoint.X_dot*DT;
@@ -70,12 +71,12 @@ void __update_XY_pos(void)
 	if(setpoint.Y > (state_estimate.Y + XYZ_MAX_ERROR)){
 		setpoint.Y = state_estimate.Y + XYZ_MAX_ERROR;
 		setpoint.Y_dot = 0.0;
-		return
+		return;
 	}
 	else if(setpoint.Y < (state_estimate.Y - XYZ_MAX_ERROR)){
 		setpoint.Y = state_estimate.Y - XYZ_MAX_ERROR;
 		setpoint.Y_dot = 0.0;
-		return
+		return;
 	}
 	else{
 		setpoint.Y += setpoint.Y_dot*DT;
@@ -111,11 +112,11 @@ int setpoint_manager_update(void)
 	}
 
 	// if PAUSED or UNINITIALIZED, do nothing
-	if(rc_get_state(void)!=RUNNING) return 0;
+	if(rc_get_state()!=RUNNING) return 0;
 
 	// shutdown feedback on kill switch
 	if(user_input.requested_arm_mode == DISARMED){
-		if(fstate.arm_state==ARMED) feedback_disarm(void);
+		if(fstate.arm_state==ARMED) feedback_disarm();
 		return 0;
 	}
 
@@ -229,8 +230,8 @@ int setpoint_manager_update(void)
 		setpoint.en_XY_vel_ctrl	= 1;
 		setpoint.en_XY_pos_ctrl	= 0;
 
-		setpoint.X_velocity = -user_input.pitch_stick * settings.max_XY_velocity;
-		setpoint.Y_velocity =  user_input.roll_stick  * settings.max_XY_velocity;
+		setpoint.X_dot = -user_input.pitch_stick * settings.max_XY_velocity;
+		setpoint.Y_dot =  user_input.roll_stick  * settings.max_XY_velocity;
 		__update_Z();
 		__update_yaw();
 		break;
@@ -242,8 +243,8 @@ int setpoint_manager_update(void)
 		setpoint.en_XY_vel_ctrl	= 0;
 		setpoint.en_XY_pos_ctrl	= 1;
 
-		setpoint.X_velocity = -user_input.pitch_stick * settings.max_XY_velocity;
-		setpoint.Y_velocity =  user_input.roll_stick  * settings.max_XY_velocity;
+		setpoint.X_dot = -user_input.pitch_stick * settings.max_XY_velocity;
+		setpoint.Y_dot =  user_input.roll_stick  * settings.max_XY_velocity;
 		__update_XY_pos();
 		__update_Z();
 		__update_yaw();
@@ -256,8 +257,8 @@ int setpoint_manager_update(void)
 		setpoint.en_XY_vel_ctrl	= 0;
 		setpoint.en_XY_pos_ctrl	= 1;
 
-		setpoint.X_velocity = -user_input.pitch_stick * settings.max_XY_velocity;
-		setpoint.Y_velocity =  user_input.roll_stick  * settings.max_XY_velocity;
+		setpoint.X_dot = -user_input.pitch_stick * settings.max_XY_velocity;
+		setpoint.Y_dot =  user_input.roll_stick  * settings.max_XY_velocity;
 		__update_XY_pos();
 		__update_Z();
 		__update_yaw();
@@ -271,7 +272,7 @@ int setpoint_manager_update(void)
 
 	// arm feedback when requested
 	if(user_input.requested_arm_mode == ARMED){
-		if(fstate.arm_state==DISARMED) feedback_arm(void);
+		if(fstate.arm_state==DISARMED) feedback_arm();
 	}
 
 	return 0;

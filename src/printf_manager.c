@@ -10,6 +10,7 @@
 #include <rc/time.h>
 #include <rc/pthread.h>
 
+#include <rc_pilot_defs.h>
 #include <printf_manager.h>
 #include <input_manager.h>
 #include <setpoint_manager.h>
@@ -22,19 +23,6 @@
 
 static pthread_t printf_manager_thread;
 static int initialized = 0;
-
-// terminal emulator control sequences
-#define WRAP_DISABLE	"\033[?7l"
-#define WRAP_ENABLE	"\033[?7h"
-#define KNRM		"\x1B[0m"	// "normal" to return to default after colour
-
-#define KRED		"\x1B[31m"
-#define KGRN		"\x1B[32m"
-#define KYEL		"\x1B[33m"
-#define KBLU		"\x1B[34m"
-#define KMAG		"\x1B[35m"
-#define KCYN		"\x1B[36m"
-#define KWHT		"\x1B[37m"
 
 const char* const colours[] = {KYEL, KCYN, KGRN};
 const int num_colours = 3; // length of above array

@@ -81,4 +81,6 @@ typedef enum arm_state_t{
 #define KCYN		"\x1B[36m"
 #define KWHT		"\x1B[37m"
 
+//#define DEBUG
+
 #endif // RC_PILOT_DEFS_H

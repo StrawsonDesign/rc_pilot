@@ -1,7 +1,7 @@
 {
 	"name": "QUADCOPTER PGASKELL",
 
-	"warnings_en": 1,
+	"warnings_en": true,
 
 	"layout": "LAYOUT_4X",
 	"thrust_map": "LINEAR_MAP",
@@ -39,6 +39,13 @@
 	"printf_u": false,
 	"printf_motors": true,
 	"printf_mode": true,
+
+	"enable_logging": false,
+	"log_sensors": true,
+	"log_state": true,
+	"log_setpoint": true,
+	"log_control_u": true,
+	"log_motor_signals": true,
 
 	"dest_ip": "192.168.8.1",
 	"my_sys_id": 1,
@@ -124,7 +131,7 @@
 		]
 	},
 
-	"horizontal_velocity_controller_4dof": {
+	"horiz_vel_ctrl_4dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
@@ -144,7 +151,7 @@
 		]
 	},
 
-	"horizontal_velocity_controller_6dof": {
+	"horiz_vel_ctrl_6dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
@@ -164,7 +171,7 @@
 		]
 	},
 
-	"horizontal_position_controller_4dof": {
+	"horiz_pos_ctrl_4dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
@@ -184,7 +191,7 @@
 		]
 	},
 
-	"horizontal_position_controller_6dof": {
+	"horiz_pos_ctrl_6dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",

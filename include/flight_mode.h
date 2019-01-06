@@ -57,7 +57,15 @@ typedef enum flight_mode_t{
 	 * translation X and Y. Yaw and Altitude are still position setpoints
 	 * like alt_hold
 	 */
-	VELOCITY_CONTROL_6DOF
+	VELOCITY_CONTROL_6DOF,
+	/**
+	 * PG: TODO: What do you intend for this mode?
+	 */
+	POSITION_CONTROL_4DOF,
+	/**
+	 * PG: TODO: What do you intend for this mode?
+	 */
+	POSITION_CONTROL_6DOF
 
 } flight_mode_t;
 

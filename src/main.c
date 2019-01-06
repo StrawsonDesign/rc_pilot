@@ -24,6 +24,7 @@
 #include <mix.h>
 #include <input_manager.h>
 #include <setpoint_manager.h>
+#include <state_estimator.h>
 #include <log_manager.h>
 #include <printf_manager.h>
 
@@ -35,7 +36,8 @@ rc_led_set(RC_LED_GREEN,0); \
 rc_led_blink(RC_LED_RED,8.0,2.0); \
 return -1;
 
-
+// Global mpu_data struct
+static rc_mpu_data_t mpu_data;
 
 void print_usage()
 {
@@ -104,7 +106,7 @@ static void __imu_isr(void)
 	setpoint_manager_update();
 	state_estimator_march();
 	feedback_march();
-	if(settings.enable_logging) log_manager_new_entry();
+	if(settings.enable_logging) log_manager_add_new();
 	state_estimator_jobs_after_feedback();
 }
 
@@ -253,7 +255,7 @@ int main(int argc, char *argv[])
 
 	// start the IMU
 	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
-	mpu_conf.dmp_sample_rate = settings.feedback_hz;
+	mpu_conf.dmp_sample_rate = FEEDBACK_HZ;
 	mpu_conf.dmp_fetch_accel_gyro = 1;
 
 	// optionally enbale magnetometer
@@ -286,7 +288,7 @@ int main(int argc, char *argv[])
 
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
-	rc_mpu_set_dmp_callback(__feedback_isr);
+	rc_mpu_set_dmp_callback(__imu_isr);
 
 	// start printf_thread if running from a terminal
 	// if it was started as a background process then don't bother
