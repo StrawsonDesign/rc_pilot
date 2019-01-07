@@ -108,6 +108,9 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 
 	prev_arm_state = fstate.arm_state;
 
+	//sleep so state_estimator can run first
+	rc_usleep(100000);
+
 	while(rc_get_state()!=EXITING){
 		// re-print header on disarming
 		//if(fstate.arm_state==DISARMED && prev_arm_state==ARMED){

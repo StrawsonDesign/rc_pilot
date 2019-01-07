@@ -161,16 +161,16 @@ static void __mag_march(void)
 static int __altitude_init(void)
 {
 	//initialize altitude kalman filter and bmp sensor
-	rc_matrix_t F	= rc_matrix_empty();
-	rc_matrix_t G	= rc_matrix_empty();
-	rc_matrix_t H	= rc_matrix_empty();
-	rc_matrix_t Q	= rc_matrix_empty();
-	rc_matrix_t R	= rc_matrix_empty();
-	rc_matrix_t Pi	= rc_matrix_empty();
+    rc_matrix_t F = RC_MATRIX_INITIALIZER;
+    rc_matrix_t G = RC_MATRIX_INITIALIZER;
+    rc_matrix_t H = RC_MATRIX_INITIALIZER;
+    rc_matrix_t Q = RC_MATRIX_INITIALIZER;
+    rc_matrix_t R = RC_MATRIX_INITIALIZER;
+    rc_matrix_t Pi = RC_MATRIX_INITIALIZER;
 
-	int Nx = 3;
-	int Ny = 1;
-	int Nu = 1;
+	const int Nx = 3;
+	const int Ny = 1;
+	const int Nu = 1;
 
 	// allocate appropirate memory for system
 	rc_matrix_zeros(&F, Nx, Nx);
@@ -247,16 +247,16 @@ static void __altitude_march(void)
 	state_estimate.bmp_temp = bmp_data.temp_c;
 
 	// make copy of acceleration reading before rotating
-	for(i=0;i<3;i++) accel_vec[i] = state_estimate.accel_relative[i];
+	for(i=0;i<3;i++) accel_vec[i] = state_estimate.accel[i];
 
 	// rotate accel vector
-	rc_quaternion_rotate_vector_array(accel_vec, mpu_data.dmp_quat);
+	rc_quaternion_rotate_vector_array(accel_vec, state_estimate.quat_imu);
 
 	// do first-run filter setup
 	if(alt_kf.step==0){
-		rc_vector_alloc(&u,1);
-		rc_vector_alloc(&y,1);
-		alt_kf.x_est.d[0] = bmp_data.alt_m;
+        rc_vector_zeros(&u, 1);
+        rc_vector_zeros(&y, 1);
+		alt_kf.x_est.d[0] = -bmp_data.alt_m;
 		rc_filter_prefill_inputs(&acc_lp, accel_vec[2]+GRAVITY);
 		rc_filter_prefill_outputs(&acc_lp, accel_vec[2]+GRAVITY);
 	}
@@ -264,17 +264,18 @@ static void __altitude_march(void)
 	// calculate acceleration and smooth it just a tad
 	// put result in u for kalman and flip sign since with altitude, positive
 	// is up whereas acceleration in Z points down.
-	u.d[0] = -rc_filter_march(&acc_lp, accel_vec[2]+GRAVITY);
+	rc_filter_march(&acc_lp, accel_vec[2]+GRAVITY);
+	u.d[0] = acc_lp.newest_output;
 
 	// don't bother filtering Barometer, kalman will deal with that
-	y.d[0] = bmp_data.alt_m;
+	y.d[0] = -bmp_data.alt_m;
 
 	rc_kalman_update_lin(&alt_kf, u, y);
 
 	// altitude estimate
 	state_estimate.alt_bmp		= alt_kf.x_est.d[0];
 	state_estimate.alt_bmp_vel	= alt_kf.x_est.d[1];
-	state_estimate.alt_bmp_accel	= alt_kf.x_est.d[2];
+	state_estimate.alt_bmp_accel= alt_kf.x_est.d[2];
 
 	return;
 }

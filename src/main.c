@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
     mpu_conf.gpio_interrupt_pin = GPIO_INT_PIN_PIN;
 	mpu_conf.dmp_sample_rate = FEEDBACK_HZ;
 	mpu_conf.dmp_fetch_accel_gyro = 1;
-	mpu_conf.orient = ORIENTATION_Z_UP;
+	//mpu_conf.orient = ORIENTATION_Z_UP;
 	mpu_conf.dmp_interrupt_sched_policy = SCHED_FIFO;
 	mpu_conf.dmp_interrupt_priority = IMU_PRIORITY;
 

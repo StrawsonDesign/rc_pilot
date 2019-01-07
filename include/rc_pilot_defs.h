@@ -17,8 +17,8 @@ typedef enum arm_state_t{
 } arm_state_t;
 
 // Speed of feedback loop
-#define FEEDBACK_HZ		100
-#define DT			0.01
+#define FEEDBACK_HZ		200
+#define DT			0.005
 
 //IMU Parameters
 #define IMU_PRIORITY    51
@@ -54,9 +54,9 @@ typedef enum arm_state_t{
 #define BMP_RATE_DIV		10	// optionally sample bmp less frequently than mpu
 
 // controller absolute limits
-#define MAX_ROLL_COMPONENT	.4
-#define MAX_PITCH_COMPONENT	.4
-#define MAX_YAW_COMPONENT	.4
+#define MAX_ROLL_COMPONENT	0.4
+#define MAX_PITCH_COMPONENT	0.4
+#define MAX_YAW_COMPONENT	0.4
 #define MAX_X_COMPONENT		1.0
 #define MAX_Y_COMPONENT		1.0
 /**
