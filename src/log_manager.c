@@ -32,8 +32,6 @@
 
 #define MAX_LOG_FILES	500
 #define BUF_LEN		50
-#define FF		%.4f	// format for printing floats to file
-
 
 static uint64_t num_entries;	// number of entries logged so far
 static int buffer_pos;		// position in current buffer
@@ -93,7 +91,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 	fprintf(fd, "%" PRIu64 ",%" PRIu64, e.loop_index, e.last_step_ns);
 
 	if(settings.log_sensors){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF",\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F",\
 							e.v_batt,\
 							e.alt_bmp_raw,\
 							e.gyro_roll,\
@@ -105,7 +103,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 	}
 
 	if(settings.log_state){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF,FF",\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F",\
 							e.roll,\
 							e.pitch,\
 							e.yaw,\
@@ -118,7 +116,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 	}
 
 	if(settings.log_setpoint){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF,FF",\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F",\
 							e.sp_roll,\
 							e.sp_pitch,\
 							e.sp_yaw,\
@@ -131,7 +129,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 	}
 
 	if(settings.log_control_u){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF,FF",\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F",\
 							e.u_roll,\
 							e.u_pitch,\
 							e.u_yaw,\
@@ -141,7 +139,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 	}
 
 	if(settings.log_motor_signals && settings.num_rotors==8){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF,FF,FF",	e.mot_1,\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F",	e.mot_1,\
 							e.mot_2,\
 							e.mot_3,\
 							e.mot_4,\
@@ -151,7 +149,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 							e.mot_8);
 	}
 	if(settings.log_motor_signals && settings.num_rotors==6){
-		fprintf(fd, ",FF,FF,FF,FF,FF,FF",	e.mot_1,\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F",	e.mot_1,\
 							e.mot_2,\
 							e.mot_3,\
 							e.mot_4,\
@@ -159,7 +157,7 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 							e.mot_6);
 	}
 	if(settings.log_motor_signals && settings.num_rotors==4){
-		fprintf(fd, ",FF,FF,FF,FF",		e.mot_1,\
+		fprintf(fd, ",%.4F,%.4F,%.4F,%.4F",		e.mot_1,\
 							e.mot_2,\
 							e.mot_3,\
 							e.mot_4);
