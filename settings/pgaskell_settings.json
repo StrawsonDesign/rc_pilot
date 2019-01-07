@@ -39,7 +39,7 @@
 	"printf_motors": true,
 	"printf_mode": true,
 
-	"enable_logging": false,
+	"enable_logging": true,
 	"log_sensors": true,
 	"log_state": true,
 	"log_setpoint": true,
