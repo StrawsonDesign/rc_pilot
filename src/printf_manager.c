@@ -70,7 +70,7 @@ static int __print_header()
 		printf("%s  kill  | thr |roll |pitch| yaw |", __next_colour());
 	}
 	if(settings.printf_setpoint){
-		printf("%s sp_a| sp_r| sp_p| sp_y|", __next_colour());
+		printf("%s  sp_a | sp_r| sp_p| sp_y|", __next_colour());
 	}
 	if(settings.printf_u){
 		printf("%s U0X | U1Y | U2Z | U3r | U4p | U5y |", __next_colour());
