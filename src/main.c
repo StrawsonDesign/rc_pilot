@@ -28,8 +28,6 @@
 #include <log_manager.h>
 #include <printf_manager.h>
 
-
-
 #define FAIL(str) \
 fprintf(stderr, str); \
 rc_led_set(RC_LED_GREEN,0); \
@@ -100,12 +98,12 @@ void on_pause_press()
  */
 static void __imu_isr(void)
 {
-	fprintf(stderr,"imu interupt...\n");
-	//setpoint_manager_update();
-	//state_estimator_march();
-	//feedback_march();
-	//if(settings.enable_logging) log_manager_add_new();
-	//state_estimator_jobs_after_feedback();
+	//printf("imu interupt...\n");
+	setpoint_manager_update();
+	state_estimator_march();
+	feedback_march();
+	if(settings.enable_logging) log_manager_add_new();
+	state_estimator_jobs_after_feedback();
 }
 
 
@@ -117,6 +115,7 @@ static void __imu_isr(void)
  */
 int main(int argc, char *argv[])
 {
+
 	int c;
 	char* settings_file_path = NULL;
 
@@ -154,7 +153,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	printf("Loaded settings: %s\n", settings.name);
-
 
 	// before touching hardware, make sure another instance isn't running
 	// return value -3 means a root process is running and we need more
@@ -251,24 +249,6 @@ int main(int argc, char *argv[])
 		FAIL("ERROR: failed to initialize barometer\n")
 	}
 
-	// start the IMU
-	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
-	mpu_conf.dmp_sample_rate = FEEDBACK_HZ;
-	mpu_conf.dmp_fetch_accel_gyro = 1;
-
-	// optionally enbale magnetometer
-	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
-	mpu_conf.orient = ORIENTATION_Z_UP;
-	mpu_conf.dmp_interrupt_sched_policy = SCHED_FIFO;
-	mpu_conf.dmp_interrupt_priority = IMU_PRIORITY;
-
-	// now set up the imu for dmp interrupt operation
-	printf("initializing MPU\n");
-	if(rc_mpu_initialize_dmp(&mpu_data, mpu_conf)){
-		fprintf(stderr,"ERROR: failed to start MPU DMP\n");
-		return -1;
-	}
-
 	// set up state estimator
 	printf("initializing state_estimator\n");
 	if(state_estimator_init()<0){
@@ -281,6 +261,27 @@ int main(int argc, char *argv[])
 		FAIL("ERROR: failed to init feedback controller")
 	}
 
+	// start the IMU
+	rc_mpu_config_t mpu_conf = rc_mpu_default_config();
+	mpu_conf.i2c_bus = I2C_BUS;
+    mpu_conf.gpio_interrupt_pin_chip = GPIO_INT_PIN_CHIP;
+    mpu_conf.gpio_interrupt_pin = GPIO_INT_PIN_PIN;
+	mpu_conf.dmp_sample_rate = FEEDBACK_HZ;
+	mpu_conf.dmp_fetch_accel_gyro = 1;
+	mpu_conf.orient = ORIENTATION_Z_UP;
+	mpu_conf.dmp_interrupt_sched_policy = SCHED_FIFO;
+	mpu_conf.dmp_interrupt_priority = IMU_PRIORITY;
+
+	// optionally enbale magnetometer
+	mpu_conf.enable_magnetometer = settings.enable_magnetometer;
+
+	// now set up the imu for dmp interrupt operation
+	printf("initializing MPU\n");
+	if(rc_mpu_initialize_dmp(&mpu_data, mpu_conf)){
+		fprintf(stderr,"ERROR: failed to start MPU DMP\n");
+		return -1;
+	}
+
 	// final setup
 	if(rc_make_pid_file()!=0){
 		FAIL("ERROR: failed to make a PID file\n")
@@ -288,11 +289,16 @@ int main(int argc, char *argv[])
 
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
-	printf("setting callback function\n");
-	rc_mpu_set_dmp_callback(&__imu_isr);
+	printf("waiting for dmp to settle...\n");
+	fflush(stdout);
+	rc_usleep(3000000);
+	if(rc_mpu_set_dmp_callback(__imu_isr)!=0){
+		FAIL("ERROR: failed to set dmp callback function\n")
+	}
 
 	// start printf_thread if running from a terminal
-	// if it was started as a background process then don't bother
+	// if it was started as a background process then don't bother	
+	
 	if(isatty(fileno(stdout))){
 		printf("initializing printf manager\n");
 		if(printf_init()<0){
@@ -300,21 +306,21 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
 	// set state to running and chill until something exits the program
 	rc_set_state(RUNNING);
 	while(rc_get_state()!=EXITING){
-		usleep(500000);
+		usleep(50000);
 	}
 
 	// some of these, like printf_manager and log_manager, have cleanup
 	// functions that can be called even if not being used. So just call all
 	// cleanup functions here.
 	printf("cleaning up\n");
-	printf_cleanup();
+	rc_mpu_power_off();
 	feedback_cleanup();
-	setpoint_manager_cleanup();
 	input_manager_cleanup();
+	setpoint_manager_cleanup();
+	printf_cleanup();
 	log_manager_cleanup();
 
 	// turn off red LED and blink green to say shut down was safe

@@ -97,7 +97,6 @@ static void __imu_march(void)
 	// generate tait bryan angles
 	rc_quaternion_to_tb_array(state_estimate.quat_imu, state_estimate.tb_imu);
 
-	fprintf(stderr,"roll: %f\n",state_estimate.tb_imu[0]);
 	// yaw is more annoying since we have to detect spins
 	// also make sign negative since NED coordinates has Z point down
 	diff = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI) - last_yaw;
@@ -251,9 +250,7 @@ static void __altitude_march(void)
 	for(i=0;i<3;i++) accel_vec[i] = state_estimate.accel_relative[i];
 
 	// rotate accel vector
-	// (PG) TODO: This intends to rotate the acceleration vector to the vehicle frame?
-	// 			Needs to know what the IMU orientation on the vehicle is and what quaternion that corresponds to
-	//rc_quaternion_rotate_vector_array(accel_vec, settings.quat_imu);
+	rc_quaternion_rotate_vector_array(accel_vec, mpu_data.dmp_quat);
 
 	// do first-run filter setup
 	if(alt_kf.step==0){
@@ -339,7 +336,7 @@ int state_estimator_march(void)
 	__mag_march();
 	__altitude_march();
 	__feedback_select();
-	//__mocap_check_timeout();
+	__mocap_check_timeout();
 	return 0;
 }
 

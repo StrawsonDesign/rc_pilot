@@ -61,7 +61,7 @@ static int __print_header()
 		printf("  arm   |");
 	}
 	if(settings.printf_altitude){
-		printf("%salt(m)|altdot|", __next_colour());
+		printf("%s alt(m) |altdot|", __next_colour());
 	}
 	if(settings.printf_rpy){
 		printf("%s roll|pitch| yaw |", __next_colour());
@@ -129,9 +129,9 @@ static void* __printf_manager_func(__attribute__ ((unused)) void* ptr)
 			printf(KCYN);
 			printf("%s%+5.2f|%+5.2f|%+5.2f|",
 							__next_colour(),\
-							state_estimate.tb_imu[0],\
-							state_estimate.tb_imu[1],\
-							state_estimate.tb_imu[2]);
+							state_estimate.roll,\
+							state_estimate.pitch,\
+							state_estimate.continuous_yaw);
 		}
 		if(settings.printf_sticks){
 			if(user_input.requested_arm_mode==ARMED)

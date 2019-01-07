@@ -20,7 +20,11 @@ typedef enum arm_state_t{
 #define FEEDBACK_HZ		100
 #define DT			0.01
 
+//IMU Parameters
 #define IMU_PRIORITY    51
+#define I2C_BUS 2
+#define GPIO_INT_PIN_CHIP 3
+#define GPIO_INT_PIN_PIN  21
 
 // top safety
 #define ARM_TIP_THRESHOLD	0.2	///< radians from level to allow arming sequence
