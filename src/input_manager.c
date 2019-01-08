@@ -15,6 +15,7 @@
 
 #include <input_manager.h>
 #include <settings.h>
+#include <state_estimator.h>
 #include <rc_pilot_defs.h>
 #include <thread_defs.h>
 
@@ -57,7 +58,7 @@ ARM_SEQUENCE_START:
 		if(rc_get_state()==EXITING) return 0;
 	}
 	// wait for level
-	while(fabs(fstate.roll)>ARM_TIP_THRESHOLD||fabs(fstate.pitch)>ARM_TIP_THRESHOLD){
+	while(fabs(state_estimate.roll)>ARM_TIP_THRESHOLD||fabs(state_estimate.pitch)>ARM_TIP_THRESHOLD){
 		rc_usleep(100000);
 		if(rc_get_state()==EXITING) return 0;
 	}
@@ -81,7 +82,7 @@ ARM_SEQUENCE_START:
 
 	// final check of kill switch and level before arming
 	if(kill_switch==DISARMED) goto ARM_SEQUENCE_START;
-	if(fabs(fstate.roll)>ARM_TIP_THRESHOLD||fabs(fstate.pitch)>ARM_TIP_THRESHOLD){
+	if(fabs(state_estimate.roll)>ARM_TIP_THRESHOLD||fabs(state_estimate.pitch)>ARM_TIP_THRESHOLD){
 		goto ARM_SEQUENCE_START;
 	}
 	return 0;

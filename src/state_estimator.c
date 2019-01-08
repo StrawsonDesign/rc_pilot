@@ -8,6 +8,7 @@
 #include <rc/math/filter.h>
 #include <rc/math/kalman.h>
 #include <rc/math/quaternion.h>
+#include <rc/math/matrix.h>
 #include <rc/math/other.h>
 #include <rc/start_stop.h>
 #include <rc/led.h>
@@ -25,7 +26,7 @@
 state_estimate_t state_estimate; // extern variable in state_estimator.h
 
 // sensor data structs
-static rc_mpu_data_t mpu_data;
+rc_mpu_data_t mpu_data;
 static rc_bmp_data_t bmp_data;
 
 // battery filter
@@ -47,6 +48,7 @@ static void __batt_init(void)
 			fprintf(stderr, "WARNING: ADC read %0.1fV on the barrel jack. Please connect\n");
 			fprintf(stderr, "battery to barrel jack, assuming nominal voltage for now.\n");
 		}
+	}
 	rc_filter_prefill_inputs(&batt_lp, tmp);
 	rc_filter_prefill_outputs(&batt_lp, tmp);
 	return;
@@ -65,7 +67,7 @@ static void __batt_march(void)
 static void __batt_cleanup(void)
 {
 	rc_filter_free(&batt_lp);
-	return
+	return;
 }
 
 
@@ -103,8 +105,8 @@ static void __imu_march(void)
 	else if(diff > M_PI) num_yaw_spins--;
 
 	// finally the new value can be written
-	state_estimate.continuous_yaw = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
-	last_yaw = state_estimate.continuous_yaw;
+	state_estimate.imu_continuous_yaw = state_estimate.tb_imu[2] + (num_yaw_spins * TWO_PI);
+	last_yaw = state_estimate.imu_continuous_yaw;
 	return;
 }
 
@@ -146,7 +148,7 @@ static void __mag_march(void)
 
 	// finally the new value can be written
 	state_estimate.mag_heading_continuous = state_estimate.tb_mag[2] + (num_yaw_spins * TWO_PI);
-	last_yaw = state_estimate.continuous_yaw;
+	last_yaw = state_estimate.mag_heading_continuous;
 	return;
 }
 
@@ -159,16 +161,16 @@ static void __mag_march(void)
 static int __altitude_init(void)
 {
 	//initialize altitude kalman filter and bmp sensor
-	rc_matrix_t F	= RC_MATIX_INITIALIZER;
-	rc_matrix_t G	= RC_MATIX_INITIALIZER;
-	rc_matrix_t H	= RC_MATIX_INITIALIZER;
-	rc_matrix_t Q	= RC_MATIX_INITIALIZER;
-	rc_matrix_t R	= RC_MATIX_INITIALIZER;
-	rc_matrix_t Pi	= RC_MATIX_INITIALIZER;
+    rc_matrix_t F = RC_MATRIX_INITIALIZER;
+    rc_matrix_t G = RC_MATRIX_INITIALIZER;
+    rc_matrix_t H = RC_MATRIX_INITIALIZER;
+    rc_matrix_t Q = RC_MATRIX_INITIALIZER;
+    rc_matrix_t R = RC_MATRIX_INITIALIZER;
+    rc_matrix_t Pi = RC_MATRIX_INITIALIZER;
 
-	int Nx = 3;
-	int Ny = 1;
-	int Nu = 1;
+	const int Nx = 3;
+	const int Ny = 1;
+	const int Nu = 1;
 
 	// allocate appropirate memory for system
 	rc_matrix_zeros(&F, Nx, Nx);
@@ -180,17 +182,17 @@ static int __altitude_init(void)
 
 	// define system -DT; // accel bias
 	F.d[0][0] = 1.0;
-	F.d[0][1] = dt;
+	F.d[0][1] = DT;
 	F.d[0][2] = 0.0;
 	F.d[1][0] = 0.0;
 	F.d[1][1] = 1.0;
-	F.d[1][2] = -dt; // subtract accel bias
+	F.d[1][2] = -DT; // subtract accel bias
 	F.d[2][0] = 0.0;
 	F.d[2][1] = 0.0;
 	F.d[2][2] = 1.0; // accel bias state
 
-	G.d[0][0] = 0.5*dt*dt;
-	G.d[0][1] = dt;
+	G.d[0][0] = 0.5*DT*DT;
+	G.d[0][1] = DT;
 	G.d[0][2] = 0.0;
 
 	H.d[0][0] = 1.0;
@@ -224,7 +226,7 @@ static int __altitude_init(void)
 	rc_matrix_free(&Pi);
 
 	// initialize the little LP filter to take out accel noise
-	if(rc_filter_first_order_lowpass(&acc_lp, dt, 20*dt)) return -1;
+	if(rc_filter_first_order_lowpass(&acc_lp, DT, 20*DT)) return -1;
 
 	// init barometer and read in first data
 	if(rc_bmp_read(&bmp_data)) return -1;
@@ -245,16 +247,16 @@ static void __altitude_march(void)
 	state_estimate.bmp_temp = bmp_data.temp_c;
 
 	// make copy of acceleration reading before rotating
-	for(i=0;i<3;i++) accel_vec[i]=settings.accel[i];
+	for(i=0;i<3;i++) accel_vec[i] = state_estimate.accel[i];
 
 	// rotate accel vector
-	rc_quaternion_rotate_vector_array(accel_vec, settings.quat_imu);
+	rc_quaternion_rotate_vector_array(accel_vec, state_estimate.quat_imu);
 
 	// do first-run filter setup
 	if(alt_kf.step==0){
-		rc_vector_alloc(&u,1);
-		rc_vector_alloc(&y,1);
-		alt_kf.x_est.d[0] = bmp_data.alt_m;
+        rc_vector_zeros(&u, 1);
+        rc_vector_zeros(&y, 1);
+		alt_kf.x_est.d[0] = -bmp_data.alt_m;
 		rc_filter_prefill_inputs(&acc_lp, accel_vec[2]+GRAVITY);
 		rc_filter_prefill_outputs(&acc_lp, accel_vec[2]+GRAVITY);
 	}
@@ -262,21 +264,32 @@ static void __altitude_march(void)
 	// calculate acceleration and smooth it just a tad
 	// put result in u for kalman and flip sign since with altitude, positive
 	// is up whereas acceleration in Z points down.
-	u.d[0] = -rc_filter_march(&acc_lp, accel_vec[2]+GRAVITY);
+	rc_filter_march(&acc_lp, accel_vec[2]+GRAVITY);
+	u.d[0] = acc_lp.newest_output;
 
 	// don't bother filtering Barometer, kalman will deal with that
-	y.d[0] = bmp_data.alt_m;
+	y.d[0] = -bmp_data.alt_m;
 
 	rc_kalman_update_lin(&alt_kf, u, y);
 
 	// altitude estimate
 	state_estimate.alt_bmp		= alt_kf.x_est.d[0];
 	state_estimate.alt_bmp_vel	= alt_kf.x_est.d[1];
-	state_estimate.alt_bmp_accel	= alt_kf.x_est.d[2];
+	state_estimate.alt_bmp_accel= alt_kf.x_est.d[2];
 
 	return;
 }
 
+static void __feedback_select(void)
+{
+	state_estimate.roll = state_estimate.tb_imu[0];
+	state_estimate.pitch = state_estimate.tb_imu[1];
+	state_estimate.yaw = state_estimate.tb_imu[2];
+	state_estimate.continuous_yaw = state_estimate.imu_continuous_yaw;
+	state_estimate.X = state_estimate.pos_mocap[0];
+	state_estimate.Y = state_estimate.pos_mocap[1];
+	state_estimate.Z = state_estimate.alt_bmp;
+}
 
 static void __altitude_cleanup(void)
 {
@@ -289,10 +302,10 @@ static void __altitude_cleanup(void)
 
 static void __mocap_check_timeout(void)
 {
-	if(settings.mocap_running){
+	if(state_estimate.mocap_running){
 		uint64_t current_time = rc_nanos_since_boot();
 		// check if mocap data is > 3 steps old
-		if((current_time-mocap_timestamp_ns) > (3*1000000000*DT)){
+		if((current_time-state_estimate.mocap_timestamp_ns) > (3*1E7)){
 			state_estimate.mocap_running = 0;
 			if(settings.warnings_en){
 				fprintf(stderr,"WARNING, MOCAP LOST VISUAL\n");
@@ -307,6 +320,7 @@ int state_estimator_init(void)
 {
 	__batt_init();
 	if(__altitude_init()) return -1;
+	state_estimate.initialized = 1;
 	return 0;
 }
 
@@ -322,12 +336,13 @@ int state_estimator_march(void)
 	__imu_march();
 	__mag_march();
 	__altitude_march();
+	__feedback_select();
 	__mocap_check_timeout();
 	return 0;
 }
 
 
-void state_estimator_jobs_after_feedback(void)
+int state_estimator_jobs_after_feedback(void)
 {
 	static int bmp_sample_counter = 0;
 
@@ -338,13 +353,13 @@ void state_estimator_jobs_after_feedback(void)
 		bmp_sample_counter=0;
 	}
 	bmp_sample_counter++;
-	return;
+	return 0;
 }
 
 
-void state_estimator_cleanup(void)
+int state_estimator_cleanup(void)
 {
 	__batt_cleanup();
 	__altitude_cleanup();
-	return;
+	return 0;
 }

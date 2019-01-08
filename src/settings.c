@@ -125,10 +125,10 @@ if(json_object_object_get_ex(jobj, #name, &tmp)==0){\
 	fprintf(stderr,"ERROR: can't find " #name " in settings file\n");\
 	return -1;\
 }\
-if(__parse_controller(tmp, &settings.#name)){\
+if(__parse_controller(tmp, &settings.name)){\
 	fprintf(stderr,"ERROR: could not parse " #name "\n");\
 	return -1;\
-}
+}\
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,6 +177,7 @@ static int __parse_layout(void)
 		fprintf(stderr,"ERROR: invalid layout string\n");
 		return -1;
 	}
+	return 0;
 }
 
 
@@ -209,6 +210,7 @@ static int __parse_thrust_map(void)
 		fprintf(stderr,"ERROR: invalid thrust_map string\n");
 		return -1;
 	}
+	return 0;
 }
 
 
@@ -247,11 +249,17 @@ static int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 	else if(strcmp(tmp_str, "ALT_HOLD_6DOF")==0){
 		*mode = ALT_HOLD_6DOF;
 	}
-	else if(strcmp(tmp_str, "VELOCITY_CONTOL_4DOF")==0){
-		*mode = VELOCITY_CONTOL_4DOF;
+	else if(strcmp(tmp_str, "VELOCITY_CONTROL_4DOF")==0){
+		*mode = VELOCITY_CONTROL_4DOF;
 	}
-	else if(strcmp(tmp_str, "VELOCITY_CONTOL_6DOF")==0){
-		*mode = VELOCITY_CONTOL_6DOF;
+	else if(strcmp(tmp_str, "VELOCITY_CONTROL_6DOF")==0){
+		*mode = VELOCITY_CONTROL_6DOF;
+	}
+	else if(strcmp(tmp_str, "POSITION_CONTROL_4DOF")==0){
+		*mode = POSITION_CONTROL_4DOF;
+	}
+	else if(strcmp(tmp_str, "POSITION_CONTROL_6DOF")==0){
+		*mode = POSITION_CONTROL_6DOF;
 	}
 	else{
 		fprintf(stderr,"ERROR: invalid flight mode\n");
@@ -285,6 +293,7 @@ static int __parse_kill_mode(void)
 		fprintf(stderr,"ERROR: invalid dsm_kill_mode string\n");
 		return -1;
 	}
+	return 0;
 }
 
 
@@ -416,7 +425,7 @@ static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
 				return -1;
 			}
 			tmp_flt = json_object_get_double(tmp);
-			if(rc_filter_c2d_tustin(filter,dt, num_vec, den_vec, tmp_flt)){
+			if(rc_filter_c2d_tustin(filter, DT, num_vec, den_vec, tmp_flt)){
 				fprintf(stderr,"ERROR: failed to c2dtustin while parsing json\n");
 				return -1;
 			}
@@ -465,11 +474,15 @@ static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
 			return -1;
 		}
 		tmp_flt = json_object_get_double(tmp);
-		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt,DT)){
+		if(rc_filter_pid(filter,tmp_kp,tmp_ki,tmp_kd,1.0/tmp_flt, DT)){
 				fprintf(stderr,"ERROR: failed to alloc pid filter in __parse_controller()");
 				return -1;
 			}
 	}
+
+	#ifdef DEBUG
+	rc_filter_print(*filter);
+	#endif
 
 	rc_vector_free(&num_vec);
 	rc_vector_free(&den_vec);
@@ -515,15 +528,31 @@ int settings_load_from_file(char* path)
 	#endif
 
 	// START PARSING
+
 	PARSE_STRING(name)
+	#ifdef DEBUG
+	fprintf(stderr,"name: %s\n",settings.name);
+	#endif
 	PARSE_BOOL(warnings_en)
+	#ifdef DEBUG
+	fprintf(stderr,"warnings: %d\n",settings.warnings_en);
+	#endif
 
 
 	// PHYSICAL PARAMETERS
 	// layout populates num_rotors, layout, and dof
 	if(__parse_layout()==-1) return -1; // parse_layout also fill in num_rotors and dof
+	#ifdef DEBUG
+	fprintf(stderr,"layout:%d,%d\n",settings.layout,settings.num_rotors);
+	#endif
 	if(__parse_thrust_map()==-1) return -1;
+	#ifdef DEBUG
+	fprintf(stderr,"thrust_map: %d\n",settings.thrust_map);
+	#endif
 	PARSE_DOUBLE_MIN_MAX(v_nominal,7.0,18.0)
+	#ifdef DEBUG
+	fprintf(stderr,"v_nominal: %f\n",settings.v_nominal);
+	#endif
 	PARSE_BOOL(enable_magnetometer)
 
 
@@ -534,16 +563,25 @@ int settings_load_from_file(char* path)
 		return -1;
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_1)) return -1;
+	#ifdef DEBUG
+	fprintf(stderr,"flight_mode_1: %d\n",settings.flight_mode_1);
+	#endif
 	if(json_object_object_get_ex(jobj, "flight_mode_2", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_2 in settings file\n");
 		return -1;
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_2)) return -1;
+	#ifdef DEBUG
+	fprintf(stderr,"flight_mode_2: %d\n",settings.flight_mode_2);
+	#endif
 	if(json_object_object_get_ex(jobj, "flight_mode_3", &tmp)==0){
 		fprintf(stderr,"ERROR: can't find flight_mode_3 in settings file\n");
 		return -1;
 	}
 	if(__parse_flight_mode(tmp, &settings.flight_mode_3)) return -1;
+	#ifdef DEBUG
+	fprintf(stderr,"flight_mode_3: %d\n",settings.flight_mode_3);
+	#endif
 
 	// DSM RADIO CONFIG
 	PARSE_INT_MIN_MAX(dsm_thr_ch,1,9)
@@ -557,6 +595,9 @@ int settings_load_from_file(char* path)
 	PARSE_INT_MIN_MAX(dsm_mode_ch,1,9)
 	PARSE_POLARITY(dsm_mode_pol)
 	if(__parse_kill_mode()==-1) return -1;
+	#ifdef DEBUG
+	fprintf(stderr,"kill_mode: %d\n",settings.dsm_kill_mode);
+	#endif
 	PARSE_INT_MIN_MAX(dsm_kill_ch,1,9)
 	PARSE_POLARITY(dsm_kill_pol)
 
@@ -584,14 +625,14 @@ int settings_load_from_file(char* path)
 	PARSE_INT(mav_port)
 
 	// FEEDBACK CONTROLLERS
-	PARSE_CONTOLLER(roll_controller)
-	PARSE_CONTOLLER(pitch_controller)
-	PARSE_CONTOLLER(yaw_controller)
-	PARSE_CONTOLLER(altitude_controller)
-	PARSE_CONTOLLER(horiz_vel_ctrl_4dof)
-	PARSE_CONTOLLER(horiz_vel_ctrl_6dof)
-	PARSE_CONTOLLER(horiz_pos_ctrl_4dof)
-	PARSE_CONTOLLER(horiz_pos_ctrl_6dof)
+	PARSE_CONTROLLER(roll_controller)
+	PARSE_CONTROLLER(pitch_controller)
+	PARSE_CONTROLLER(yaw_controller)
+	PARSE_CONTROLLER(altitude_controller)
+	PARSE_CONTROLLER(horiz_vel_ctrl_4dof)
+	PARSE_CONTROLLER(horiz_vel_ctrl_6dof)
+	PARSE_CONTROLLER(horiz_pos_ctrl_4dof)
+	PARSE_CONTROLLER(horiz_pos_ctrl_6dof)
 	PARSE_DOUBLE_MIN_MAX(max_XY_velocity, .1, 10)
 	PARSE_DOUBLE_MIN_MAX(max_Z_velocity, .1, 10)
 

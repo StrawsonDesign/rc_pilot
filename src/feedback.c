@@ -64,9 +64,10 @@ static int __send_motor_stop_pulse(void)
 static void __rpy_init(void)
 {
 	// get controllers from settings
+
 	rc_filter_duplicate(&D_roll,	settings.roll_controller);
 	rc_filter_duplicate(&D_pitch,	settings.pitch_controller);
-	rc_filter_duplicate(&D_yaw,	settings.yaw_controller);
+	rc_filter_duplicate(&D_yaw,	    settings.yaw_controller);
 
 	#ifdef DEBUG
 	printf("ROLL CONTROLLER:\n");
@@ -119,11 +120,13 @@ int feedback_arm(void)
 	fstate.loop_index = 0;
 	// when swapping from direct throttle to altitude control, the altitude
 	// controller needs to know the last throttle input for smooth transition
+	// TODO: Reinitialize altitude bias
 	//last_en_alt_ctrl = 0;
 	//last_usr_thr = MIN_Z_COMPONENT;
 	// yaw estimator can be zero'd too
-	num_yaw_spins = 0;
-	last_yaw = -mpu_data.fused_TaitBryan[TB_YAW_Z]; // minus because NED coordinates
+	// TODO: Reinitialize yaw estimate
+	//num_yaw_spins = 0;
+	//last_yaw = -mpu_data.fused_TaitBryan[TB_YAW_Z]; // minus because NED coordinates
 	// zero out all filters
 	rc_filter_reset(&D_roll);
 	rc_filter_reset(&D_pitch);
@@ -131,8 +134,8 @@ int feedback_arm(void)
 	rc_filter_reset(&D_Z);
 
 	// prefill filters with current error
-	rc_filter_prefill_inputs(&D_roll, -fstate.roll);
-	rc_filter_prefill_inputs(&D_pitch, -fstate.pitch);
+	rc_filter_prefill_inputs(&D_roll, -state_estimate.roll);
+	rc_filter_prefill_inputs(&D_pitch, -state_estimate.pitch);
 	// set LEDs
 	rc_led_set(RC_LED_RED,0);
 	rc_led_set(RC_LED_GREEN,1);
@@ -147,6 +150,7 @@ int feedback_init(void)
 {
 	double tmp;
 
+	__rpy_init();
 
 	rc_filter_duplicate(&D_Z,	settings.altitude_controller);
 	rc_filter_duplicate(&D_Xdot_4,	settings.horiz_vel_ctrl_4dof);
@@ -164,18 +168,10 @@ int feedback_init(void)
 	rc_filter_print(D_Z);
 	#endif
 
-
 	D_Z_gain_orig = D_Z.gain;
 
-
-
 	rc_filter_enable_saturation(&D_Z, -1.0, 1.0);
-
-
 	rc_filter_enable_soft_start(&D_Z, SOFT_START_SECONDS);
-
-
-
 	// make sure everything is disarmed them start the ISR
 	feedback_disarm();
 	fstate.initialized=1;
@@ -194,6 +190,7 @@ int feedback_march(void)
 	double tmp, min, max;
 	double u[6], mot[8];
 	log_entry_t new_log;
+	static int last_en_Z_ctrl = 0;
 
 	// Disarm if rc_state is somehow paused without disarming the controller.
 	// This shouldn't happen if other threads are working properly.
@@ -202,7 +199,7 @@ int feedback_march(void)
 	}
 
 	// check for a tipover
-	if(fabs(fstate.roll)>TIP_ANGLE || fabs(fstate.pitch)>TIP_ANGLE){
+	if(fabs(state_estimate.roll)>TIP_ANGLE || fabs(state_estimate.pitch)>TIP_ANGLE){
 		feedback_disarm();
 		printf("\n TIPOVER DETECTED \n");
 	}
@@ -225,33 +222,33 @@ int feedback_march(void)
 	* If transitioning from direct throttle to altitude control, prefill the
 	* filter with current throttle input to make smooth transition. This is also
 	* true if taking off for the first time in altitude mode as arm_controller
-	* sets up last_en_alt_ctrl and last_usr_thr every time controller arms
+	* sets up last_en_Z_ctrl and last_usr_thr every time controller arms
 	***************************************************************************/
 	// run altitude controller if enabled
 	// this needs work...
 	// we need to:
 	//		find hover thrust and correct from there
 	//		this code does not work a.t.m.
-	if(setpoint.en_alt_ctrl){
-		if(last_en_alt_ctrl == 0){
-			setpoint.altitude = fstate.altitude_kf; // set altitude setpoint to current altitude
+	if(setpoint.en_Z_ctrl){
+		if(last_en_Z_ctrl == 0){
+			setpoint.Z = state_estimate.alt_bmp; // set altitude setpoint to current altitude
 			rc_filter_reset(&D_Z);
-			tmp = -setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
+			tmp = -setpoint.Z_throttle / (cos(state_estimate.roll)*cos(state_estimate.pitch));
 			rc_filter_prefill_outputs(&D_Z, tmp);
-			last_en_alt_ctrl = 1;
+			last_en_Z_ctrl = 1;
 		}
-		D_Z.gain = D_Z_gain_orig * settings.v_nominal/fstate.v_batt;
-		tmp = rc_filter_march(&D_Z, -setpoint.altitude+fstate.altitude_kf); //altitude is positive but +Z is down
+		D_Z.gain = D_Z_gain_orig * settings.v_nominal/state_estimate.v_batt_lp;
+		tmp = rc_filter_march(&D_Z, -setpoint.Z+state_estimate.alt_bmp); //altitude is positive but +Z is down
 		rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
-		u[VEC_Z] = tmp / cos(fstate.roll)*cos(fstate.pitch);
+		u[VEC_Z] = tmp / cos(state_estimate.roll)*cos(state_estimate.pitch);
 		mix_add_input(u[VEC_Z], VEC_Z, mot);
-		last_en_alt_ctrl = 1;
+		last_en_Z_ctrl = 1;
 	}
 	// else use direct throttle
 	else{
 
 		// compensate for tilt
-		tmp = setpoint.Z_throttle / (cos(fstate.roll)*cos(fstate.pitch));
+		tmp = setpoint.Z_throttle / (cos(state_estimate.roll)*cos(state_estimate.pitch));
 		//printf("throttle: %f\n",tmp);
 		rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
 		u[VEC_Z] = tmp;
@@ -267,8 +264,8 @@ int feedback_march(void)
 		if(max>MAX_ROLL_COMPONENT)  max =  MAX_ROLL_COMPONENT;
 		if(min<-MAX_ROLL_COMPONENT) min = -MAX_ROLL_COMPONENT;
 		rc_filter_enable_saturation(&D_roll, min, max);
-		D_roll.gain = D_roll_gain_orig * settings.v_nominal/fstate.v_batt;
-		u[VEC_ROLL] = rc_filter_march(&D_roll, setpoint.roll - fstate.roll);
+		D_roll.gain = D_roll_gain_orig * settings.v_nominal/state_estimate.v_batt_lp;
+		u[VEC_ROLL] = rc_filter_march(&D_roll, setpoint.roll - state_estimate.roll);
 		mix_add_input(u[VEC_ROLL], VEC_ROLL, mot);
 
 		// pitch
@@ -276,8 +273,8 @@ int feedback_march(void)
 		if(max>MAX_PITCH_COMPONENT)  max =  MAX_PITCH_COMPONENT;
 		if(min<-MAX_PITCH_COMPONENT) min = -MAX_PITCH_COMPONENT;
 		rc_filter_enable_saturation(&D_pitch, min, max);
-		D_pitch.gain = D_pitch_gain_orig * settings.v_nominal/fstate.v_batt;
-		u[VEC_PITCH] = rc_filter_march(&D_pitch, setpoint.pitch - fstate.pitch);
+		D_pitch.gain = D_pitch_gain_orig * settings.v_nominal/state_estimate.v_batt_lp;
+		u[VEC_PITCH] = rc_filter_march(&D_pitch, setpoint.pitch - state_estimate.pitch);
 		mix_add_input(u[VEC_PITCH], VEC_PITCH, mot);
 
 		// Yaw
@@ -287,8 +284,8 @@ int feedback_march(void)
 		if(max>MAX_YAW_COMPONENT)  max =  MAX_YAW_COMPONENT;
 		if(min<-MAX_YAW_COMPONENT) min = -MAX_YAW_COMPONENT;
 		rc_filter_enable_saturation(&D_yaw, min, max);
-		D_yaw.gain = D_yaw_gain_orig * settings.v_nominal/fstate.v_batt;
-		u[VEC_YAW] = rc_filter_march(&D_yaw, setpoint.yaw - fstate.yaw);
+		D_yaw.gain = D_yaw_gain_orig * settings.v_nominal/state_estimate.v_batt_lp;
+		u[VEC_YAW] = rc_filter_march(&D_yaw, setpoint.yaw - state_estimate.yaw);
 		mix_add_input(u[VEC_YAW], VEC_YAW, mot);
 	}
 	// otherwise direct throttle to roll pitch yaw
@@ -346,7 +343,7 @@ int feedback_march(void)
 
 		// NO NO NO this undoes all the fancy mixing-based saturation
 		// done above, idle should be done with MAX_THRUST_COMPONENT instead
-		//rc_saturate_double(&fstate.m[i], MOTOR_IDLE_CMD, 1.0);
+		// rc_saturate_double(&fstate.m[i], MOTOR_IDLE_CMD, 1.0);
 
 
 		// final saturation just to take care of possible rounding errors

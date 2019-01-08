@@ -13,6 +13,7 @@
 
 #include <stdint.h> // for uint64_t
 #include <rc_pilot_defs.h>
+ #include <rc/mpu.h>
 
 /**
  * This is the output from the state estimator. It contains raw sensor values
@@ -29,6 +30,8 @@
  */
 typedef struct state_estimate_t{
 
+	int initialized;
+
 	/** @name IMU (accel gyro)
 	 * Normalized Quaternion is straight from the DMP but converted to NED
 	 * coordinates. Tait-Bryan angles roll pitch and yaw angles are then
@@ -44,7 +47,7 @@ typedef struct state_estimate_t{
 	double accel[3];	///< accel XYZ NED coordinates (m/s^2)
 	double quat_imu[4];	///< DMP normalized quaternion
 	double tb_imu[3];	///< tait bryan roll pitch yaw angle (rad)
-	double continuous_yaw;	///< tb_imu[2] but keeps increasing/decreasing aboce +-2pi
+	double imu_continuous_yaw; ///< continuous yaw from imu only (multiple turns)
 	///@}
 
 	/** @name IMU (magnetometer)
@@ -59,6 +62,21 @@ typedef struct state_estimate_t{
 	double quat_mag[4];	///< quaterion filtered
 	double tb_mag[3];	///< roll pitch yaw with magetometer heading fixed (rad)
 	///@}
+
+	/** @name selected values for feedback
+	* these are copoies of other values in this state estimate used for feedback
+	* this is done so we can easily chose which source to get feedback from (mag or no mag)
+	*/
+	///@{
+	double roll;
+	double pitch;
+	double yaw;
+	double continuous_yaw;	///<  keeps increasing/decreasing aboce +-2pi
+	double X;
+	double Y;
+	double Z;
+	///@}
+
 
 	/** @name filtered data from IMU & barometer
 	 * Altitude estimates from kalman filter fusing IMU and BMP data.
@@ -84,6 +102,7 @@ typedef struct state_estimate_t{
 	double pos_mocap[3];	///< position in mocap frame, converted to NED if necessary
 	double quat_mocap[4];	///< UAV orientation according to mocap
 	double tb_mocap[3];	///< Tait-Bryan angles according to mocap
+	int is_active;  ///< TODO used by mavlink manager, purpose unclear... (pg)
 	///@}
 
 	/** @name Global Position Estimate
@@ -116,6 +135,7 @@ typedef struct state_estimate_t{
 }state_estimate_t;
 
 extern state_estimate_t state_estimate;
+extern rc_mpu_data_t mpu_data;
 
 
 

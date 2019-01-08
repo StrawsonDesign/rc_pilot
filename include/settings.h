@@ -106,8 +106,8 @@ typedef struct settings_t{
 	rc_filter_t horiz_vel_ctrl_6dof;
 	rc_filter_t horiz_pos_ctrl_4dof;
 	rc_filter_t horiz_pos_ctrl_6dof;
-	max_XY_velocity;
-	max_Z_velocity;
+	double max_XY_velocity;
+	double max_Z_velocity;
 	///@}
 
 }settings_t;
