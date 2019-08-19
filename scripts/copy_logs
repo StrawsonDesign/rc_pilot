@@ -1,0 +1,30 @@
+#!/bin/bash
+
+main(){
+	if [ $# -eq 1 ]; then
+		if [ $1 = usb ]; then
+			LOC=debian@192.168.6.2
+		elif [ $1 = wifi ]; then
+			LOC=debian@192.168.8.1
+		else
+			usage_error
+		fi
+	else
+		usage_error
+	fi
+
+	SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+	LOG_FILE=$SCRIPT_DIR/../../flight_logs/flight_logs_$(date +%F_%H%M%S)
+
+	mkdir -p $LOG_FILE 
+
+	rsync -avzh --progress $LOC:/home/debian/rc_pilot_logs/ $LOG_FILE 
+}
+
+usage_error(){
+	echo "ERROR: Please specify beaglebone connection"
+	echo "Usage: ./transfer_rcpilot [usb|wifi]"
+	exit 1
+}
+
+main "$@"
