@@ -217,7 +217,7 @@ void dsm_disconnect_callback(void)
     fprintf(stderr, "LOST DSM CONNECTION\n");
 }
 
-void* input_manager(void* ptr)
+void* input_manager(__attribute__((unused)) void* ptr)
 {
     user_input.initialized = 1;
     // wait for first packet

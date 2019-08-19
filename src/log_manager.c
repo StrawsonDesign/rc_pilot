@@ -109,8 +109,8 @@ static int __write_log_entry(FILE* fd, log_entry_t e)
 
     if (settings.log_control_u)
     {
-        fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F,%.4F", e.u_roll, e.u_pitch, e.u_yaw,
-            e.u_X, e.u_Y, e.u_Z);
+        fprintf(fd, ",%.4F,%.4F,%.4F,%.4F,%.4F,%.4F", e.u_roll, e.u_pitch, e.u_yaw, e.u_X, e.u_Y,
+            e.u_Z);
     }
 
     if (settings.log_motor_signals && settings.num_rotors == 8)
