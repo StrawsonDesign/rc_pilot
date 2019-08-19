@@ -15,24 +15,25 @@
 #ifndef FEEDBACK_H
 #define FEEDBACK_H
 
-#include <stdint.h> // for uint64_t
 #include <rc_pilot_defs.h>
+#include <stdint.h>  // for uint64_t
 
 /**
  * This is the state of the feedback loop. contains most recent values
  * reported by the feedback controller. Should only be written to by the
  * feedback controller after initialization.
  */
-typedef struct feedback_state_t{
-	int initialized;	///< set to 1 after feedback_init(void)
-	arm_state_t arm_state;	///< actual arm state as reported by feedback controller
-	uint64_t arm_time_ns;	///< time since boot when controller was armed
-	uint64_t loop_index;	///< increases every time feedback loop runs
-	uint64_t last_step_ns;	///< last time controller has finished a step
+typedef struct feedback_state_t
+{
+    int initialized;        ///< set to 1 after feedback_init(void)
+    arm_state_t arm_state;  ///< actual arm state as reported by feedback controller
+    uint64_t arm_time_ns;   ///< time since boot when controller was armed
+    uint64_t loop_index;    ///< increases every time feedback loop runs
+    uint64_t last_step_ns;  ///< last time controller has finished a step
 
-	double u[6];		///< siso controller outputs
-	double m[8];		///< signals sent to motors after mapping
-}feedback_state_t;
+    double u[6];  ///< siso controller outputs
+    double m[8];  ///< signals sent to motors after mapping
+} feedback_state_t;
 
 extern feedback_state_t fstate;
 
@@ -46,7 +47,6 @@ extern feedback_state_t fstate;
  * @return     0 on success, -1 on failure
  */
 int feedback_init(void);
-
 
 /**
  * @brief      marches feedback controller forward one step
@@ -78,7 +78,6 @@ int feedback_disarm(void);
  */
 int feedback_arm(void);
 
-
 /**
  * @brief      Cleanup the feedback controller, freeing memory
  *
@@ -86,10 +85,4 @@ int feedback_arm(void);
  */
 int feedback_cleanup(void);
 
-
-
-
-
-
-#endif // FEEDBACK_H
-
+#endif  // FEEDBACK_H

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+main() {
+	# Parse input to determine the destination IP
+	if [ $# -eq 1 ]; then
+		if [ $1 = usb ]; then
+			DEST=debian@192.168.6.2
+		elif [ $1 = wifi ]; then
+			DEST=debian@192.168.8.1
+		else
+			usage_error
+		fi
+	else
+		usage_error
+	fi
+
+	SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+	RC_PILOT_DIR=$SCRIPT_DIR/..
+	BBB_DEST=$DEST:/home/debian/rc_pilot/
+	TMP_FILE=/tmp/include_files
+
+	# Folders and files to transfer to the beaglebone
+	INCLUDE_FILES='include/ src/ Makefile settings/'
+
+	# Populates tmp_file with all of the files to send to the beaglebone
+	# (needed by the --include-from rsync flag)
+	find $INCLUDE_FILES > $TMP_FILE
+
+	# Set the date on the beaglebone to mach source computer, eliminates clock skew on make
+	DATE=$(date)
+	SET_DATE="echo 'temppwd' | sudo -S date -s ""'""$DATE""'"
+	ssh -t $DEST $SET_DATE
+
+	# Transfer the files to the beaglebone.  Performs archiving operation that only updates files
+	# that have newer changes on the tranfering computer.  Requires the date to be set properly for this
+	# to work.
+	rsync -avzh --include-from $TMP_FILE --exclude '*' --progress $RC_PILOT_DIR $BBB_DEST
+}
+
+function usage_error() {
+	echo "ERROR: Please specify beaglebone connection"
+	echo "Usage: ./transfer_rcpilot [usb|wifi]"
+	exit 1
+}
+
+main "$@"
