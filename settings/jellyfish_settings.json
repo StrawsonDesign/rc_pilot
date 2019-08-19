@@ -12,7 +12,7 @@
 
 	"num_dsm_modes": 2,
 	"flight_mode_1": "TEST_BENCH_4DOF",
-	"flight_mode_2": "AUTONOMOUS",
+	"flight_mode_2": "DIRECT_THROTTLE_4DOF",
 	"flight_mode_3": "DIRECT_THROTTLE_4DOF",
 
 	"dsm_thr_ch": 1,

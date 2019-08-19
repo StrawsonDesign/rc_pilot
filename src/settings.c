@@ -229,6 +229,10 @@ static int __parse_thrust_map(void)
     {
         settings.thrust_map = RX2206_4S;
     }
+    else if (strcmp(tmp_str, "AIR2213_3S") == 0)
+    {
+        settings.thrust_map = AIR2213_3S;
+    }
     else
     {
         fprintf(stderr, "ERROR: invalid thrust_map string\n");
