@@ -18,7 +18,8 @@ typedef enum thrust_map_t
     LINEAR_MAP,
     MN1806_1400KV_4S,
     F20_2300KV_2S,
-    RX2206_4S
+    RX2206_4S,
+    AIR2213_3S
 } thrust_map_t;
 
 /**
