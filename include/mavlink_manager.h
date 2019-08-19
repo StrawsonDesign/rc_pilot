@@ -7,7 +7,6 @@
 #ifndef MAVLINK_MANAGER_H
 #define MAVLINK_MANAGER_H
 
-
 /**
  * @brief      Starts the mavlink manager
  *
@@ -22,4 +21,4 @@ int mavlink_manager_init(void);
  */
 int mavlink_manager_cleanup(void);
 
-#endif // MAVLINK_MANAGER_H
+#endif  // MAVLINK_MANAGER_H

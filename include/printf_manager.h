@@ -5,7 +5,6 @@
  *             separate thread printing data to the console for debugging.
  */
 
-
 #ifndef PRINTF_MANAGER_H
 #define PRINTF_MANAGER_H
 
@@ -19,14 +18,12 @@
  */
 int printf_init(void);
 
-
 /**
  * @brief      Waits for the printf manager thread to exit.
  *
  * @return     0 on clean exit, -1 on exit time out/force close
  */
 int printf_cleanup(void);
-
 
 /**
  * @brief      Only used by printf_manager right now, but could be useful
@@ -38,6 +35,4 @@ int printf_cleanup(void);
  */
 int print_flight_mode(flight_mode_t mode);
 
-
-
-#endif //PRINTF_MANAGER_H
+#endif  // PRINTF_MANAGER_H
