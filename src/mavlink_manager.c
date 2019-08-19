@@ -64,11 +64,6 @@ static void __callback_func_mocap(void)
 
 int mavlink_manager_init(void)
 {
-    // set default options before checking options
-    const char* dest_ip = LOCALHOST_IP;
-    uint8_t my_sys_id = DEFAULT_SYS_ID;
-    uint16_t port = RC_MAV_DEFAULT_UDP_PORT;
-
     // initialize the UDP port and listening thread with the rc_mav lib
     if (rc_mav_init(settings.my_sys_id, settings.dest_ip, settings.mav_port,
             RC_MAV_DEFAULT_CONNECTION_TIMEOUT_US) < 0)

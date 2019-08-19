@@ -46,7 +46,8 @@ static void __batt_init(void)
         tmp = settings.v_nominal;
         if (settings.warnings_en)
         {
-            fprintf(stderr, "WARNING: ADC read %0.1fV on the barrel jack. Please connect\n");
+            fprintf(stderr, "WARNING: ADC read %0.1fV on the barrel jack. Please connect\n",
+                state_estimate.v_batt_lp);
             fprintf(stderr, "battery to barrel jack, assuming nominal voltage for now.\n");
         }
     }

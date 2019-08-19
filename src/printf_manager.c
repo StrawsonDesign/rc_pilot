@@ -120,9 +120,10 @@ static void* __printf_manager_func(__attribute__((unused)) void* ptr)
     while (rc_get_state() != EXITING)
     {
         // re-print header on disarming
-        // if(fstate.arm_state==DISARMED && prev_arm_state==ARMED){
-        //	__print_header();
-        //}
+        if (fstate.arm_state == DISARMED && prev_arm_state == ARMED)
+        {
+            __print_header();
+        }
 
         printf("\r");
         if (settings.printf_arm)

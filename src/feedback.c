@@ -145,8 +145,6 @@ int feedback_arm(void)
 
 int feedback_init(void)
 {
-    double tmp;
-
     __rpy_init();
 
     rc_filter_duplicate(&D_Z, settings.altitude_controller);
@@ -180,7 +178,6 @@ int feedback_march(void)
     int i;
     double tmp, min, max;
     double u[6], mot[8];
-    log_entry_t new_log;
     static int last_en_Z_ctrl = 0;
 
     // Disarm if rc_state is somehow paused without disarming the controller.
@@ -219,7 +216,7 @@ int feedback_march(void)
      ***************************************************************************/
     // run altitude controller if enabled
     // this needs work...
-    // we need to:
+    // we need to
     //		find hover thrust and correct from there
     //		this code does not work a.t.m.
     if (setpoint.en_Z_ctrl)
