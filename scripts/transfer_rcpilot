@@ -39,7 +39,7 @@ main() {
 
 function usage_error() {
 	echo "ERROR: Please specify beaglebone connection"
-	echo "Usage: ./transfer_rcpilot [usb|wifi|a2sys]"
+	echo "Usage: ./transfer_rcpilot [usb|wifi]"
 	exit 1
 }
 
