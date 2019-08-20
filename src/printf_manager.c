@@ -18,6 +18,7 @@
 #include <settings.h>
 #include <state_estimator.h>
 #include <thread_defs.h>
+#include <xbee_receive.h>
 
 static pthread_t printf_manager_thread;
 static int initialized = 0;
@@ -79,6 +80,10 @@ static int __print_header()
     {
         printf("%s U0X | U1Y | U2Z | U3r | U4p | U5y |", __next_colour());
     }
+    if (settings.printf_xbee)
+    {
+        printf("%s x_xb | y_xb | z_xb | qx_xb | qy_xb | qz_xb | qw_xb |", __next_colour());
+    }
     if (settings.printf_motors)
     {
         printf("%s", __next_colour());
@@ -129,9 +134,13 @@ static void* __printf_manager_func(__attribute__((unused)) void* ptr)
         if (settings.printf_arm)
         {
             if (fstate.arm_state == ARMED)
+            {
                 printf("%s ARMED %s |", KRED, KNRM);
+            }
             else
+            {
                 printf("%sDISARMED%s|", KGRN, KNRM);
+            }
         }
         __reset_colour();
         if (settings.printf_altitude)
@@ -147,10 +156,14 @@ static void* __printf_manager_func(__attribute__((unused)) void* ptr)
         }
         if (settings.printf_sticks)
         {
-            if (user_input.requested_arm_mode == ARMED)
+            if (user_input.kill_switch == 1)
+            {
                 printf("%s ARMED  ", KRED);
+            }
             else
+            {
                 printf("%sDISARMED", KGRN);
+            }
             printf(KGRN);
             printf("%s|%+5.2f|%+5.2f|%+5.2f|%+5.2f|", __next_colour(), user_input.thr_stick,
                 user_input.roll_stick, user_input.pitch_stick, user_input.yaw_stick);
@@ -164,6 +177,12 @@ static void* __printf_manager_func(__attribute__((unused)) void* ptr)
         {
             printf("%s%+5.2f|%+5.2f|%+5.2f|%+5.2f|%+5.2f|%+5.2f|", __next_colour(), fstate.u[0],
                 fstate.u[1], fstate.u[2], fstate.u[3], fstate.u[4], fstate.u[5]);
+        }
+        if (settings.printf_xbee)
+        {
+            printf("%s%+5.2f |%+5.2f |%+5.2f | %+5.2f | %+5.2f | %+5.2f | %+5.2f |",
+                __next_colour(), xbeeMsg.x, xbeeMsg.y, xbeeMsg.z, xbeeMsg.qx, xbeeMsg.qy,
+                xbeeMsg.qz, xbeeMsg.qw);
         }
         if (settings.printf_motors)
         {
@@ -210,9 +229,13 @@ int printf_cleanup()
         // wait for the thread to exit
         ret = rc_pthread_timed_join(printf_manager_thread, NULL, PRINTF_MANAGER_TOUT);
         if (ret == 1)
+        {
             fprintf(stderr, "WARNING: printf_manager_thread exit timeout\n");
+        }
         else if (ret == -1)
+        {
             fprintf(stderr, "ERROR: failed to join printf_manager thread\n");
+        }
     }
     initialized = 0;
     return ret;

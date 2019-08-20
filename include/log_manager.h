@@ -1,9 +1,11 @@
 /**
  * <log_manager.h>
  *
- * @brief      Functions to start, stop, and interact with the log manager
- *             thread.
+ * @brief   Functions to start, stop, and interact with the log manager
+ * thread.
  *
+ * @addtogroup LogManager
+ * @{
  */
 
 #ifndef LOG_MANAGER_H
@@ -20,8 +22,9 @@ typedef struct log_entry_t
 {
     /** @name index, always printed */
     ///@{
-    uint64_t loop_index;  // timing
+    uint64_t loop_index;
     uint64_t last_step_ns;
+    uint64_t imu_time_ns;  ///< Time that ISR occurs
     ///@}
 
     /** @name sensors */
@@ -47,6 +50,29 @@ typedef struct log_entry_t
     double Xdot;
     double Ydot;
     double Zdot;
+    ///@}
+
+    /*** @name xbee data */
+    ///@{
+    uint32_t xbee_time;
+    uint64_t xbee_time_received_ns;
+    float xbee_x;
+    float xbee_y;
+    float xbee_z;
+    float xbee_qw;
+    float xbee_qx;
+    float xbee_qy;
+    float xbee_qz;
+    ///@}
+
+    /** @name throttles */
+    ///@{
+    double X_throttle;
+    double Y_throttle;
+    double Z_throttle;
+    double roll_throttle;
+    double pitch_throttle;
+    double yaw_throttle;
     ///@}
 
     /** @name setpoint */
@@ -84,32 +110,43 @@ typedef struct log_entry_t
     double mot_8;
     ///@}
 
+    /** @name dsm connection valid */
+    ///@{
+    int dsm_con;
+    ///@}
+
+    /** @name flight mode */
+    ///@{
+    int flight_mode;
+    ///@}
 } log_entry_t;
 
 /**
- * @brief      creates a new csv log file and starts the background thread.
+ * @brief   creates a new csv log file and starts the background thread.
  *
- * @return     0 on success, -1 on failure
+ * @return  0 on success, -1 on failure
  */
 int log_manager_init(void);
 
 /**
- * @brief      quickly add new data to local buffer
+ * @brief   quickly add new data to local buffer
  *
  * This is called after feedback_march after signals have been sent to
  * the motors.
  *
- * @return     0 on success, -1 on failure
+ * @return  0 on success, -1 on failure
  */
 int log_manager_add_new();
 
 /**
- * @brief      Finish writing remaining data to log and close thread.
+ * @brief   Finish writing remaining data to log and close thread.
  *
- *             Used in log_manager.c
+ * Used in log_manager.c
  *
- * @return     0 on sucess and clean exit, -1 on exit timeout/force close.
+ * @return  0 on sucess and clean exit, -1 on exit timeout/force close.
  */
 int log_manager_cleanup(void);
 
 #endif  // LOG_MANAGER_H
+
+/* @} end group LogManager */

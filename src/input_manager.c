@@ -118,10 +118,12 @@ void new_dsm_data_callback()
             if (new_kill <= 0.1)
             {
                 kill_switch = DISARMED;
+                user_input.kill_switch = 0;
                 user_input.requested_arm_mode = DISARMED;
             }
             else
             {
+                user_input.kill_switch = 1;
                 kill_switch = ARMED;
             }
             break;
