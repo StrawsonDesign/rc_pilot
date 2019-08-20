@@ -1,4 +1,11 @@
-
+/**
+ * <thread_defs.h>
+ *
+ * @brief   Thread speeds, prioritites, and close timeouts
+ *
+ * @addtogroup ThreadDefs
+ * @{
+ */
 
 #ifndef THREAD_DEFS_H
 #define THREAD_DEFS_H
@@ -17,3 +24,4 @@
 #define BUTTON_EXIT_TIME_S 2
 
 #endif
+/* @} end group ThreadDefs */

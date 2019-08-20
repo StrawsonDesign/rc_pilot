@@ -1,8 +1,7 @@
 /**
  * @file setpoint_manager.c
- *
- *
  **/
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>  // for memset

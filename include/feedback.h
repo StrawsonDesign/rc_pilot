@@ -10,6 +10,8 @@
  * feedback_march(void) will monitor the setpoint which is constantly being
  * changed by setpoint_manager(void).
  *
+ * @addtogroup Feedback
+ * @{
  */
 
 #ifndef FEEDBACK_H
@@ -86,3 +88,5 @@ int feedback_arm(void);
 int feedback_cleanup(void);
 
 #endif  // FEEDBACK_H
+
+/**@} end group Feedback */

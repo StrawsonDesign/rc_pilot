@@ -1,10 +1,12 @@
 /**
- * @headerfile thrust_map.h
+ * <thrust_map.h>
  *
- * @brief      Functions to start and stop the printf manager which is a
- *             separate thread printing data to the console for debugging.
+ * @brief   Functions to start and stop the printf manager which is a
+ * separate thread printing data to the console for debugging.
+ *
+ * @addtogroup ThrustMap
+ * @{
  */
-
 #ifndef THRUST_MAP_H
 #define THRUST_MAP_H
 
@@ -40,3 +42,5 @@ int thrust_map_init(thrust_map_t map);
 double map_motor_signal(double m);
 
 #endif  // THRUST_MAP_H
+
+/* @} end group ThrustMap */

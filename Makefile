@@ -46,6 +46,9 @@ debug:
 	$(MAKE) $(MAKEFILE) DEBUGFLAG="-g -D DEBUG"
 	@echo "$(TARGET) Make Debug Complete"
 
+docs:
+	@cd docs; doxygen Doxyfile
+
 install:
 	@$(INSTALLDIR) $(DESTDIR)$(prefix)/bin
 	@$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/bin
@@ -66,3 +69,4 @@ runonboot:
 	@$(LINK) $(DESTDIR)$(prefix)/bin/$(TARGET) $(LINKDIR)/$(LINKNAME)
 	@echo "$(TARGET) Set to Run on Boot"
 
+.PHONY: all debug docs clean install uninstall runonboot

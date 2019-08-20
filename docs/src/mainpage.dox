@@ -1,16 +1,79 @@
 /**
-
 \mainpage
+# Setup
+## Install dependencies on Beaglebone:
 
+~~~
+$ sudo apt install libjson-c-dev libjson-c3
+~~~
 
-This package contains the C library and example/testing programs for the Robot Control project. This project began as a hardware interface for the Robotics Cape and later the BeagleBone Blue and was originally called Robotics_Cape_Installer. It grew to include an extensive math library for discrete time feedback control, as well as a plethora of POSIX-compliant functions for timing, multithreading, program flow, and lots more. Everything is aimed at developing robotics software on embedded computers.
+## Install librobotcontrol on Beaglebone:
 
-This package ships with official BeagleBone images and is focused on, but not excludive to, the BeagleBoard platform. The library and example programs are primarily written in C, however there also exists the RCPY python interface to this package available at <https://github.com/mcdeoliveira/rcpy>.
+The repo for the library is located on the <a href="https://github.com/StrawsonDesign/librobotcontrol" target="_blank">Strawson Design</a> GitHub page. There is a bug in the 1.0.4 release version (rc_duplicate_filter fails for initialized filter) so <a href="http://strawsondesign.com/docs/librobotcontrol/installation.html" target="_blank">install librobotcontrol from source</a>.
 
-The master branch is always the most current but not necessarily stable. See [releases](https://github.com/StrawsonDesign/Robotics_Cape_Installer/releases) page for older stable versions or install from BeagleBoard.org repositories.
+## Transfer rc_pilot source to Beaglebone:
+In the scripts folder there are some convenient scripts for moving files to and from the vehicle.  These scripts were build and tested on Ubuntu 19.04 but have not been tested on any other system.  They should work on any system with bash and rsync.  To transfer the files to the vehicle run:
 
-To get started, visit the [user manual](manual.html)
+~~~
+$ ./scripts/transfer_rcpilot [usb|wifi]
+~~~
 
+## Build on Beaglebone (from project directory):
+
+~~~
+$ make
+~~~
+
+## Run RC_pilot:
+
+~~~
+$ cd bin
+$ sudo ./rc_pilot -s ../settings/quad_settings.json
+~~~
+
+# Miscellaneous
+## Building docs:
+
+Make sure that doxygen is installed on your system and run
+
+~~~ 
+$ make docs
+~~~
+
+Open the docs with the web browser of your choice
+
+~~~
+$ firefox html/index.html
+$ google-chrome html/index.html
+~~~
+
+## (COMING SOON) Testing:
+Test cases are written using the <a href="https://www.boost.org/users/history/version_1_66_0.html" target="_blank">Boost 1.66.</a> unit test framework.  Look at make target test for system install location.  This suite is not written with portability in mind so you may need to tweak the build system in order to get it to compile on your machine.  The boost libraries should be isntalled in /usr/local/lib and the headers should be installed in /usr/local/boost_1_66_0 (check the Makefile to confirm this).
+
+Run the test suit with the make target:
+~~~
+$ make test
+~~~
+
+### Adding Test Modules
+
+To add a test modules, create a new file <module_name>_test.cpp and format it as follows:
+
+~~~
+#include <boost/test/unit_test.hpp>
+
+BOOST_AUTO_TEST_SUIT(Test_<module_name>)
+
+BOOST_AUTO_TEST_CASE(test1){...}
+
+BOOST_AUTO_TEST_CASE(test2){...}
+
+...
+
+BOOST_AUTO_TEST_CASE_END()
+~~~
+
+The make target will compile each test module into a single executable and run all test cases simultaneously.
 
 */
 
