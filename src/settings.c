@@ -229,6 +229,10 @@ static int __parse_thrust_map(void)
     {
         settings.thrust_map = RX2206_4S;
     }
+    else if (strcmp(tmp_str, "AIR2213_3S") == 0)
+    {
+        settings.thrust_map = AIR2213_3S;
+    }
     else
     {
         fprintf(stderr, "ERROR: invalid thrust_map string\n");
@@ -248,7 +252,6 @@ static int __parse_thrust_map(void)
 static int __parse_flight_mode(json_object* jobj_str, flight_mode_t* mode)
 {
     char* tmp_str = NULL;
-    struct json_object* tmp = NULL;
     if (json_object_is_type(jobj_str, json_type_string) == 0)
     {
         fprintf(stderr, "ERROR: flight_mode should be a string\n");
@@ -559,10 +562,6 @@ static int __parse_controller(json_object* jobj_ctl, rc_filter_t* filter)
 int settings_load_from_file(char* path)
 {
     struct json_object* tmp = NULL;  // temp object
-    char* tmp_str = NULL;            // temp string poitner
-    double tmp_flt;
-    int tmp_int;
-
     was_load_successful = 0;
 
 #ifdef DEBUG
@@ -675,6 +674,7 @@ int settings_load_from_file(char* path)
     PARSE_BOOL(printf_sticks)
     PARSE_BOOL(printf_setpoint)
     PARSE_BOOL(printf_u)
+    PARSE_BOOL(printf_xbee)
     PARSE_BOOL(printf_motors)
     PARSE_BOOL(printf_mode)
 
@@ -685,6 +685,10 @@ int settings_load_from_file(char* path)
     PARSE_BOOL(log_setpoint)
     PARSE_BOOL(log_control_u)
     PARSE_BOOL(log_motor_signals)
+    PARSE_BOOL(log_throttles)
+    PARSE_BOOL(log_xbee)
+    PARSE_BOOL(log_dsm)
+    PARSE_BOOL(log_flight_mode)
 
     // MAVLINK
     PARSE_STRING(dest_ip)

@@ -1,10 +1,12 @@
 /**
- * @headerfile thrust_map.h
+ * <thrust_map.h>
  *
- * @brief      Functions to start and stop the printf manager which is a
- *             separate thread printing data to the console for debugging.
+ * @brief   Functions to start and stop the printf manager which is a
+ * separate thread printing data to the console for debugging.
+ *
+ * @addtogroup ThrustMap
+ * @{
  */
-
 #ifndef THRUST_MAP_H
 #define THRUST_MAP_H
 
@@ -18,7 +20,8 @@ typedef enum thrust_map_t
     LINEAR_MAP,
     MN1806_1400KV_4S,
     F20_2300KV_2S,
-    RX2206_4S
+    RX2206_4S,
+    AIR2213_3S
 } thrust_map_t;
 
 /**
@@ -39,3 +42,5 @@ int thrust_map_init(thrust_map_t map);
 double map_motor_signal(double m);
 
 #endif  // THRUST_MAP_H
+
+/* @} end group ThrustMap */

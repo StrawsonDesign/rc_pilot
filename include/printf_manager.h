@@ -1,8 +1,11 @@
 /**
  * <printf_manager.h>
  *
- * @brief      Functions to start and stop the printf mnaager which is a
- *             separate thread printing data to the console for debugging.
+ * @brief   Functions to start and stop the printf mnaager which is a
+ * separate thread printing data to the console for debugging.
+ *
+ * @addtogroup PrintfManager
+ * @{
  */
 
 #ifndef PRINTF_MANAGER_H
@@ -36,3 +39,5 @@ int printf_cleanup(void);
 int print_flight_mode(flight_mode_t mode);
 
 #endif  // PRINTF_MANAGER_H
+
+/* @} end group PrintfManager */

@@ -20,6 +20,7 @@
 #include <rc_pilot_defs.h>
 #include <settings.h>
 #include <state_estimator.h>
+#include <xbee_receive.h>
 
 #define TWO_PI (M_PI * 2.0)
 
@@ -46,7 +47,8 @@ static void __batt_init(void)
         tmp = settings.v_nominal;
         if (settings.warnings_en)
         {
-            fprintf(stderr, "WARNING: ADC read %0.1fV on the barrel jack. Please connect\n");
+            fprintf(stderr, "WARNING: ADC read %0.1fV on the barrel jack. Please connect\n",
+                state_estimate.v_batt_lp);
             fprintf(stderr, "battery to barrel jack, assuming nominal voltage for now.\n");
         }
     }
@@ -338,6 +340,7 @@ int state_estimator_march(void)
     __imu_march();
     __mag_march();
     __altitude_march();
+    XBEE_getData();
     __feedback_select();
     __mocap_check_timeout();
     return 0;

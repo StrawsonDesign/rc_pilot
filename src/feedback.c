@@ -145,8 +145,6 @@ int feedback_arm(void)
 
 int feedback_init(void)
 {
-    double tmp;
-
     __rpy_init();
 
     rc_filter_duplicate(&D_Z, settings.altitude_controller);
@@ -180,7 +178,6 @@ int feedback_march(void)
     int i;
     double tmp, min, max;
     double u[6], mot[8];
-    log_entry_t new_log;
     static int last_en_Z_ctrl = 0;
 
     // Disarm if rc_state is somehow paused without disarming the controller.
@@ -219,14 +216,14 @@ int feedback_march(void)
      ***************************************************************************/
     // run altitude controller if enabled
     // this needs work...
-    // we need to:
+    // we need to
     //		find hover thrust and correct from there
     //		this code does not work a.t.m.
     if (setpoint.en_Z_ctrl)
     {
         if (last_en_Z_ctrl == 0)
         {
-            setpoint.Z = state_estimate.alt_bmp;  // set altitude setpoint to current altitude
+            setpoint.Z = state_estimate.Z;  // set altitude setpoint to current altitude
             rc_filter_reset(&D_Z);
             tmp = -setpoint.Z_throttle / (cos(state_estimate.roll) * cos(state_estimate.pitch));
             rc_filter_prefill_outputs(&D_Z, tmp);
@@ -234,7 +231,7 @@ int feedback_march(void)
         }
         D_Z.gain = D_Z_gain_orig * settings.v_nominal / state_estimate.v_batt_lp;
         tmp = rc_filter_march(
-            &D_Z, -setpoint.Z + state_estimate.alt_bmp);  // altitude is positive but +Z is down
+            &D_Z, -setpoint.Z + state_estimate.Z);  // altitude is positive but +Z is down
         rc_saturate_double(&tmp, MIN_THRUST_COMPONENT, MAX_THRUST_COMPONENT);
         u[VEC_Z] = tmp / cos(state_estimate.roll) * cos(state_estimate.pitch);
         mix_add_input(u[VEC_Z], VEC_Z, mot);

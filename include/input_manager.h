@@ -1,9 +1,12 @@
 /**
  * <input_manager.h>
  *
- * Functions to start and stop the input manager thread which is the translation
+ * @brief   Functions to start and stop the input manager thread which is the translation
  * beween control inputs from DSM to the user_input struct which is read by the
  * setpoint manager. TODO: Allow other inputs such as mavlink
+ *
+ * @addtogroup InputManager
+ * @{
  */
 
 #ifndef INPUT_MANAGER_H
@@ -41,6 +44,7 @@ typedef struct user_input_t
     int initialized;                 ///< set to 1 after input_manager_init(void)
     flight_mode_t flight_mode;       ///< this is the user commanded flight_mode.
     int input_active;                ///< nonzero indicates some user control is coming in
+    int kill_switch;                 ///< for printing
     arm_state_t requested_arm_mode;  ///< set to ARMED after arming sequence is entered.
 
     // All sticks scaled from -1 to 1
@@ -74,3 +78,5 @@ int input_manager_init(void);
 int input_manager_cleanup(void);
 
 #endif  // INPUT_MANAGER_H
+
+/**@}end group InputMaganger */

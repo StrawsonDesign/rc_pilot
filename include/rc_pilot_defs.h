@@ -1,7 +1,10 @@
 /**
  * <rc_pilot_defs.h>
  *
- * @brief constants and parameters
+ * @brief Constants and parameters
+ *
+ * @addtogroup RcPilotDefs
+ * @{
  */
 
 #ifndef RC_PILOT_DEFS_H
@@ -90,3 +93,5 @@ typedef enum arm_state_t
 //#define DEBUG
 
 #endif  // RC_PILOT_DEFS_H
+
+/* @} end group RcPilotDefs */

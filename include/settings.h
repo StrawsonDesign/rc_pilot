@@ -1,7 +1,10 @@
 /**
- * <fly/settings.h>
+ * <settings.h>
  *
- * @brief      Functions to read the json settings file
+ * @brief   Functions to read the json settings file
+ *
+ * @addtogroup Settings
+ * @{
  */
 
 #ifndef SETTINGS_H
@@ -74,6 +77,7 @@ typedef struct settings_t
     int printf_sticks;
     int printf_setpoint;
     int printf_u;
+    int printf_xbee;
     int printf_motors;
     int printf_mode;
     ///@}
@@ -86,6 +90,10 @@ typedef struct settings_t
     int log_setpoint;
     int log_control_u;
     int log_motor_signals;
+    int log_throttles;
+    int log_xbee;
+    int log_dsm;
+    int log_flight_mode;
     ///@}
 
     /** @name mavlink stuff */
@@ -130,3 +138,5 @@ int settings_load_from_file(char* path);
 int settings_print(void);
 
 #endif  // SETTINGS_H
+
+/* @} end group Settings */

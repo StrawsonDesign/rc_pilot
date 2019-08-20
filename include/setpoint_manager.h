@@ -1,18 +1,24 @@
 /**
  * <setpoint_manager.h>
  *
- * @brief      Setpoint manager runs at the same rate as the feedback controller
- *             and is the interface between the user inputs (input manager) and
- *             the feedback controller setpoint. currently it contains very
- *             simply logic and runs very quickly which is why it's okay to run
- *             in the feedback ISR right before the feedback controller. In the
- *             future this is where go-home and other higher level autonomy will
- *             live.
+ * @brief   Guidance module for the vehicle
  *
- *             This serves to allow the feedback controller to be as simple and
- *             clean as possible by putting all high-level manipulation of the
- *             setpoints here. Then feedback-controller only needs to march the
- *             filters and zero them out when arming or enabling controllers
+ * Setpoint manager runs at the same rate as the feedback controller
+ * and is the interface between the user inputs (input manager) and
+ * the feedback controller setpoint. currently it contains very
+ * simply logic and runs very quickly which is why it's okay to run
+ * in the feedback ISR right before the feedback controller. In the
+ * future this is where go-home and other higher level autonomy will
+ * live.
+ *
+ * This serves to allow the feedback controller to be as simple and
+ * clean as possible by putting all high-level manipulation of the
+ * setpoints here. Then feedback-controller only needs to march the
+ * filters and zero them out when arming or enabling controllers
+ *
+ * @addtogroup SetpointManager
+ * @{
+ *
  */
 
 #ifndef SETPOINT_MANAGER_H
@@ -100,3 +106,5 @@ int setpoint_manager_update(void);
 int setpoint_manager_cleanup(void);
 
 #endif  // SETPOINT_MANAGER_H
+
+/* @} end group SetpointManager */

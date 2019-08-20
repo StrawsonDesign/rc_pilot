@@ -118,10 +118,12 @@ void new_dsm_data_callback()
             if (new_kill <= 0.1)
             {
                 kill_switch = DISARMED;
+                user_input.kill_switch = 0;
                 user_input.requested_arm_mode = DISARMED;
             }
             else
             {
+                user_input.kill_switch = 1;
                 kill_switch = ARMED;
             }
             break;
@@ -217,7 +219,7 @@ void dsm_disconnect_callback(void)
     fprintf(stderr, "LOST DSM CONNECTION\n");
 }
 
-void* input_manager(void* ptr)
+void* input_manager(__attribute__((unused)) void* ptr)
 {
     user_input.initialized = 1;
     // wait for first packet

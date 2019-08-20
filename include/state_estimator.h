@@ -1,11 +1,14 @@
 /**
- * @file state_estimator.h
+ * <state_estimator.h>
  *
- * @brief      Functions to start and stop the state estimator
+ * @brief      Navigation module for the vehicle
  *
  * This runs at the same rate as the feedback controller.
  * state_estimator_march() is called immediately before  feedback_march() in the
  * IMU interrupt service routine.
+ *
+ * @addtogroup StateEstimator
+ * @{
  */
 
 #ifndef STATE_ESTIMATOR_H
@@ -31,6 +34,7 @@
 typedef struct state_estimate_t
 {
     int initialized;
+    uint64_t imu_time_ns;  ///< Time when ISR occurs (for logging purposes)
 
     /** @name IMU (accel gyro)
      * Normalized Quaternion is straight from the DMP but converted to NED
@@ -98,10 +102,11 @@ typedef struct state_estimate_t
     ///@{
     int mocap_running;            ///< 1 if motion capture data is recent and valid
     uint64_t mocap_timestamp_ns;  ///< timestamp of last received packet in nanoseconds since boot
-    double pos_mocap[3];          ///< position in mocap frame, converted to NED if necessary
-    double quat_mocap[4];         ///< UAV orientation according to mocap
-    double tb_mocap[3];           ///< Tait-Bryan angles according to mocap
-    int is_active;                ///< TODO used by mavlink manager, purpose unclear... (pg)
+    uint64_t xbee_time_received_ns;  ///< timestamp of xbee message received
+    double pos_mocap[3];             ///< position in mocap frame, converted to NED if necessary
+    double quat_mocap[4];            ///< UAV orientation according to mocap
+    double tb_mocap[3];              ///< Tait-Bryan angles according to mocap
+    int is_active;                   ///< TODO used by mavlink manager, purpose unclear... (pg)
     ///@}
 
     /** @name Global Position Estimate
@@ -171,3 +176,5 @@ int state_estimator_jobs_after_feedback(void);
 int state_estimator_cleanup(void);
 
 #endif  //  STATE_ESTIMATOR_H
+
+/* @} end group StateEstimator */

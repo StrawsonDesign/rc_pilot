@@ -1,76 +1,85 @@
 {
-	"name": "HEX 6DOF JAMES",
+	"name": "QUADCOPTER",
 
-	"warnings_en": 1,
+	"warnings_en": true,
 
-	"layout": "LAYOUT_6DOF_ROTORBITS",
-	"thrust_map": "RX2206_4S",
+	"layout": "LAYOUT_4X",
+	"thrust_map": "AIR2213_3S",
 	"orientation": "ORIENTATION_X_FORWARD",
-	"v_nominal": 14.8,
-	"enable_magnetometer": false,
+	"v_nominal": 12.5,
 
-	"num_dsm_modes": 3,
+	"enable_magnetometer": true,
+
+	"num_dsm_modes": 2,
 	"flight_mode_1": "TEST_BENCH_4DOF",
 	"flight_mode_2": "DIRECT_THROTTLE_4DOF",
-	"flight_mode_3": "DIRECT_THROTTLE_6DOF",
+	"flight_mode_3": "DIRECT_THROTTLE_4DOF",
 
 	"dsm_thr_ch": 1,
 	"dsm_thr_pol": 1,
 	"dsm_roll_ch": 2,
-	"dsm_roll_pol": -1,
+	"dsm_roll_pol": 1,
 	"dsm_pitch_ch": 3,
-	"dsm_pitch_pol": -1,
+	"dsm_pitch_pol": 1,
 	"dsm_yaw_ch": 4,
-	"dsm_yaw_pol": -1,
+	"dsm_yaw_pol": 1,
 	"dsm_mode_ch": 5,
-	"dsm_mode_pol": -1,
-	"dsm_kill_mode": "DSM_KILL_NEGATIVE_THROTTLE",
+	"dsm_mode_pol": 1,
+	"dsm_kill_mode": "DSM_KILL_DEDICATED_SWITCH",
 	"dsm_kill_ch": 6,
 	"dsm_kill_pol": 1,
 
 	"printf_arm": true,
 	"printf_altitude": true,
+	"printf_battery": true,
 	"printf_position": true,
 	"printf_rpy": true,
 	"printf_sticks": true,
-	"printf_setpoint": true,
-	"printf_u": true,
-	"printf_motors": true,
+	"printf_setpoint": false,
+	"printf_u": false,
+	"printf_motors": false,
 	"printf_mode": true,
-	"printf_xbee": false,
+	"printf_xbee": true, 
+	"printf_tracking": true, 
 
-	"enable_logging": false,
+	"enable_logging": true,
 	"log_sensors": true,
 	"log_state": true,
+	"log_xbee": true,
+	"log_gps": true,
 	"log_setpoint": true,
 	"log_control_u": true,
 	"log_motor_signals": true,
-	"log_throttles":true,
-	"log_xbee":true,
-	"log_dsm":true,
-	"log_flight_mode":true,
+	"log_throttles": true,
+	"log_dsm": true,
+	"log_flight_mode": true,
 
 	"dest_ip": "192.168.8.1",
 	"my_sys_id": 1,
 	"mav_port": 14551,
 
+	"en_sp_filtering": true,
+	"sp_filter_alpha": 0.9,
+
+	"dsm_timeout_ms": 200,
+
 	"roll_controller": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
-		"kp":0.3,
-		"ki":0.01,
+		"kp":0.5,
+		"ki":0.0,
 		"kd":0.1,
 		"crossover_freq_rad_per_sec": 62.83,
 		"numerator": [
 			0.1,
-			0.2,
-			0.3
+			0.1,
+			0.1
 		],
 		"denominator": [
 			0.1,
-			0.2,
-			0.3
+			0.1,
+			0.1
 		]
 	},
 
@@ -78,8 +87,8 @@
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
-		"kp":0.3,
-		"ki":0.01,
+		"kp":0.4,
+		"ki":0.0,
 		"kd":0.1,
 		"crossover_freq_rad_per_sec": 62.83,
 		"numerator": [
@@ -98,9 +107,9 @@
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
-		"kp":0.3,
-		"ki":0.01,
-		"kd":0.1,
+		"kp":0.5947,  
+		"ki":0.0,
+		"kd":1.0,
 		"crossover_freq_rad_per_sec": 31.41,
 		"numerator": [
 			0.1,
@@ -118,10 +127,10 @@
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
-		"kp":0.85,
+		"kp":0.1616,
 		"ki":0.0,
-		"kd":0.0,
-		"crossover_freq_rad_per_sec": 6.283,
+		"kd":1.154,
+		"crossover_freq_rad_per_sec": 62.83,
 		"numerator": [
 			0.1,
 			0.2,
@@ -134,7 +143,7 @@
 		]
 	},
 
-	"horizontal_velocity_controller_4dof": {
+	"horiz_vel_ctrl_4dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
@@ -154,7 +163,7 @@
 		]
 	},
 
-	"horizontal_velocity_controller_6dof": {
+	"horiz_vel_ctrl_6dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
@@ -174,14 +183,14 @@
 		]
 	},
 
-	"horizontal_position_controller_4dof": {
+	"horiz_pos_ctrl_4dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
-		"kp":0.85,
+		"kp":1.2,
 		"ki":0.0,
-		"kd":0.0,
-		"crossover_freq_rad_per_sec": 6.283,
+		"kd":0.1,
+		"crossover_freq_rad_per_sec": 62.83,
 		"numerator": [
 			0.1,
 			0.2,
@@ -194,7 +203,7 @@
 		]
 	},
 
-	"horizontal_position_controller_6dof": {
+	"horiz_pos_ctrl_6dof": {
 		"gain": 1.0,
 		"CT_or_DT": "CT",
 		"TF_or_PID": "PID",
