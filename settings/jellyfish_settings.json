@@ -39,7 +39,7 @@
 	"printf_u": false,
 	"printf_motors": false,
 	"printf_mode": true,
-	"printf_xbee": false, 
+	"printf_xbee": true, 
 	"printf_tracking": true, 
 
 	"enable_logging": true,

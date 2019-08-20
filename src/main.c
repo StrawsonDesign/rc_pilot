@@ -27,6 +27,7 @@
 #include <settings.h>  // contains extern settings variable
 #include <state_estimator.h>
 #include <thrust_map.h>
+#include <xbee_receive.h>
 
 #define FAIL(str)                       \
     fprintf(stderr, str);               \
@@ -102,11 +103,15 @@ void on_pause_press()
  */
 static void __imu_isr(void)
 {
-    // printf("imu interupt...\n");
+    // Log time that isr occurs
+    state_estimate.imu_time_ns = rc_nanos_since_boot();
+
     setpoint_manager_update();
     state_estimator_march();
     feedback_march();
+
     if (settings.enable_logging) log_manager_add_new();
+
     state_estimator_jobs_after_feedback();
 }
 
@@ -277,6 +282,13 @@ int main(int argc, char* argv[])
     if (state_estimator_init() < 0)
     {
         FAIL("ERROR: failed to init state_estimator")
+    }
+
+    // set up XBEE serial link
+    printf("initializing xbee serial link.\n");
+    if (XBEE_init() < 0)
+    {
+        FAIL("ERROR: failed to init xbee serial link")
     }
 
     // set up feedback controller

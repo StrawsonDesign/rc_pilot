@@ -41,6 +41,7 @@ typedef struct user_input_t
     int initialized;                 ///< set to 1 after input_manager_init(void)
     flight_mode_t flight_mode;       ///< this is the user commanded flight_mode.
     int input_active;                ///< nonzero indicates some user control is coming in
+    int kill_switch;                 ///< for printing
     arm_state_t requested_arm_mode;  ///< set to ARMED after arming sequence is entered.
 
     // All sticks scaled from -1 to 1

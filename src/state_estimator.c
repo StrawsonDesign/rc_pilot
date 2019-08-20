@@ -20,6 +20,7 @@
 #include <rc_pilot_defs.h>
 #include <settings.h>
 #include <state_estimator.h>
+#include <xbee_receive.h>
 
 #define TWO_PI (M_PI * 2.0)
 
@@ -339,6 +340,7 @@ int state_estimator_march(void)
     __imu_march();
     __mag_march();
     __altitude_march();
+    XBEE_getData();
     __feedback_select();
     __mocap_check_timeout();
     return 0;

@@ -674,6 +674,7 @@ int settings_load_from_file(char* path)
     PARSE_BOOL(printf_sticks)
     PARSE_BOOL(printf_setpoint)
     PARSE_BOOL(printf_u)
+    PARSE_BOOL(printf_xbee)
     PARSE_BOOL(printf_motors)
     PARSE_BOOL(printf_mode)
 
@@ -684,6 +685,10 @@ int settings_load_from_file(char* path)
     PARSE_BOOL(log_setpoint)
     PARSE_BOOL(log_control_u)
     PARSE_BOOL(log_motor_signals)
+    PARSE_BOOL(log_throttles)
+    PARSE_BOOL(log_xbee)
+    PARSE_BOOL(log_dsm)
+    PARSE_BOOL(log_flight_mode)
 
     // MAVLINK
     PARSE_STRING(dest_ip)

@@ -38,6 +38,7 @@
 	"printf_u": true,
 	"printf_motors": true,
 	"printf_mode": true,
+	"printf_xbee":false,
 
 	"enable_logging": true,
 	"log_sensors": true,
@@ -45,6 +46,10 @@
 	"log_setpoint": true,
 	"log_control_u": true,
 	"log_motor_signals": true,
+	"log_throttles":true,
+	"log_xbee":true,
+	"log_dsm":true,
+	"log_flight_mode":true,
 
 	"dest_ip": "192.168.8.1",
 	"my_sys_id": 1,
