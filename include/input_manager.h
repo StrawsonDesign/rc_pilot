@@ -1,9 +1,12 @@
 /**
  * <input_manager.h>
  *
- * Functions to start and stop the input manager thread which is the translation
+ * @brief   Functions to start and stop the input manager thread which is the translation
  * beween control inputs from DSM to the user_input struct which is read by the
  * setpoint manager. TODO: Allow other inputs such as mavlink
+ *
+ * @addtogroup InputManager
+ * @{
  */
 
 #ifndef INPUT_MANAGER_H
@@ -75,3 +78,5 @@ int input_manager_init(void);
 int input_manager_cleanup(void);
 
 #endif  // INPUT_MANAGER_H
+
+/**@}end group InputMaganger */

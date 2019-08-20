@@ -1,11 +1,14 @@
 /**
- * @file state_estimator.h
+ * <state_estimator.h>
  *
- * @brief      Functions to start and stop the state estimator
+ * @brief      Navigation module for the vehicle
  *
  * This runs at the same rate as the feedback controller.
  * state_estimator_march() is called immediately before  feedback_march() in the
  * IMU interrupt service routine.
+ *
+ * @addtogroup StateEstimator
+ * @{
  */
 
 #ifndef STATE_ESTIMATOR_H
@@ -173,3 +176,5 @@ int state_estimator_jobs_after_feedback(void);
 int state_estimator_cleanup(void);
 
 #endif  //  STATE_ESTIMATOR_H
+
+/* @} end group StateEstimator */

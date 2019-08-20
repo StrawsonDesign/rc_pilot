@@ -1,7 +1,10 @@
 /**
- * <fly/settings.h>
+ * <settings.h>
  *
- * @brief      Functions to read the json settings file
+ * @brief   Functions to read the json settings file
+ *
+ * @addtogroup Settings
+ * @{
  */
 
 #ifndef SETTINGS_H
@@ -135,3 +138,5 @@ int settings_load_from_file(char* path);
 int settings_print(void);
 
 #endif  // SETTINGS_H
+
+/* @} end group Settings */

@@ -1,5 +1,10 @@
 /**
  * <flight_mode.h>
+ *
+ * @brief   Flight mode definitions
+ *
+ * @addtogroup FlightModes
+ * @{
  */
 
 #ifndef FLIGHT_MODE_H
@@ -71,3 +76,5 @@ typedef enum flight_mode_t
 } flight_mode_t;
 
 #endif
+
+/**@}end group Flight Modes */

@@ -1,5 +1,5 @@
 /**
- * @file mixing_matrix.c
+ * @file mix.c
  */
 
 #include <float.h>  // for DBL_MAX
